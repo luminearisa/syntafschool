@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Scrollbar halus */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

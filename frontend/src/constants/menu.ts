@@ -1,0 +1,124 @@
+import type { LucideIcon } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Database,
+  Users,
+  GraduationCap,
+  Wallet,
+  BookOpen,
+  Package,
+  FileBarChart,
+  ClipboardList,
+  BookOpenCheck,
+  Settings,
+} from 'lucide-react';
+import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
+import { domainMenu } from '@/routes/domains';
+import { ppdbMenu } from '@/routes/domains/ppdb';
+import { tahfizMenu } from '@/routes/domains/tahfiz';
+import { libraryMenu } from '@/routes/domains/library';
+
+export interface MenuChild {
+  label: string;
+  to: string;
+  permission?: string;
+}
+
+export interface MenuItem {
+  label: string;
+  icon: LucideIcon;
+  to?: string;
+  permission?: string;
+  children?: MenuChild[];
+}
+
+/** Menu master data dikelompokkan (butuh permission master-data.view) */
+const masterChildren: MenuChild[] = MASTER_GROUPS.flatMap((g) =>
+  getResourcesByGroup(g.key).map((r) => ({
+    label: r.labelPlural,
+    to: `/master/${r.key}`,
+    permission: 'master-data.view',
+  })),
+);
+
+export const MENU_ITEMS: MenuItem[] = [
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/' },
+  {
+    label: 'Master Data',
+    icon: Database,
+    permission: 'master-data.view',
+    children: masterChildren,
+  },
+  {
+    label: 'Akademik',
+    icon: GraduationCap,
+    permission: 'academic.view',
+    children: [
+      { label: 'Periode Akademik', to: '/academics/periods', permission: 'academic.view' },
+      { label: 'Kelas & Rombel', to: '/academics/classes', permission: 'academic.view' },
+      { label: 'Jadwal Pelajaran', to: '/academics/schedules', permission: 'academic.view' },
+      ...domainMenu,
+    ],
+  },
+  ...ppdbMenu,
+  {
+    label: 'Kesiswaan',
+    icon: Users,
+    permission: 'student.view',
+    children: [
+      { label: 'Data Siswa', to: '/students', permission: 'student.view' },
+      { label: 'Wali Murid', to: '/students/guardians', permission: 'student.view' },
+    ],
+  },
+  {
+    label: 'Kepegawaian',
+    icon: ClipboardList,
+    permission: 'employee.view',
+    children: [
+      { label: 'Data Pegawai', to: '/employees', permission: 'employee.view' },
+      { label: 'Absensi Pegawai', to: '/employees/attendance', permission: 'employee.view' },
+    ],
+  },
+  {
+    label: 'Keuangan',
+    icon: Wallet,
+    permission: 'finance.view',
+    children: [
+      { label: 'Tagihan', to: '/finance/invoices', permission: 'finance.view' },
+      { label: 'Pembayaran', to: '/finance/payments', permission: 'finance.view' },
+      { label: 'Tabungan', to: '/finance/savings', permission: 'finance.view' },
+    ],
+  },
+  {
+    label: 'Penilaian',
+    icon: FileBarChart,
+    permission: 'assessment.view',
+    children: [
+      { label: 'Penilaian', to: '/assessments', permission: 'assessment.view' },
+      { label: 'Rapor', to: '/assessments/report-cards', permission: 'assessment.view' },
+    ],
+  },
+  {
+    label: "Tahfiz / Al-Qur'an",
+    icon: BookOpenCheck,
+    permission: 'tahfiz.view',
+    children: tahfizMenu,
+  },
+  {
+    label: 'Perpustakaan',
+    icon: BookOpen,
+    permission: 'library.view',
+    children: libraryMenu,
+  },
+  { label: 'Inventaris', icon: Package, to: '/inventory', permission: 'inventory.view' },
+  {
+    label: 'Pengaturan',
+    icon: Settings,
+    permission: 'setting.view',
+    children: [
+      { label: 'Pengguna', to: '/settings/users', permission: 'user.view' },
+      { label: 'Role & Hak Akses', to: '/settings/roles', permission: 'user.view' },
+      { label: 'Pengaturan Umum', to: '/settings/general', permission: 'setting.view' },
+    ],
+  },
+];
