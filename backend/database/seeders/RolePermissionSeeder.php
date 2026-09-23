@@ -63,6 +63,26 @@ class RolePermissionSeeder extends Seeder
             'selection.manage', 'announcement.manage', 'account.manage',
             'report.view', 'report.export',
         ],
+        // Modul Wallet/E-Wallet: saldo santri, karyawan & orang tua. Aksi bersarang
+        // menghasilkan nama berjenjang, mis. "wallet.topup.verify".
+        //
+        // Daftar ini sengaja selengkap spesifikasi §2: kemampuan mengelola uang
+        // orang lain dipecah supaya "admin" tidak otomatis berarti boleh semua.
+        // Lihat `grantWalletModulePermissions()` untuk pembagian per role.
+        'wallet' => [
+            'view', 'create', 'update',
+            'block', 'unblock', 'close',
+            'rfid.view', 'rfid.manage',
+            'topup.view', 'topup.create', 'topup.verify', 'topup.reject',
+            'withdrawal.view', 'withdrawal.create', 'withdrawal.approve',
+            'withdrawal.reject', 'withdrawal.complete',
+            'ledger.view',
+            // Pembuat adjustment bukan penyetuju adjustment (§20).
+            'adjustment.view', 'adjustment.create', 'adjustment.approve',
+            'reversal.create',
+            'report.view', 'report.export',
+            'settings.view', 'settings.manage',
+        ],
         'report' => ['view', 'export'],
         'user' => ['view', 'create', 'update', 'delete'],
         'setting' => ['view', 'update'],
@@ -74,9 +94,31 @@ class RolePermissionSeeder extends Seeder
     /** @var array<string, list<string>> */
     protected array $roles = [
         'super-admin' => ['*'],
-        'admin-sekolah' => ['master-data', 'academic', 'student', 'employee', 'finance', 'assessment', 'library', 'inventory', 'ppdb', 'report', 'user', 'setting', 'tahfiz'],
-        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'student:view', 'employee:view', 'finance:view', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view'],
-        'bendahara' => ['finance', 'report:view'],
+        'admin-sekolah' => ['master-data', 'academic', 'student', 'employee', 'finance', 'assessment', 'library', 'inventory', 'ppdb', 'wallet', 'report', 'user', 'setting', 'tahfiz'],
+        // Kepala sekolah hanya memantau uang: lihat daftar, buku besar, dan laporan.
+        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'student:view', 'employee:view', 'finance:view', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export'],
+        // Bendahara = pengelola keuangan: top up, penarikan, adjustment, reversal.
+        // Sengaja tidak menyebut modul `wallet` secara utuh — konfigurasi modul
+        // (settings.*) dan penutupan wallet permanen (wallet.close) hak admin.
+        'bendahara' => [
+            'finance', 'report:view',
+            'wallet:view', 'wallet:create', 'wallet:update', 'wallet:block', 'wallet:unblock',
+            'wallet:rfid.view', 'wallet:rfid.manage',
+            'wallet:topup.view', 'wallet:topup.create', 'wallet:topup.verify', 'wallet:topup.reject',
+            'wallet:withdrawal.view', 'wallet:withdrawal.create', 'wallet:withdrawal.approve',
+            'wallet:withdrawal.reject', 'wallet:withdrawal.complete',
+            'wallet:ledger.view',
+            'wallet:adjustment.view', 'wallet:adjustment.create', 'wallet:adjustment.approve',
+            'wallet:reversal.create',
+            'wallet:report.view', 'wallet:report.export',
+        ],
+        // Petugas wallet: operasional harian kartu & verifikasi setoran.
+        // Tanpa hak adjustment dan tanpa hak menyetujui penarikan (§2).
+        'petugas-wallet' => [
+            'wallet:view', 'wallet:rfid.view', 'wallet:rfid.manage',
+            'wallet:topup.view', 'wallet:topup.verify', 'wallet:topup.reject',
+            'wallet:withdrawal.view', 'wallet:ledger.view',
+        ],
         // Guru Tahfiz: lihat, catat setoran, dan menilai. Tidak menghapus data.
         'guru' => ['academic:view', 'academic:grade', 'academic:attendance', 'student:view', 'assessment', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
         // Musyrif/musyrifah: memantau seluruh halaqah (view + laporan).
