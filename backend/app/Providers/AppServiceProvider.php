@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Listeners\RecordScheduledTaskFailure;
 use App\Models\Library;
 use App\Policies\LibraryPolicy;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Activitylog\Models\Activity;
@@ -26,13 +29,18 @@ class AppServiceProvider extends ServiceProvider
         // Didaftarkan eksplisit agar tidak bergantung pada auto-discovery.
         Gate::policy(Library::class, LibraryPolicy::class);
 
+        // Jadwal Keuangan yang gagal masuk register operasi (§29). Sama seperti
+        // policy di atas: terdaftar di sini, bukan mengandalkan discovery, supaya
+        // "kenapa kegagalan scheduler tidak tercatat" punya satu jawaban di kode.
+        Event::listen(ScheduledTaskFailed::class, RecordScheduledTaskFailure::class);
+
         // Nama aksi audit modul Library memakai konvensi spesifikasi
         // (LIBRARY_CREATED, LIBRARY_LOCATION_UPDATED, …). Paket menyimpan
         // `event` sebagai nama event model mentah ("created"/"updated"), jadi
         // penamaannya disesuaikan di satu tempat ini.
         Activity::saving(function (Activity $activity): void {
             // Modul yang memakai penamaan aksi bergaya spesifikasi.
-            if (! in_array($activity->log_name, ['library', 'ppdb', 'wallet'], true)) {
+            if (! in_array($activity->log_name, ['library', 'ppdb', 'wallet', 'boarding', 'finance'], true)) {
                 return;
             }
 

@@ -71,6 +71,14 @@ class DatabaseSeeder extends Seeder
             // --- Modul PPDB: periode aktif + formulir dinamis -----------
             PpdbConfigSeeder::class,
 
+            // --- Modul Boarding/Pesantren: master absensi, kegiatan,
+            //     jenis pelanggaran, dan struktur asrama dasar -----------
+            BoardingConfigSeeder::class,
+
+            // --- Modul Finance/Keuangan: COA default, cost center, fee type,
+            //     kas/bank, periode fiskal, dan konfigurasi penomoran ---------
+            FinanceConfigSeeder::class,
+
             // --- Akun login (paling akhir: butuh siswa & pegawai) ------
             UserSeeder::class,
         ]);

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Profil PPDB sebuah akun orang tua.
@@ -20,8 +21,11 @@ class PpdbParentAccount extends BaseModel
     use LogsPpdbActivity, SoftDeletes;
 
     public const STATUS_PENDING = 'pending_verification';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_BLOCKED = 'blocked';
 
     public const STATUSES = [
@@ -59,6 +63,40 @@ class PpdbParentAccount extends BaseModel
     public function canTransact(): bool
     {
         return $this->account_status === self::STATUS_ACTIVE;
+    }
+
+    /**
+     * Id santri yang merupakan anak pemilik akun orang tua ini.
+     *
+     * Rantai kepemilikan portal: `ppdb_parent_accounts.user_id` → `guardian_id`
+     * → `student_guardians`. Rantai yang sama dipakai setiap portal modul (uang
+     * sekolah, asrama) dan pengirim notifikasi ke arah sebaliknya, supaya
+     * "anak saya" berarti sama di semua layar.
+     *
+     * @return list<int>
+     */
+    public static function childStudentIds(User $user): array
+    {
+        $guardianIds = static::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('guardian_id')
+            ->pluck('guardian_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($guardianIds === []) {
+            return [];
+        }
+
+        return DB::table('student_guardians')
+            ->whereIn('guardian_id', $guardianIds)
+            ->pluck('student_id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function activityEventPrefix(): string

@@ -19,7 +19,96 @@ class RolePermissionSeeder extends Seeder
         'academic' => ['view', 'create', 'update', 'delete', 'publish', 'approve', 'promote', 'grade', 'attendance'],
         'student' => ['view', 'create', 'update', 'delete'],
         'employee' => ['view', 'create', 'update', 'delete'],
-        'finance' => ['view', 'create', 'update', 'delete'],
+        // Modul Finance/Keuangan: akuntansi double-entry + COA, tagihan/SPP,
+        // pembayaran, kas & bank, pengeluaran, pembelian, rekonsiliasi, closing.
+        // Aksi bersarang menghasilkan nama berjenjang, mis. "finance.billing.create".
+        //
+        // Hak dipecah granular (§3) supaya "admin keuangan" tidak otomatis berarti
+        // boleh menyetujui budget, membayar pengeluaran, dan menutup periode
+        // sekaligus — pemisahan pencatat vs penyetuju dijaga di level permission.
+        // Pembagian per role lihat `grantFinancePermissions()`.
+        'finance' => [
+            'view',
+            // Master akuntansi & anggaran.
+            'account.view', 'account.manage',
+            'cost_center.view', 'cost_center.manage',
+            'budget.view', 'budget.manage', 'budget.approve',
+            'fee.view', 'fee.manage',
+            // Tagihan & penagihan (§14 idempotent, §21 approval).
+            'billing.view', 'billing.create', 'billing.update', 'billing.cancel',
+            'invoice.view', 'invoice.create', 'invoice.cancel',
+            // Uang masuk (§24 receipt hanya untuk payment confirmed, §25 no hard delete).
+            'payment.view', 'payment.create', 'payment.verify', 'payment.reject', 'payment.refund',
+            'receipt.view', 'receipt.create', 'receipt.cancel',
+            // Rencana pembayaran / cicilan (§7). Memecah jatuh tempo sebuah
+            // invoice bukan keputusan yang boleh diambil siapa pun yang bisa
+            // mencatat pembayaran: `manage` menyusun jadwalnya, `cancel`
+            // membubarkan kesepakatan yang sudah berjalan. Keduanya dipisah
+            // dari payment.* supaya plan tidak menjadi jalan pintas melunasi
+            // tagihan — yang tetap hanya bisa terjadi lewat payment + jurnal.
+            'payment.plan.view', 'payment.plan.manage', 'payment.plan.cancel',
+            // Daftar Ulang (§2–§7 Phase 2) + gateway (§20, §36 Phase 2).
+            're_registration.view', 're_registration.generate', 're_registration.manage',
+            'gateway.view', 'gateway.manage',
+            // Uang keluar & pengadaan.
+            'expense.view', 'expense.create', 'expense.approve', 'expense.reject', 'expense.pay',
+            'vendor.view', 'vendor.manage',
+            'purchase.view', 'purchase.create', 'purchase.approve',
+            // Kas, bank, mutasi internal.
+            'cash.view', 'cash.manage', 'cashier.view', 'cashier.manage', 'cashier.review',
+            'bank.view', 'bank.manage',
+            'transfer.view', 'transfer.create', 'transfer.approve',
+            // §16: transfer di atas ambang nominal (`transfer_approval_threshold`)
+            // baru bisa dieksekusi setelah penyetuju KEDUA yang bukan pengaju dan
+            // bukan penyetuju pertama membubuhkan persetujuannya. Hak ini sengaja
+            // tidak masuk daftar finance-manager — pemegangnya otoritas yang lebih
+            // tinggi (bendahara / admin), sehingga persetujuan kedua benar-benar
+            // orang ketiga.
+            'transfer.approve_secondary',
+            'reconciliation.view', 'reconciliation.manage',
+            'adjustment.view', 'adjustment.create', 'adjustment.approve',
+            // Buku besar & jurnal (Phase 3 §3–§6, §33, §38). Membaca jurnal
+            // dipisah dari membaliknya: pembalikan jurnal posted adalah
+            // keputusan supervisor, bukan operator pencatat.
+            'transaction.view', 'journal.view', 'journal.reverse', 'ledger.view',
+            // Write-off piutang (§33): peminta dan penyetuju tidak boleh orang sama.
+            'write_off.request', 'write_off.approve',
+            // Penagihan (§6): melihat antrean, mencatat aksi, dan naik ke tangga
+            // eskalasi adalah tiga hal berbeda. Reminder boleh dicatat petugas;
+            // telepon, rencana pembayaran, waiver, dan write-off request menuntut
+            // hak eskalasi sendiri, supaya "sudah ditagih sampai tingkat mana"
+            // tidak bisa dinaikkan oleh orang yang sama setiap hari.
+            'collection.view', 'collection.manage', 'collection.escalate',
+            // Kelayakan finansial (§11). Hanya dua hak, dan keduanya baca/putus:
+            // `view` menjawab "santri ini boleh ikut ujian/ambil rapor?",
+            // `approve` adalah penyetuju yang disebut sebuah putusan
+            // REQUIRES_APPROVAL. Yang TIDAK ada di sini: hak mengubah status
+            // akademik — gerbangnya milik modul akademik, Finance hanya menjawab
+            // pertanyaan, jadi tidak ada jalur HTTP yang bisa menahan rapor dari
+            // meja bendahara.
+            'eligibility.view', 'eligibility.approve',
+            // Keberesan finansial (§12). Empat hak, dan pembagiannya mengikuti
+            // bentuk pekerjaannya: `view` membaca daftar periksa, `request`
+            // mengajukan/mengisi ulang pemeriksaan untuk satu santri (ia tidak
+            // memutuskan apa pun), `approve` menjawab REQUIRES_APPROVAL, dan
+            // `waive` adalah pengecualian sadar atas aturan yang menahan.
+            // Yang TIDAK ada: hak menghapus piutang — WAIVED bukan write-off dan
+            // jalurnya tetap `write_off.*` (§33), jadi tidak satu pun keputusan
+            // keberesan yang bisa mengubah buku besar.
+            'clearance.view', 'clearance.request', 'clearance.approve', 'clearance.waive',
+            // Penutupan periode (§49 setelah closed tidak boleh diedit).
+            'closing.view', 'closing.manage',
+            // Laporan, konfigurasi.
+            'report.view', 'report.export',
+            // Otomasi & observability (§28, §29). Membaca register pekerjaan/kegagalan
+            // adalah hak baca tersendiri — isinya menyebut dokumen dan kesalahan
+            // sistem, bukan angka yang boleh dilihat siapa saja. Menyalakan pekerjaan
+            // berat dan menjalankan ulang (`manage`) dipisah dari sekadar melihat,
+            // karena keduanya bisa melahirkan dokumen baru.
+            'operation.view', 'operation.manage',
+            'settings.view', 'settings.manage',
+            'audit.view',
+        ],
         'assessment' => ['view', 'create', 'update', 'delete'],
         // Modul Library (Step 1 — fondasi). Aksi bersarang menghasilkan nama
         // berjenjang, mis. "library.settings.view" & "library.location.create".
@@ -83,6 +172,40 @@ class RolePermissionSeeder extends Seeder
             'report.view', 'report.export',
             'settings.view', 'settings.manage',
         ],
+        // Modul Boarding/Pesantren: struktur asrama, kegiatan harian, absensi,
+        // perizinan, kedisiplinan, kesehatan, dan kunjungan. Aksi bersarang
+        // menghasilkan nama berjenjang, mis. "boarding.permission.approve".
+        //
+        // Daftar ini selengkap mungkin karena pembeda hak pengasuh bukan di
+        // menu — ia menentukan santri siapa yang boleh dilihat (`BoardingScopeService`).
+        'boarding' => [
+            'view', 'create', 'update', 'delete',
+            'dashboard.view',
+            // Struktur fisik (§5): asrama, gedung, lantai, kamar, tempat tidur.
+            'dorm.manage', 'building.manage', 'floor.manage', 'room.manage', 'bed.manage',
+            // Penempatan & mutasi santri (§7, §9, §11).
+            'placement.view', 'placement.manage', 'mutation.manage',
+            // Pengasuh & kelompok binaan (§8).
+            'musyrif.view', 'musyrif.manage', 'group.view', 'group.manage',
+            // Kegiatan & jadwal (§16, §19).
+            'activity.view', 'activity.manage', 'schedule.view', 'schedule.manage',
+            // Absensi (§17, §24, §26).
+            'attendance.view', 'attendance.manage',
+            // Izin keluar (§27, §28, §29) — pencatat bukan penyetuju.
+            'permission.view', 'permission.manage', 'permission.approve',
+            // Kepulangan (§30, §31).
+            'homecoming.view', 'homecoming.manage', 'homecoming.approve',
+            // Kunjungan (§40).
+            'visitor.view', 'visitor.manage',
+            // Kedisiplinan & poin (§35, §36, §37, §38).
+            'violation.view', 'violation.manage', 'point.view', 'point.manage',
+            // Prestasi (§41).
+            'achievement.view', 'achievement.manage',
+            // Kesehatan asrama (§39).
+            'health.view', 'health.manage',
+            // Laporan, konfigurasi, audit.
+            'report.view', 'report.export', 'settings.view', 'settings.manage', 'audit.view',
+        ],
         'report' => ['view', 'export'],
         'user' => ['view', 'create', 'update', 'delete'],
         'setting' => ['view', 'update'],
@@ -94,9 +217,15 @@ class RolePermissionSeeder extends Seeder
     /** @var array<string, list<string>> */
     protected array $roles = [
         'super-admin' => ['*'],
-        'admin-sekolah' => ['master-data', 'academic', 'student', 'employee', 'finance', 'assessment', 'library', 'inventory', 'ppdb', 'wallet', 'report', 'user', 'setting', 'tahfiz'],
+        'admin-sekolah' => ['master-data', 'academic', 'student', 'employee', 'finance', 'assessment', 'library', 'inventory', 'ppdb', 'wallet', 'boarding', 'report', 'user', 'setting', 'tahfiz'],
         // Kepala sekolah hanya memantau uang: lihat daftar, buku besar, dan laporan.
-        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'student:view', 'employee:view', 'finance:view', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export'],
+        // Satu-satunya hak menulisnya di modul finance adalah persetujuan
+        // kelayakan finansial (§11) dan keputusan keberesan (§12): ia sudah
+        // memegang `academic:approve`, jadi keputusan "anak ini boleh ikut ujian
+        // meski orang tuanya belum lunas" dan "ijazahnya boleh keluar dulu"
+        // diambil oleh orang yang sama dengan keputusan akademiknya — bukan oleh
+        // bendahara, dan bukan oleh frontend.
+        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'student:view', 'employee:view', 'finance:view', 'finance:eligibility.view', 'finance:eligibility.approve', 'finance:clearance.view', 'finance:clearance.approve', 'finance:clearance.waive', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export', 'boarding:view', 'boarding:dashboard.view', 'boarding:report.view'],
         // Bendahara = pengelola keuangan: top up, penarikan, adjustment, reversal.
         // Sengaja tidak menyebut modul `wallet` secara utuh — konfigurasi modul
         // (settings.*) dan penutupan wallet permanen (wallet.close) hak admin.
@@ -121,13 +250,87 @@ class RolePermissionSeeder extends Seeder
         ],
         // Guru Tahfiz: lihat, catat setoran, dan menilai. Tidak menghapus data.
         'guru' => ['academic:view', 'academic:grade', 'academic:attendance', 'student:view', 'assessment', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
-        // Musyrif/musyrifah: memantau seluruh halaqah (view + laporan).
-        'musyrif' => ['tahfiz:view', 'tahfiz:report', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
+        // Musyrif/musyrifah: memantau seluruh halaqah (view + laporan) DAN seluruh
+        // hak wali kamar asrama, ditambah wewenang yang hanya boleh dipakai
+        // pengasuh tetap: menyetujui izin/kepulangan, mencatat prestasi, dan
+        // melihat daftar penugasan serta kelompok binaannya sendiri.
+        'musyrif' => [
+            'tahfiz:view', 'tahfiz:report', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess',
+            'boarding:view', 'boarding:dashboard.view', 'boarding:placement.view',
+            'boarding:attendance.view', 'boarding:attendance.manage',
+            'boarding:permission.view', 'boarding:permission.approve',
+            'boarding:violation.view', 'boarding:violation.manage',
+            'boarding:homecoming.view', 'boarding:homecoming.approve',
+            'boarding:health.view', 'boarding:point.view', 'boarding:achievement.manage',
+            'boarding:musyrif.view', 'boarding:group.view',
+        ],
+        // ===== Peran khusus modul Boarding/Pesantren =====
+        // Admin asrama: seluruh aksi modul (dorm, kamar, penempatan, mutasi,
+        // absensi, perizinan, poin, kesehatan, laporan, konfigurasi, audit).
+        'admin-boarding' => ['boarding'],
+        // Kepala asrama: seluruh operasional area, kecuali menulis konfigurasi
+        // modul dan membaca audit (`settings.manage`, `audit.view`) yang tetap
+        // hak admin sekolah.
+        'kepala-asrama' => [
+            'boarding:view', 'boarding:dashboard.view',
+            'boarding:placement.view', 'boarding:placement.manage', 'boarding:mutation.manage',
+            'boarding:musyrif.view', 'boarding:musyrif.manage', 'boarding:group.view', 'boarding:group.manage',
+            'boarding:activity.view', 'boarding:activity.manage', 'boarding:schedule.view', 'boarding:schedule.manage',
+            'boarding:attendance.view', 'boarding:attendance.manage',
+            'boarding:permission.view', 'boarding:permission.manage', 'boarding:permission.approve',
+            'boarding:homecoming.view', 'boarding:homecoming.manage', 'boarding:homecoming.approve',
+            'boarding:visitor.view', 'boarding:visitor.manage',
+            'boarding:violation.view', 'boarding:violation.manage', 'boarding:point.view', 'boarding:point.manage',
+            'boarding:achievement.view', 'boarding:achievement.manage',
+            'boarding:health.view', 'boarding:health.manage',
+            'boarding:report.view', 'boarding:report.export', 'boarding:settings.view',
+        ],
+        // Wali kamar: hanya melihat & mencatat pada santri binaannya (scope
+        // dibatasi `BoardingScopeService`, bukan oleh permission).
+        'wali-kamar' => [
+            'boarding:view', 'boarding:dashboard.view', 'boarding:placement.view',
+            'boarding:attendance.view', 'boarding:attendance.manage',
+            'boarding:permission.view',
+            'boarding:violation.view', 'boarding:violation.manage',
+            'boarding:health.view', 'boarding:point.view',
+        ],
+        // Petugas absensi: mesin pencatat harian, tanpa hak perizinan & poin.
+        'petugas-absensi' => [
+            'boarding:view', 'boarding:attendance.view', 'boarding:attendance.manage',
+            'boarding:activity.view', 'boarding:schedule.view',
+        ],
+        // Petugas kedisiplinan: pelanggaran, poin, prestasi; membaca absensi
+        // hanya sebagai bukti (tanpa hak mengubahnya).
+        'petugas-kedisiplinan' => [
+            'boarding:view', 'boarding:violation.view', 'boarding:violation.manage',
+            'boarding:point.view', 'boarding:point.manage',
+            'boarding:achievement.view', 'boarding:attendance.view',
+        ],
+        // Petugas gerbang/perizinan: memproses izin, kepulangan, dan kunjungan.
+        'petugas-perizinan' => [
+            'boarding:view',
+            'boarding:permission.view', 'boarding:permission.manage', 'boarding:permission.approve',
+            'boarding:homecoming.view', 'boarding:homecoming.manage', 'boarding:homecoming.approve',
+            'boarding:visitor.view', 'boarding:visitor.manage',
+        ],
+        // Petugas kesehatan (UKS asrama): catatan kesehatan & kunjungan pasien.
+        'petugas-kesehatan' => [
+            'boarding:view', 'boarding:health.view', 'boarding:health.manage',
+            'boarding:visitor.view', 'boarding:permission.view',
+        ],
         'wali-kelas' => ['academic:view', 'academic:grade', 'academic:attendance', 'academic:approve', 'student:view', 'assessment', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
         'staf' => ['master-data:view', 'student:view', 'employee:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:update'],
         // Peserta Tahfiz (termasuk siswa yang mengikuti program): lihat progress sendiri.
+        // `siswa` dan `wali-murid` sengaja TIDAK diberi permission boarding apa
+        // pun: portal mereka dibatasi kepemilikan (dirinya / anak walinya), bukan
+        // oleh permission modul, jadi menambah aksi di sini justru memberi akses
+        // ke data santri lain.
         'siswa' => ['academic:view', 'assessment:view', 'report:view', 'tahfiz:view'],
-        'wali-murid' => ['academic:view', 'student:view', 'finance:view', 'assessment:view', 'report:view', 'tahfiz:view'],
+        // `wali-murid` sengaja TIDAK diberi permission finance: portal keuangan
+        // orang tua (§57) dibatasi kepemilikan (tagihan anak walinya), bukan oleh
+        // permission modul — sama seperti portal boarding. Memberi `finance:view`
+        // di sini justru membuka menu/read data keuangan sekolah secara admin.
+        'wali-murid' => ['academic:view', 'student:view', 'assessment:view', 'report:view', 'tahfiz:view'],
         // Library Manager: mengelola konfigurasi operasional perpustakaan
         // (settings, lokasi, jam, penutupan, penomoran) — tanpa hak hapus.
         'library-manager' => [
@@ -149,6 +352,157 @@ class RolePermissionSeeder extends Seeder
             'library:closure.view', 'library:closure.create', 'library:closure.update',
             'library:dashboard.view',
             'report:view',
+        ],
+        // ===== Peran khusus modul Finance/Keuangan =====
+        // Admin keuangan: seluruh aksi modul finance (COA, budget, billing,
+        // payment, kas/bank, expense, pembelian, rekonsiliasi, closing, settings).
+        'finance-admin' => ['finance'],
+        // Manajer keuangan = otoritas persetujuan (§3 pemisahan pencatat vs
+        // penyetuju). Menyetujui budget/expense/transfer/adjustment/pembelian dan
+        // menutup periode; tidak melakukan pencatatan kasir harian.
+        'finance-manager' => [
+            'finance:view',
+            'finance:account.view', 'finance:cost_center.view',
+            'finance:budget.view', 'finance:budget.approve',
+            'finance:fee.view', 'finance:billing.view', 'finance:invoice.view',
+            'finance:payment.view', 'finance:payment.verify', 'finance:payment.reject', 'finance:payment.refund',
+            'finance:receipt.view', 'finance:receipt.cancel',
+            // Cicilan (§7): memperpanjang jatuh tempo adalah keputusan kredit
+            // kecil di atas tagihan yang sudah ada, jadi manager menyusun
+            // sekaligus boleh membubarkan jadwalnya.
+            'finance:payment.plan.view', 'finance:payment.plan.manage', 'finance:payment.plan.cancel',
+            'finance:re_registration.view', 'finance:re_registration.manage',
+            'finance:gateway.view', 'finance:gateway.manage',
+            'finance:expense.view', 'finance:expense.approve', 'finance:expense.reject', 'finance:expense.pay',
+            'finance:vendor.view', 'finance:purchase.view', 'finance:purchase.approve',
+            'finance:cash.view', 'finance:cashier.view', 'finance:cashier.review', 'finance:bank.view',
+            'finance:transfer.view', 'finance:transfer.approve',
+            'finance:reconciliation.view', 'finance:reconciliation.manage',
+            'finance:adjustment.view', 'finance:adjustment.approve',
+            // Manager membaca buku besar dan membalik jurnal posted; write-off
+            // dimintakan oleh officer dan disetujui di sini (§33).
+            'finance:transaction.view', 'finance:journal.view', 'finance:journal.reverse',
+            'finance:ledger.view', 'finance:write_off.approve',
+            // Penagihan sampai tangga eskalasi (§6): keputusan menelepon orang
+            // tua, menyusun rencana pembayaran, atau mengajukan write-off adalah
+            // keputusan manajerial, jadi hak eskalasinya ada di sini.
+            'finance:collection.view', 'finance:collection.manage', 'finance:collection.escalate',
+            // Kelayakan finansial (§11): manager membaca putusannya dan sekaligus
+            // penyetuju yang disebut sebuah REQUIRES_APPROVAL. Mencatat tagihan
+            // tetap bukan tugasnya (§3).
+            'finance:eligibility.view', 'finance:eligibility.approve',
+            // Keberesan finansial (§12): manajer mengajukan pemeriksaan, dan ia
+            // pemegang kedua keputusan yang mengubah jawaban — `approve` untuk
+            // yang menunggu persetujuan, `waive` untuk pengecualian. Keduanya
+            // tetap tidak menyentuh uang: hak `write_off.approve` di atas adalah
+            // satu-satunya jalur yang bisa menghapus piutang.
+            'finance:clearance.view', 'finance:clearance.request', 'finance:clearance.approve', 'finance:clearance.waive',
+            'finance:closing.view', 'finance:closing.manage',
+            'finance:report.view', 'finance:report.export',
+            // Register pekerjaan terjadwal & kegagalan operasional (§28, §29):
+            // manager membacanya dan menjalankan ulang job yang gagal, karena
+            // retry adalah keputusan operasional — bukan sekadar melihat log.
+            'finance:operation.view', 'finance:operation.manage',
+            'finance:settings.view', 'finance:audit.view',
+        ],
+        // Staf keuangan: pencatatan operasional (billing, invoice, payment,
+        // expense, pembelian, kas/bank, transfer, adjustment) TANPA hak approve
+        // maupun closing — persetujuan ada di finance-manager (§3).
+        'finance-officer' => [
+            'finance:view',
+            'finance:account.view', 'finance:cost_center.view', 'finance:budget.view',
+            'finance:fee.view', 'finance:fee.manage',
+            'finance:billing.view', 'finance:billing.create', 'finance:billing.update', 'finance:billing.cancel',
+            'finance:invoice.view', 'finance:invoice.create', 'finance:invoice.cancel',
+            'finance:payment.view', 'finance:payment.create',
+            'finance:receipt.view', 'finance:receipt.create',
+            // Menyusun jadwal cicilan boleh dari meja petugas (§7 manage);
+            // membatalkan kesepakatan yang sedang berjalan tidak (§3).
+            'finance:payment.plan.view', 'finance:payment.plan.manage',
+            'finance:re_registration.view', 'finance:re_registration.generate',
+            'finance:gateway.view',
+            'finance:expense.view', 'finance:expense.create',
+            'finance:vendor.view', 'finance:vendor.manage',
+            'finance:purchase.view', 'finance:purchase.create',
+            'finance:cash.view', 'finance:cash.manage', 'finance:cashier.view', 'finance:cashier.manage',
+            'finance:bank.view', 'finance:bank.manage',
+            'finance:transfer.view', 'finance:transfer.create',
+            'finance:reconciliation.view', 'finance:reconciliation.manage',
+            'finance:adjustment.view', 'finance:adjustment.create',
+            // Officer melihat jurnal & buku besar hasil pencatatannya dan mengajukan
+            // write-off, tanpa hak menyetujui atau membalik (§3, §33).
+            'finance:transaction.view', 'finance:journal.view', 'finance:ledger.view',
+            'finance:write_off.request',
+            // Petugas penagihan: melihat antrean dan mencatat reminder/WhatsApp/
+            // email (§6). Tangga eskalasi tidak ikut diberikan — naik tingkat
+            // penagihan adalah keputusan atasan, bukan operator pencatat.
+            'finance:collection.view', 'finance:collection.manage',
+            // Petugas membaca putusan kelayakan (§11) untuk menjelaskan situasinya
+            // ke orang tua. Menyetujuinya bukan: hak `approve` ada di manajer.
+            'finance:eligibility.view',
+            // Petugas juga yang menerima permintaan keberesan dari santri/wali lalu
+            // mengisi ulang pemeriksaannya (§12). Menyetujui atau mengecualikan
+            // bukan tugasnya — dua keputusan itu tinggal di manajer/kepala sekolah.
+            'finance:clearance.view', 'finance:clearance.request',
+            // Petugas memanggil pekerjaan berat (bulk billing/invoice, reminder)
+            // dan melihat kegagalannya (§28). Ia tidak menyetujui apa pun, tapi
+            // menjalankan generasi tagihan memang bagian pencatatannya.
+            'finance:operation.view', 'finance:operation.manage',
+            'finance:report.view', 'finance:report.export',
+        ],
+        // Kasir: menerima pembayaran & menerbitkan kuitansi, mengelola sesi kas.
+        // Tanpa hak mengubah master tagihan, tanpa approve, tanpa bank manage.
+        'kasir' => [
+            'finance:view',
+            'finance:billing.view', 'finance:invoice.view',
+            'finance:payment.view', 'finance:payment.create', 'finance:payment.verify', 'finance:payment.reject',
+            'finance:receipt.view', 'finance:receipt.create', 'finance:receipt.cancel',
+            // Kasir melihat jadwal cicilan untuk menagih nominal yang benar di
+            // loket, tapi tidak menyusunnya — kesepakatan mencicil dibuat petugas
+            // keuangan/manager, bukan di kasir (§3).
+            'finance:payment.plan.view',
+            'finance:cash.view', 'finance:cashier.view', 'finance:cashier.manage',
+            'finance:report.view',
+        ],
+        // Pengadaan: vendor & pembelian (PR/PO), mengajukan expense. Tanpa kas/bank.
+        'pengadaan' => [
+            'finance:view',
+            'finance:vendor.view', 'finance:vendor.manage',
+            'finance:purchase.view', 'finance:purchase.create',
+            'finance:expense.view', 'finance:expense.create',
+            'finance:budget.view', 'finance:report.view',
+        ],
+        // Kepala unit: mengajukan expense unit & melihat budget unitnya. Read + submit.
+        'kepala-unit' => [
+            'finance:view',
+            'finance:budget.view', 'finance:cost_center.view',
+            'finance:expense.view', 'finance:expense.create',
+            'finance:report.view',
+        ],
+        // Auditor: baca-saja seluruh finance + audit trail & laporan. Tanpa aksi
+        // tulis apa pun (§56 kepemimpinan/pengawas read-only).
+        'auditor' => [
+            'finance:view',
+            'finance:account.view', 'finance:cost_center.view', 'finance:budget.view', 'finance:fee.view',
+            'finance:billing.view', 'finance:invoice.view', 'finance:payment.view', 'finance:receipt.view',
+            'finance:expense.view', 'finance:vendor.view', 'finance:purchase.view',
+            'finance:cash.view', 'finance:cashier.view', 'finance:bank.view',
+            'finance:transfer.view', 'finance:reconciliation.view', 'finance:adjustment.view',
+            // Jurnal & buku besar read-only: auditor memeriksa pembukuan, bukan
+            // melakukannya — tanpa hak reverse meski semua lainnya boleh dibaca.
+            'finance:transaction.view', 'finance:journal.view', 'finance:ledger.view',
+            // Sejarah penagihan ikut dibaca (audit tagihan §6) tanpa hak mencatat;
+            // begitu pula jadwal cicilan (§7) yang menjadi dasar sejarah itu.
+            'finance:collection.view',
+            'finance:payment.plan.view',
+            // Keberesan finansial ikut dibaca (§12): auditor memeriksa apakah
+            // pengecualian diberi alasannya, bukan memberi pengecualian.
+            'finance:clearance.view',
+            // Register pekerjaan & kegagalan ikut dibaca (§29) sebagai bagian
+            // pemeriksaan pembukuan; menjalankan ulang bukan hak auditor.
+            'finance:operation.view',
+            'finance:closing.view', 'finance:report.view', 'finance:report.export',
+            'finance:settings.view', 'finance:audit.view',
         ],
     ];
 
@@ -178,6 +532,7 @@ class RolePermissionSeeder extends Seeder
 
             if (in_array('*', $scopes, true)) {
                 $role->syncPermissions($allPermissions);
+
                 continue;
             }
 
@@ -186,6 +541,7 @@ class RolePermissionSeeder extends Seeder
                 if (str_contains($scope, ':')) {
                     [$module, $action] = explode(':', $scope);
                     $granted[] = "{$module}.{$action}";
+
                     continue;
                 }
 

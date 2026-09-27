@@ -10,6 +10,7 @@ import {
   FileBarChart,
   ClipboardList,
   BookOpenCheck,
+  Home,
   Settings,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
@@ -17,6 +18,7 @@ import { domainMenu } from '@/routes/domains';
 import { ppdbMenu } from '@/routes/domains/ppdb';
 import { tahfizMenu } from '@/routes/domains/tahfiz';
 import { libraryMenu } from '@/routes/domains/library';
+import { boardingMenu } from '@/routes/domains/boarding';
 
 export interface MenuChild {
   label: string;
@@ -103,6 +105,12 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: BookOpenCheck,
     permission: 'tahfiz.view',
     children: tahfizMenu,
+  },
+  {
+    label: 'Boarding / Pesantren',
+    icon: Home,
+    permission: 'boarding.view',
+    children: boardingMenu,
   },
   {
     label: 'Perpustakaan',

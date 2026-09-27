@@ -94,6 +94,23 @@ class Student extends BaseModel
         return $this->hasMany(StudentHistory::class)->orderByDesc('academic_year_id');
     }
 
+    /**
+     * Tagihan keuangan atas nama santri ini (§13). Dipakai mesin daftar ulang
+     * untuk mengecek tunggakan (§4) dan portal keuangan orang tua.
+     */
+    public function billings(): HasMany
+    {
+        return $this->hasMany(FinanceBilling::class, 'student_id');
+    }
+
+    /**
+     * Invoice keuangan atas nama santri ini (§16).
+     */
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(FinanceInvoice::class, 'student_id');
+    }
+
     public function assignmentSubmissions(): HasMany
     {
         return $this->hasMany(AssignmentSubmission::class);
