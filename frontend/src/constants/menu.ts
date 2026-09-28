@@ -21,6 +21,7 @@ import { libraryMenu } from '@/routes/domains/library';
 import { boardingMenu } from '@/routes/domains/boarding';
 import { financeMenu } from '@/routes/domains/finance';
 import { assessmentsMenu } from '@/routes/domains/assessments';
+import { lmsMenu } from '@/routes/domains/lms';
 
 export interface MenuChild {
   label: string;
@@ -94,6 +95,14 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: FileBarChart,
     permission: 'assessment.view',
     children: assessmentsMenu,
+  },
+  {
+    // LMS punya permukaan publik (/learn) dan ruang belajar terautentikasi.
+    // Entri "LMS Publik" sengaja tanpa permission agar terlihat oleh semua peran.
+    label: 'LMS / Ruang Belajar',
+    icon: BookOpenCheck,
+    permission: 'lms.view',
+    children: lmsMenu,
   },
   {
     label: "Tahfiz / Al-Qur'an",

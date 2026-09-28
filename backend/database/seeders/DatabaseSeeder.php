@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Modules\LMS\Database\Seeders\LmsDemoSeeder;
+use App\Modules\LMS\Database\Seeders\LmsPermissionSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -11,6 +13,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             // --- Fondasi referensi -------------------------------------
             RolePermissionSeeder::class,
+            // Modul LMS: permission granular lms.* (§35).
+            LmsPermissionSeeder::class,
             ReferenceSeeder::class,
             AcademicSeeder::class,
             ReferenceFinanceLibrarySeeder::class,
@@ -81,6 +85,10 @@ class DatabaseSeeder extends Seeder
 
             // --- Akun login (paling akhir: butuh siswa & pegawai) ------
             UserSeeder::class,
+
+            // --- Modul LMS: data contoh (kategori, course publik, course
+            //     akademik yang pesertanya tersinkron dari rombel SIAKAD) ---
+            LmsDemoSeeder::class,
         ]);
     }
 }

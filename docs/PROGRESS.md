@@ -641,3 +641,67 @@ Seeder berikut dibuat agar modul di atasnya bisa diuji:
 - [ ] Optimasi performa
 - [ ] Dokumentasi API
 - [ ] Deployment produksi
+
+---
+
+## Fase LMS — Modul Learning Management System (Phase 1)
+
+Modul LMS dibangun di atas ERP/SIAKAD yang sudah ada. Seluruh kode modul berada
+di [`backend/app/Modules/LMS`](backend/app/Modules/LMS/1) (Domain, Application,
+Infrastructure, Http, Models, Database, Routes, Providers) dengan dokumentasi
+lengkap di [`docs/07-MODUL-LMS.md`](docs/07-MODUL-LMS.md).
+
+### Arsitektur & Mode
+- [x] Struktur modular `app/Modules/LMS/**` + `config/lms.php`
+- [x] `LmsServiceProvider` mendaftarkan konfigurasi, migrasi, route (`/api/v1/lms/*`),
+      middleware (`lms.actor`, `lms.permission`), dan binding kontrak domain
+- [x] `LMS_STANDALONE=false` (default) → memakai entity ERP: User, Student, Employee,
+      SchoolClass, Subject, AcademicYear, Semester, Program — tanpa duplikasi
+- [x] `LMS_STANDALONE=true` → identitas mandiri (`lms_users`, `lms_learners`,
+      `lms_guardians`) dengan alur belajar yang sama
+- [x] Kontrak abstraksi: `UserProviderInterface`, `StudentProviderInterface`,
+      `TeacherProviderInterface`, `ClassProviderInterface`,
+      `AcademicCourseProviderInterface`, `AcademicActivityFeedInterface`
+- [x] DTO netral: `LmsActor`, `LmsLearner`, `LmsTeacher`, `AccessDecision`
+
+### Database (14 tabel inti + 3 tabel standalone)
+- [x] `lms_categories`, `lms_courses`, `lms_course_teachers`, `lms_course_sections`,
+      `lms_learning_items`, `lms_resources`, `lms_book_chapters`
+- [x] `lms_enrollments`, `lms_groups`, `lms_group_members`, `lms_course_announcements`,
+      `lms_activity_completions`, `lms_course_progress`, `lms_bookmarks`, `lms_learning_views`
+- [x] `lms_users`, `lms_learners`, `lms_guardians` (hanya Standalone Mode)
+
+### Fitur
+- [x] Kategori bertingkat (Category → Subcategory → Course) + pemilihan urutan
+- [x] Course: DRAFT/PUBLISHED/ARCHIVED, PUBLIC/PRIVATE/INSTITUTION/ENROLLED_ONLY,
+      tipe ACADEMIC/NON_ACADEMIC/TRAINING/WORKSHOP/GENERAL, kode otomatis pola SIAKAD
+- [x] Wizard pembuatan course (identitas → kaitan SIAKAD → pembelajaran → publikasi)
+- [x] Section & learning item (RESOURCE/ACTIVITY) dengan urutan, duplikasi, sembunyikan
+- [x] Resource: PAGE (HTML tersanitasi), FILE (disk Laravel + unduhan ber-otorisasi),
+      URL, VIDEO (embed YouTube/Vimeo/Drive), AUDIO, BOOK (bab), FOLDER, TEXT
+- [x] Enrollment: manual, massal, mandiri (non-akademik), sinkronisasi SIAKAD,
+      status PENDING/ACTIVE/SUSPENDED/COMPLETED/CANCELLED, kuota peserta
+- [x] Kelompok peserta + kapasitas
+- [x] Availability: jendela waktu, prasyarat item, nilai minimum, penyelesaian syarat
+- [x] Completion: MANUAL/VIEW/PASS/SUBMIT/COMPLETE_ACTIVITY + progress
+      `completed / required × 100` dan "Continue Learning"
+- [x] Pengumuman course + notifikasi database ke peserta
+- [x] Kalender belajar (hari ini / minggu ini / mendatang)
+- [x] Dashboard per peran: siswa, guru, wali (portal anak), admin (analitik)
+- [x] LMS publik `/learn` (home, katalog, detail course by slug, guru) — hanya course PUBLIC
+- [x] Pencarian global + saran pencarian, bookmark course & materi
+- [x] Permission granular `lms.*` + audit `lms` (spatie/activitylog)
+- [x] Pengaturan LMS tersimpan di tabel `settings` (berlaku tanpa deploy)
+- [x] Frontend `src/features/lms/**` + `routes/domains/lms.tsx` (menu + rute)
+- [x] Responsif: desktop 2 kolom, tablet sidebar dapat dilipat, mobile bilah progress melekat
+- [x] Data contoh `LmsDemoSeeder` (kategori, course publik, course akademik tersinkron)
+
+### Pengujian
+- [x] `tests/Feature/Lms/` — 10 berkas, 66 kasus, 260+ assertion (course, enrollment,
+      access, content, completion, parent, integration, dashboard, permission, standalone)
+
+### Lanjutan (phase berikutnya)
+- [ ] Assignment & submission LMS (pengumpulan, penilaian, umpan balik)
+- [ ] Quiz + Question Bank (bank soal, bank kategori, penilaian otomatis)
+- [ ] Forum diskusi, Lesson, Choice, Survey, Workshop
+- [ ] Gradebook LMS, sertifikat, attendance LMS
