@@ -106,9 +106,20 @@ export default function LmsLearnPage() {
 
   const selectItem = useCallback(
     (id: number) => {
+      // Item aktivitas (tugas/kuis/forum/lesson/polling/survei) memiliki halaman
+      // pengerjaan tersendiri sejak Phase 2.
+      const item = player.data?.structure
+        .flatMap((section) => section.items)
+        .find((candidate) => candidate.id === id);
+
+      if (item?.activity_id) {
+        navigate(`/lms/activities/${item.activity_id}`);
+        return;
+      }
+
       navigate(`/lms/courses/${courseId}/learn/${id}`);
     },
-    [courseId, navigate],
+    [courseId, navigate, player.data?.structure],
   );
 
   if (player.isLoading) {

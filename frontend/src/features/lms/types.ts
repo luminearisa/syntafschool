@@ -21,6 +21,8 @@ export interface EnumOption<T extends string = string> {
   graded?: boolean | null;
 }
 
+import type { ChildActivity, DueSoonActivity, PendingGradingRow, RecentlyGradedActivity } from './types.phase2';
+
 export interface LmsActor {
   id: number;
   name: string;
@@ -154,6 +156,8 @@ export interface LmsBookChapter {
 }
 
 export interface LmsLearningItem {
+  /** id aktivitas LMS (bila item ini ACTIVITY) — untuk membuka halaman pengerjaan. */
+  activity_id?: number | null;
   id: number;
   course_id: number;
   section_id: number;
@@ -214,6 +218,8 @@ export interface CourseStructureSection {
 }
 
 export interface CourseStructureItem {
+  /** id aktivitas LMS (bila item berupa aktivitas Phase 2). */
+  activity_id?: number | null;
   id: number;
   section_id: number;
   title: string;
@@ -416,6 +422,9 @@ export interface StudentDashboard {
   announcements: LmsAnnouncement[];
   bookmarks: number;
   calendar: LmsAgenda;
+  /** Phase 2 — aktivitas yang segera jatuh tempo & baru dinilai (§49). */
+  due_soon?: DueSoonActivity[];
+  recently_graded?: RecentlyGradedActivity[];
 }
 
 export interface TeacherDashboard {
@@ -439,6 +448,9 @@ export interface TeacherDashboard {
   course_activity: Array<{ item_title: string | null; course_name: string | null; course_id: number; user_id: number; at: string | null }>;
   announcements: LmsAnnouncement[];
   academic_coverage: AcademicCoverage[];
+  /** Phase 2 — antrean penilaian & aktivitas mendatang milik course LMS (§50). */
+  activity_pending_grading?: PendingGradingRow[];
+  upcoming_activities?: Array<{ id: number; title: string; activity_type: ActivityTypeValue; due_at: string | null; course_id: number }>;
 }
 
 export interface AcademicAssignment {
@@ -539,6 +551,8 @@ export interface ChildOverview {
   announcements: LmsAnnouncement[];
   certificates: unknown[];
   recent_activity: StudentDashboard['recent_activity'];
+  /** Phase 2 — status aktivitas anak (tugas, kuis, forum, lesson) (§48). */
+  activities?: ChildActivity[];
 }
 
 export interface AdminDashboard {

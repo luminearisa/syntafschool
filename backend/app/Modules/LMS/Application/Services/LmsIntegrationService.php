@@ -161,4 +161,66 @@ class LmsIntegrationService
     {
         return array_map(fn ($learner) => $learner->toArray(), $this->students->childrenOf($actor));
     }
+
+    /**
+     * Siapkan/terima pengiriman nilai aktivitas LMS ke modul akademik ERP (§8).
+     *
+     * Phase 2 tidak menulis nilai rapor secara langsung: bila fitur sinkronisasi
+     * belum diaktifkan admin (`lms.integration.push_grades`), payload hanya
+     * dicatat sebagai "menunggu" agar tidak ada perubahan nilai yang tidak
+     * disengaja.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function publishActivityGrade(array $payload): array
+    {
+        if (! (bool) config('lms.integration.push_grades', false)) {
+            return [
+                'accepted' => false,
+                'mode' => 'queued',
+                'message' => 'Sinkronisasi nilai ke SIAKAD belum diaktifkan. Nilai tersimpan di LMS dan siap dikirim.',
+                'payload' => $payload,
+            ];
+        }
+
+        return [
+            'accepted' => true,
+            'mode' => 'accepted',
+            'message' => 'Nilai diterima integration layer untuk diteruskan ke modul akademik.',
+            'payload' => $payload,
+        ];
+    }
+
+    /**
+     * Cakupan aktivitas LMS pada struktur akademik (§17 Phase 1 lanjutan).
+     *
+     * @return array<string, mixed>
+     */
+    public function activityCoverage(LmsActor $actor): array
+    {
+        $courseIds = $actor->can('lms.manage')
+            ? \App\Modules\LMS\Models\LmsCourse::query()->pluck('id')->all()
+            : \App\Modules\LMS\Models\LmsEnrollment::query()
+                ->where('user_id', $actor->id)
+                ->pluck('course_id')
+                ->all();
+
+        $activities = \App\Modules\LMS\Models\LmsActivity::query()
+            ->whereIn('course_id', $courseIds)
+            ->selectRaw('activity_type, status, count(*) as total')
+            ->groupBy('activity_type', 'status')
+            ->get()
+            ->map(fn ($row) => [
+                'activity_type' => $row->activity_type,
+                'status' => $row->status,
+                'total' => (int) $row->total,
+            ])
+            ->all();
+
+        return [
+            'courses' => count($courseIds),
+            'activities' => $activities,
+        ];
+    }
 }

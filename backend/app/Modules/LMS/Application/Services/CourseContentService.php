@@ -405,6 +405,13 @@ class CourseContentService
 
         $sections = $course->sections()->with(['items' => fn ($q) => $q->with(['resource:id,learning_item_id,file_name,file_path,external_url,open_in,video_provider,duration_seconds', 'chapters:id,learning_item_id,title,sort_order'])->orderBy('sort_order')])->get();
 
+        // Peta learning item → aktivitas LMS, agar silabus dapat menautkan
+        // langsung ke halaman pengerjaan aktivitas (Phase 2).
+        $activityIds = \App\Modules\LMS\Models\LmsActivity::query()
+            ->where('course_id', $course->id)
+            ->pluck('id', 'learning_item_id')
+            ->all();
+
         $output = [];
 
         foreach ($sections as $section) {
@@ -422,6 +429,7 @@ class CourseContentService
                     'item_type' => $item->item_type?->value,
                     'resource_type' => $item->resource_type?->value,
                     'activity_type' => $item->activity_type?->value,
+                    'activity_id' => isset($activityIds[$item->id]) ? (int) $activityIds[$item->id] : null,
                     'icon' => $item->resource_type?->icon() ?? $item->activity_type?->icon() ?? 'file',
                     'is_required' => (bool) $item->is_required,
                     'completion_type' => $item->completion_type?->value,

@@ -14,6 +14,10 @@ use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
 use App\Modules\LMS\Database\Seeders\LmsPermissionSeeder;
+use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
+use App\Modules\LMS\Domain\Enums\ActivityType;
+use App\Modules\LMS\Domain\Support\LmsActor;
+use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsCategory;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsCourseSection;
@@ -234,6 +238,86 @@ abstract class LmsTestCase extends TestCase
             'enrolled_at' => now(),
             ...$attributes,
         ]);
+    }
+
+    // ==================================================================
+    // Phase 2 — aktivitas pembelajaran
+    // ==================================================================
+
+    /** Aktor LMS dari akun ERP (memakai provider yang sama dengan runtime). */
+    protected function actorFor(User $user): LmsActor
+    {
+        $actor = app(UserProviderInterface::class)->find($user->id);
+
+        $this->assertNotNull($actor, 'Aktor LMS gagal dibentuk dari akun ERP.');
+
+        return $actor;
+    }
+
+    /**
+     * Buat aktivitas lengkap (learning item + baris aktivitas + konfigurasi tipe).
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    protected function makeActivity(LmsCourseSection $section, array $attributes = []): LmsActivity
+    {
+        $type = $attributes['activity_type'] ?? ActivityType::ASSIGNMENT->value;
+        $user = $attributes['actor_user'] ?? User::factory()->create(['is_active' => true]);
+        $user->syncRoles(['guru']);
+
+        $payload = array_merge([
+            'activity_type' => $type,
+            'title' => $attributes['title'] ?? 'Aktivitas '.$type,
+            'description' => $attributes['description'] ?? 'Deskripsi aktivitas',
+            'instructions' => $attributes['instructions'] ?? '<p>Ikuti instruksi berikut.</p>',
+            'status' => $attributes['status'] ?? 'DRAFT',
+        ], $attributes);
+
+        unset($payload['actor_user']);
+
+        return app(\App\Modules\LMS\Application\Services\ActivityService::class)
+            ->create($section, $payload, $this->actorFor($user));
+    }
+
+    /** Terbitkan aktivitas (dan set tanggal bila belum ada). */
+    protected function publishActivity(LmsActivity $activity, array $attributes = []): LmsActivity
+    {
+        if ($attributes !== []) {
+            $activity->forceFill($attributes)->save();
+        }
+
+        $user = User::factory()->create(['is_active' => true]);
+        $user->syncRoles(['admin-sekolah']);
+
+        return app(\App\Modules\LMS\Application\Services\ActivityService::class)
+            ->publish($activity->fresh(), $this->actorFor($user));
+    }
+
+    /** Bank soal + satu soal pilihan ganda siap pakai. */
+    protected function makeQuestion(array $attributes = [], ?LmsCourse $course = null): \App\Modules\LMS\Models\LmsQuestion
+    {
+        $user = $attributes['actor_user'] ?? User::factory()->create(['is_active' => true]);
+        $user->syncRoles(['guru']);
+
+        $type = $attributes['question_type'] ?? 'MULTIPLE_CHOICE_SINGLE';
+
+        $payload = array_merge([
+            'course_id' => $course?->id,
+            'name' => $attributes['name'] ?? 'Soal '.uniqid(),
+            'question_type' => $type,
+            'question_text' => $attributes['question_text'] ?? '2 + 2 = ?',
+            'default_mark' => $attributes['default_mark'] ?? 1,
+            'options' => $attributes['options'] ?? [
+                ['option_key' => 'A', 'text' => '3', 'is_correct' => false],
+                ['option_key' => 'B', 'text' => '4', 'is_correct' => true],
+                ['option_key' => 'C', 'text' => '5', 'is_correct' => false],
+            ],
+        ], $attributes);
+
+        unset($payload['actor_user']);
+
+        return app(\App\Modules\LMS\Application\Services\QuestionService::class)
+            ->create($payload, $this->actorFor($user));
     }
 
     /** Publikasikan course lengkap agar alur belajar dapat diuji. */

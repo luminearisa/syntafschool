@@ -128,7 +128,39 @@ export default function LmsParentChildPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Nilai</CardTitle>
+              <CardTitle>Aktivitas pembelajaran</CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-2">
+            {(data.activities ?? []).length === 0 ? (
+              <EmptyState title="Belum ada aktivitas" description="Guru belum menambahkan tugas, kuis, atau aktivitas lain." />
+            ) : (
+              (data.activities ?? []).map((activity) => (
+                <div key={activity.id} className="rounded-xl border border-slate-200 px-3 py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-slate-800">{activity.title}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge tone={activity.completed ? 'green' : 'amber'}>{activity.completed ? 'Selesai' : 'Belum selesai'}</Badge>
+                      {activity.grade !== null && (
+                        <span className="text-xs text-slate-600">
+                          Nilai {activity.grade}/{activity.maximum_grade ?? 100}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {activity.course_name} · {activity.activity_type_label}
+                    {activity.due_at ? ` · tenggat ${formatDate(activity.due_at, true)}` : ''}
+                  </p>
+                  {activity.feedback && <p className="mt-1 text-xs text-slate-600">Umpan balik: {activity.feedback}</p>}
+                </div>
+              ))
+            )}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Nilai</CardTitle>
             </CardHeader>
             <CardBody>
               {data.grades.hidden ? (

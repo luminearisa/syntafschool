@@ -13,6 +13,9 @@ import LmsSearchPage from '@/features/lms/pages/LmsSearchPage';
 import LmsCategoriesPage from '@/features/lms/pages/LmsCategoriesPage';
 import LmsSettingsPage from '@/features/lms/pages/LmsSettingsPage';
 import LmsParentChildPage from '@/features/lms/pages/LmsParentChildPage';
+import { LmsActivityPlayerPage } from '@/features/lms/pages/LmsActivityPlayerPage';
+import { LmsActivityManagePage } from '@/features/lms/pages/LmsActivityManagePage';
+import { LmsQuestionBankPage } from '@/features/lms/pages/LmsQuestionBankPage';
 import LmsPublicHomePage from '@/features/lms/pages/LmsPublicHomePage';
 import LmsPublicCoursesPage from '@/features/lms/pages/LmsPublicCoursesPage';
 import LmsPublicCoursePage from '@/features/lms/pages/LmsPublicCoursePage';
@@ -75,6 +78,30 @@ export const domainRoutes: RouteObject[] = [
     element: (
       <PermissionGuard permission="lms.content.view">
         <LmsLearnPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/activities/:id',
+    element: (
+      <PermissionGuard permission="lms.activity.view">
+        <LmsActivityPlayerPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/activities/:id/manage',
+    element: (
+      <PermissionGuard permission={['lms.activity.update', 'lms.activity.create']}>
+        <LmsActivityManagePage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/question-banks',
+    element: (
+      <PermissionGuard permission={['lms.question.view', 'lms.questionbank.manage']}>
+        <LmsQuestionBankPage />
       </PermissionGuard>
     ),
   },
@@ -159,6 +186,7 @@ export const lmsMenu: MenuChild[] = [
   { label: 'Kalender Belajar', to: '/lms/calendar', permission: 'lms.view' },
   { label: 'Pencarian LMS', to: '/lms/search', permission: 'lms.view' },
   { label: 'Bookmark', to: '/lms/bookmarks', permission: ['lms.bookmark.manage', 'lms.view'] },
+  { label: 'Bank Soal', to: '/lms/question-banks', permission: ['lms.question.view', 'lms.questionbank.manage'] },
   { label: 'Kategori LMS', to: '/lms/categories', permission: 'lms.category.view' },
   { label: 'Pengaturan LMS', to: '/lms/settings', permission: 'lms.settings.manage' },
   { label: 'LMS Publik (/learn)', to: '/learn' },

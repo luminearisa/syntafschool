@@ -103,7 +103,13 @@ function CurriculumRow({
   active: boolean;
   linkMode: 'learn' | 'course';
 }) {
-  const href = linkMode === 'learn' ? `/lms/courses/${courseId}/learn/${item.id}` : `/lms/courses/${courseId}`;
+  // Aktivitas Phase 2 dibuka di halaman pengerjaannya sendiri; materi tetap
+  // memakai ruang belajar. Bila item belum punya aktivitas, kembali ke silabus.
+  const href = item.activity_id
+    ? `/lms/activities/${item.activity_id}`
+    : linkMode === 'learn'
+      ? `/lms/courses/${courseId}/learn/${item.id}`
+      : `/lms/courses/${courseId}`;
   const content = (
     <>
       <ItemIcon icon={item.icon} tone={item.completed ? 'brand' : item.locked ? 'amber' : 'slate'} />

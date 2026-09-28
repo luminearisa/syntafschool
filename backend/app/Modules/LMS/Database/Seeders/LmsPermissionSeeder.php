@@ -27,6 +27,17 @@ class LmsPermissionSeeder extends Seeder
         'bookmark.manage',
         'teacher.manage', 'student.view', 'parent.view',
         'report.view', 'audit.view', 'settings.manage',
+
+        // Phase 2 — aktivitas pembelajaran, tugas, kuis, forum, lesson, polling, survei.
+        'activity.view', 'activity.create', 'activity.update', 'activity.delete', 'activity.publish', 'activity.preview',
+        'assignment.view', 'assignment.create', 'assignment.update', 'assignment.delete', 'assignment.grade', 'assignment.submit',
+        'quiz.view', 'quiz.create', 'quiz.update', 'quiz.delete', 'quiz.attempt', 'quiz.grade',
+        'question.view', 'question.create', 'question.update', 'question.delete', 'questionbank.manage',
+        'forum.view', 'forum.create', 'forum.reply', 'forum.moderate',
+        'lesson.view', 'lesson.create', 'lesson.update', 'lesson.delete',
+        'choice.view', 'choice.create', 'choice.respond',
+        'survey.view', 'survey.create', 'survey.respond',
+        'grade.view', 'grade.manage', 'submission.view', 'submission.grade', 'submission.upload',
     ];
 
     /**
@@ -45,6 +56,9 @@ class LmsPermissionSeeder extends Seeder
             'lms.view', 'lms.category.view', 'lms.course.view', 'lms.content.view',
             'lms.enrollment.view', 'lms.group.view', 'lms.student.view', 'lms.parent.view',
             'lms.report.view', 'lms.audit.view',
+            'lms.activity.view', 'lms.assignment.view', 'lms.quiz.view', 'lms.question.view',
+            'lms.forum.view', 'lms.lesson.view', 'lms.choice.view', 'lms.survey.view',
+            'lms.submission.view', 'lms.grade.view',
         ],
         'guru' => [
             'lms.view', 'lms.category.view',
@@ -54,16 +68,39 @@ class LmsPermissionSeeder extends Seeder
             'lms.group.view', 'lms.group.manage',
             'lms.announcement.view', 'lms.announcement.manage',
             'lms.student.view', 'lms.report.view',
+            'lms.activity.view', 'lms.activity.create', 'lms.activity.update', 'lms.activity.delete',
+            'lms.activity.publish', 'lms.activity.preview',
+            'lms.assignment.view', 'lms.assignment.create', 'lms.assignment.update', 'lms.assignment.delete', 'lms.assignment.grade',
+            'lms.quiz.view', 'lms.quiz.create', 'lms.quiz.update', 'lms.quiz.delete', 'lms.quiz.grade',
+            'lms.question.view', 'lms.question.create', 'lms.question.update', 'lms.question.delete', 'lms.questionbank.manage',
+            'lms.forum.view', 'lms.forum.create', 'lms.forum.reply', 'lms.forum.moderate',
+            'lms.lesson.view', 'lms.lesson.create', 'lms.lesson.update', 'lms.lesson.delete',
+            'lms.choice.view', 'lms.choice.create',
+            'lms.survey.view', 'lms.survey.create',
+            'lms.grade.view', 'lms.grade.manage', 'lms.submission.view', 'lms.submission.grade',
         ],
         'wali-kelas' => [
             'lms.view', 'lms.course.view', 'lms.content.view',
             'lms.enrollment.view', 'lms.group.view', 'lms.student.view', 'lms.report.view',
+            'lms.activity.view', 'lms.assignment.view', 'lms.quiz.view', 'lms.forum.view',
+            'lms.lesson.view', 'lms.choice.view', 'lms.survey.view',
+            'lms.submission.view', 'lms.grade.view',
         ],
         'siswa' => [
             'lms.view', 'lms.course.view', 'lms.content.view', 'lms.bookmark.manage',
+            // Siswa hanya boleh mengerjakan & melihat miliknya sendiri (§54).
+            'lms.activity.view', 'lms.assignment.view', 'lms.assignment.submit',
+            'lms.quiz.view', 'lms.quiz.attempt',
+            'lms.forum.view', 'lms.forum.reply',
+            'lms.lesson.view', 'lms.choice.view', 'lms.choice.respond',
+            'lms.survey.view', 'lms.survey.respond',
+            'lms.grade.view', 'lms.submission.view', 'lms.submission.upload',
         ],
         'wali-murid' => [
-            'lms.view', 'lms.course.view', 'lms.parent.view',
+            'lms.view', 'lms.course.view', 'lms.parent.view', 'lms.student.view',
+            // Wali hanya membaca — tidak pernah submit, menjawab, atau menilai (§48).
+            'lms.activity.view', 'lms.assignment.view', 'lms.quiz.view', 'lms.forum.view',
+            'lms.lesson.view', 'lms.choice.view', 'lms.survey.view', 'lms.grade.view',
         ],
     ];
 

@@ -16,6 +16,7 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
+import { DueSoonSection, PendingGradingSection, RecentlyGradedSection } from './ActivityDashboardSections';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -92,6 +93,13 @@ export function StudentDashboardView({ data }: { data: StudentDashboard }) {
           <HeroStat label="Rata-rata progress" value={`${Math.round(data.stats.average_progress)}%`} />
         </div>
       </header>
+
+      {(data.due_soon?.length || data.recently_graded?.length) ? (
+        <section className="grid gap-4 lg:grid-cols-2">
+          <DueSoonSection items={data.due_soon ?? []} />
+          <RecentlyGradedSection items={data.recently_graded ?? []} />
+        </section>
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -341,7 +349,11 @@ export function TeacherDashboardView({ data }: { data: TeacherDashboard }) {
               <CardTitle>Pending grading</CardTitle>
             </CardHeader>
             <CardBody>
-              {data.pending_grading.length === 0 ? (
+              {data.activity_pending_grading && data.activity_pending_grading.length > 0 && (
+              <PendingGradingSection items={data.activity_pending_grading} />
+            )}
+
+            {data.pending_grading.length === 0 ? (
                 <EmptyState title="Tidak ada yang menunggu" description="Semua pengumpulan sudah dinilai." />
               ) : (
                 <ul className="space-y-2">

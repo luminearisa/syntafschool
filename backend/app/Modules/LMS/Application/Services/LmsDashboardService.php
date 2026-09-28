@@ -11,7 +11,12 @@ use App\Modules\LMS\Domain\Enums\EnrollmentRole;
 use App\Modules\LMS\Domain\Enums\EnrollmentStatus;
 use App\Modules\LMS\Domain\Support\LmsActor;
 use App\Modules\LMS\Domain\Support\LmsLearner;
+use App\Modules\LMS\Application\Services\AssignmentService;
+use App\Modules\LMS\Application\Services\ForumService;
+use App\Modules\LMS\Application\Services\QuizService;
+use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsActivityCompletion;
+use App\Modules\LMS\Models\LmsActivityGrade;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsCourseAnnouncement;
 use App\Modules\LMS\Models\LmsCourseProgress;
@@ -39,6 +44,10 @@ class LmsDashboardService
         private readonly AcademicActivityFeedInterface $feed,
         private readonly LmsCalendarService $calendar,
         private readonly LmsIntegrationService $integration,
+        // Phase 2 — antrean penilaian aktivitas pada dasbor guru.
+        private readonly AssignmentService $assignments,
+        private readonly QuizService $quizzes,
+        private readonly ForumService $forums,
     ) {}
 
     /** Dashboard mana yang tersedia untuk pelaku ini (§3). */
@@ -89,6 +98,9 @@ class LmsDashboardService
             ],
             'continue_learning' => $cards,
             'my_courses' => $myCourses,
+            // Phase 2 — aktivitas yang harus segera dikerjakan & baru dinilai (§49).
+            'due_soon' => $this->studentDueSoon($actor),
+            'recently_graded' => $this->studentRecentlyGraded($actor),
             'upcoming' => $this->studentUpcoming($actor, $learner),
             'recent_activity' => $this->studentRecentActivity($actor),
             'announcements' => $this->announcementsFor($enrollments->pluck('course_id')->all()),
@@ -143,6 +155,9 @@ class LmsDashboardService
             ],
             'my_courses' => $courses->take(6)->map(fn (LmsCourse $course) => $this->managementCard($course))->values()->all(),
             'pending_grading' => $this->feed->pendingGrading($actor->can('lms.manage') ? null : $employeeId, 8),
+            // Phase 2 — antrean penilaian & aktivitas mendatang milik course LMS (§50).
+            'activity_pending_grading' => $this->teacherPendingGrading($courses),
+            'upcoming_activities' => $this->teacherUpcomingActivities($courses),
             'recent_submissions' => $this->feed->recentSubmissions($actor->can('lms.manage') ? null : $employeeId, 6),
             'upcoming_deadlines' => $this->feed->upcomingForClasses(
                 $courses->pluck('class_id')->filter()->map('intval')->unique()->all(),
@@ -256,6 +271,8 @@ class LmsDashboardService
             'grades' => $grades,
             'announcements' => $announcements,
             'certificates' => [],
+            // Phase 2 — status aktivitas anak (tugas, kuis, forum, lesson) (§48).
+            'activities' => $this->childActivities($child->userId),
             'recent_activity' => $this->studentRecentActivityFor($child->userId),
         ];
     }
@@ -637,5 +654,221 @@ class LmsDashboardService
             $hour < 18 => 'Selamat sore',
             default => 'Selamat malam',
         };
+    }
+
+    // --------------------------------------------------------------------
+    // PHASE 2 — aktivitas pembelajaran pada dasbor (§49–§50)
+    // --------------------------------------------------------------------
+
+    /**
+     * Tugas/kuis yang tenggatnya dekat dan belum diselesaikan siswa (§49).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function studentDueSoon(LmsActor $actor, int $limit = 6): array
+    {
+        $enrollments = $this->studentEnrollments($actor);
+        $courseIds = $enrollments->pluck('course_id')->all();
+
+        if ($courseIds === []) {
+            return [];
+        }
+
+        $completedItemIds = array_map('intval', LmsActivityCompletion::query()
+            ->where('user_id', $actor->id)
+            ->where('status', 'COMPLETE')
+            ->pluck('learning_item_id')
+            ->all());
+
+        return LmsActivity::query()
+            ->whereIn('course_id', $courseIds)
+            ->published()
+            ->where(function ($query): void {
+                $query->whereNull('due_at')->orWhere('due_at', '>=', now()->subDays(7));
+            })
+            ->whereNotIn('learning_item_id', $completedItemIds === [] ? [0] : $completedItemIds)
+            ->with('course:id,name')
+            ->orderByRaw('due_at is null, due_at asc')
+            ->limit($limit)
+            ->get()
+            ->map(fn (LmsActivity $activity) => [
+                'id' => (int) $activity->id,
+                'title' => (string) $activity->title,
+                'activity_type' => $activity->activity_type?->value,
+                'activity_type_label' => $activity->activity_type?->label(),
+                'course_id' => (int) $activity->course_id,
+                'course_name' => $activity->course?->name,
+                'due_at' => $activity->due_at?->toIso8601String(),
+                'is_past_due' => $activity->isPastDue(),
+                'player_url' => $activity->playerUrl(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Aktivitas yang baru dinilai untuk siswa (§49).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function studentRecentlyGraded(LmsActor $actor, int $limit = 6): array
+    {
+        return LmsActivityGrade::query()
+            ->where('user_id', $actor->id)
+            ->whereNotNull('grade')
+            ->with(['activity:id,title,activity_type,learning_item_id', 'course:id,name'])
+            ->orderByDesc('graded_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (LmsActivityGrade $grade) => [
+                'activity_id' => (int) $grade->activity_id,
+                'title' => $grade->activity?->title,
+                'activity_type' => $grade->activity?->activity_type?->value,
+                'course_id' => (int) $grade->course_id,
+                'course_name' => $grade->course?->name,
+                'grade' => (float) $grade->grade,
+                'maximum_grade' => (float) $grade->maximum_grade,
+                'percent' => $grade->percent(),
+                'passed' => $grade->passed,
+                'graded_at' => $grade->graded_at?->toIso8601String(),
+                'player_url' => $grade->activity === null ? null : $grade->activity->playerUrl(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Antrean penilaian aktivitas LMS milik guru (§50).
+     *
+     * @param  \Illuminate\Support\Collection<int, LmsCourse>  $courses
+     * @return list<array<string, mixed>>
+     */
+    public function teacherPendingGrading($courses, int $limit = 8): array
+    {
+        $rows = [];
+
+        foreach ($courses as $course) {
+            $activities = LmsActivity::query()
+                ->where('course_id', $course->id)
+                ->where('status', 'PUBLISHED')
+                ->with(['assignment', 'quiz', 'forum'])
+                ->get();
+
+            foreach ($activities as $activity) {
+                $count = match ($activity->activity_type?->value) {
+                    'ASSIGNMENT' => $activity->assignment === null
+                        ? 0
+                        : $this->assignments->pendingGradingCount($activity),
+                    'QUIZ' => $activity->quiz === null ? 0 : $this->quizzes->pendingManualGradingCount($activity),
+                    'FORUM' => $activity->forum === null ? 0 : $this->forums->pendingModerationCount($activity),
+                    default => 0,
+                };
+
+                if ($count > 0) {
+                    $rows[] = [
+                        'activity_id' => (int) $activity->id,
+                        'title' => (string) $activity->title,
+                        'activity_type' => $activity->activity_type?->value,
+                        'activity_type_label' => $activity->activity_type?->label(),
+                        'course_id' => (int) $activity->course_id,
+                        'course_name' => $course->name,
+                        'pending' => $count,
+                        'manage_url' => '/lms/activities/'.$activity->id.'/manage',
+                    ];
+                }
+            }
+        }
+
+        usort($rows, fn (array $a, array $b) => $b['pending'] <=> $a['pending']);
+
+        return array_slice($rows, 0, $limit);
+    }
+
+    /**
+     * Aktivitas mendatang pada course yang diampu (§50).
+     *
+     * @param  \Illuminate\Support\Collection<int, LmsCourse>  $courses
+     * @return list<array<string, mixed>>
+     */
+    public function teacherUpcomingActivities($courses, int $limit = 6): array
+    {
+        $courseIds = $courses->pluck('id')->all();
+
+        if ($courseIds === []) {
+            return [];
+        }
+
+        return LmsActivity::query()
+            ->whereIn('course_id', $courseIds)
+            ->published()
+            ->whereNotNull('due_at')
+            ->where('due_at', '>=', now()->subDays(3))
+            ->orderBy('due_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (LmsActivity $activity) => [
+                'id' => (int) $activity->id,
+                'title' => (string) $activity->title,
+                'activity_type' => $activity->activity_type?->value,
+                'due_at' => $activity->due_at?->toIso8601String(),
+                'course_id' => (int) $activity->course_id,
+            ])
+            ->all();
+    }
+
+    /**
+     * Aktivitas seorang anak untuk wali (§48) — hanya membaca.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function childActivities(int $userId, int $limit = 20): array
+    {
+        $enrollments = LmsEnrollment::query()
+            ->where('user_id', $userId)
+            ->whereIn('status', ['ACTIVE', 'COMPLETED'])
+            ->get();
+
+        if ($enrollments->isEmpty()) {
+            return [];
+        }
+
+        $courseIds = $enrollments->pluck('course_id')->all();
+        $completedItemIds = array_map('intval', LmsActivityCompletion::query()
+            ->where('user_id', $userId)
+            ->where('status', 'COMPLETE')
+            ->pluck('learning_item_id')
+            ->all());
+        $grades = LmsActivityGrade::query()
+            ->where('user_id', $userId)
+            ->whereIn('activity_id', LmsActivity::query()->whereIn('course_id', $courseIds)->select('id'))
+            ->get()
+            ->keyBy('activity_id');
+
+        return LmsActivity::query()
+            ->whereIn('course_id', $courseIds)
+            ->published()
+            ->with(['course:id,name'])
+            ->orderByRaw('due_at is null, due_at desc')
+            ->limit($limit)
+            ->get()
+            ->map(function (LmsActivity $activity) use ($completedItemIds, $grades): array {
+                /** @var LmsActivityGrade|null $grade */
+                $grade = $grades->get($activity->id);
+
+                return [
+                    'id' => (int) $activity->id,
+                    'title' => (string) $activity->title,
+                    'activity_type' => $activity->activity_type?->value,
+                    'activity_type_label' => $activity->activity_type?->label(),
+                    'course_id' => (int) $activity->course_id,
+                    'course_name' => $activity->course?->name,
+                    'due_at' => $activity->due_at?->toIso8601String(),
+                    'completed' => in_array((int) $activity->learning_item_id, $completedItemIds, true),
+                    'grade' => $grade?->grade === null ? null : (float) $grade->grade,
+                    'maximum_grade' => $grade === null ? null : (float) $grade->maximum_grade,
+                    'percent' => $grade?->percent(),
+                    'passed' => $grade?->passed,
+                    'feedback' => $grade?->feedback,
+                ];
+            })
+            ->all();
     }
 }

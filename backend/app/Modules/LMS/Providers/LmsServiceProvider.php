@@ -5,7 +5,9 @@ namespace App\Modules\LMS\Providers;
 use App\Models\Setting;
 use App\Modules\LMS\Domain\Contracts\AcademicActivityFeedInterface;
 use App\Modules\LMS\Domain\Contracts\AcademicCourseProviderInterface;
+use App\Modules\LMS\Application\Support\QuestionTypeRegistry;
 use App\Modules\LMS\Domain\Contracts\ClassProviderInterface;
+use App\Modules\LMS\Domain\Contracts\GradeProviderInterface;
 use App\Modules\LMS\Domain\Contracts\StudentProviderInterface;
 use App\Modules\LMS\Domain\Contracts\TeacherProviderInterface;
 use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
@@ -18,6 +20,7 @@ use App\Modules\LMS\Infrastructure\Providers\ErpClassProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpStudentProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpUserProvider;
+use App\Modules\LMS\Infrastructure\Providers\LmsGradeProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneAcademicActivityFeed;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneAcademicCourseProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneClassProvider;
@@ -77,6 +80,13 @@ class LmsServiceProvider extends ServiceProvider
             ErpAcademicActivityFeed::class,
             StandaloneAcademicActivityFeed::class,
         ));
+
+        // Phase 2 — mesin aktivitas.
+        // Registry tipe soal dipakai bersama oleh penilaian kuis & lesson.
+        $this->app->singleton(QuestionTypeRegistry::class);
+
+        // Sumber nilai aktivitas untuk Gradebook Phase 3 (§46).
+        $this->app->singleton(GradeProviderInterface::class, LmsGradeProvider::class);
     }
 
     public function boot(): void
@@ -99,6 +109,8 @@ class LmsServiceProvider extends ServiceProvider
             ClassProviderInterface::class,
             AcademicCourseProviderInterface::class,
             AcademicActivityFeedInterface::class,
+            GradeProviderInterface::class,
+            QuestionTypeRegistry::class,
         ];
     }
 

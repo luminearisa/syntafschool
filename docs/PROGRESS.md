@@ -705,3 +705,62 @@ lengkap di [`docs/07-MODUL-LMS.md`](docs/07-MODUL-LMS.md).
 - [ ] Quiz + Question Bank (bank soal, bank kategori, penilaian otomatis)
 - [ ] Forum diskusi, Lesson, Choice, Survey, Workshop
 - [ ] Gradebook LMS, sertifikat, attendance LMS
+
+---
+
+## Fase LMS Phase 2 — Assignment, Quiz, Question Bank, Forum & Learning Activities
+
+Melanjutkan Phase 1 **tanpa membuat ulang** course, section, learning item,
+enrollment, kategori, penyelesaian, progress, atau sistem berkas. Setiap
+aktivitas tetap menempel pada `lms_learning_items`, sehingga otomatis mengikuti
+visibilitas, prasyarat, kelompok, penyelesaian, dan progress yang sudah ada.
+Dokumentasi: [`docs/08-MODUL-LMS-PHASE-2.md`](docs/08-MODUL-LMS-PHASE-2.md).
+
+### Aktivitas & Tugas
+- [x] `lms_activities` + konfigurator per tipe (`ActivityConfiguratorInterface`)
+- [x] Wizard aktivitas 4 langkah (tipe → dasar → jadwal → penyelesaian)
+- [x] Status DRAFT/PUBLISHED/ARCHIVED, duplikasi tanpa menyalin riwayat
+- [x] Assignment: bentuk pengumpulan, nilai maksimum/lulus, percobaan, penalti
+- [x] Submission: draf, kirim, kirim ulang dengan attempt baru (riwayat utuh)
+- [x] Berkas submission + unduhan ber-otorisasi, batas tipe & ukuran
+- [x] Penilaian: nilai asli vs nilai setelah penalti, umpan balik teks/berkas
+- [x] Penilaian massal, pengembalian & penolakan submission
+- [x] Statistik tugas (terkirim, terlambat, dinilai, rata-rata, tingkat lulus)
+
+### Kuis & Bank Soal
+- [x] Bank soal + kategori bertingkat, soal reusable lintas kuis
+- [x] 7 tipe soal: PG tunggal/ganda, benar-salah, singkat, numerik, esai, menjodohkan
+- [x] Versioning soal + snapshot per attempt (hasil lama tetap sah)
+- [x] Pemilihan soal manual maupun acak per kategori
+- [x] Percobaan kuis dengan timer server-side + auto submit & auto grade
+- [x] Penilaian otomatis, penilaian manual esai, normalisasi nilai ke maximum_grade
+- [x] Strategi nilai lintas percobaan (tertinggi/terakhir/rata-rata/pertama)
+- [x] Review hasil mengikuti konfigurasi; kunci tidak pernah bocor sebelum selesai
+- [x] Statistik kuis & per soal
+
+### Forum, Lesson, Choice, Survey
+- [x] Forum: diskusi, balasan bersarang dengan batas kedalaman, pin, kunci
+- [x] Moderasi (setujui/sembunyikan/hapus) + antrean moderasi & notifikasi
+- [x] Lesson: halaman materi, halaman pertanyaan bercabang, progres per halaman
+- [x] Choice: polling tunggal/ganda, batas pilihan, visibilitas hasil, anonim
+- [x] Survey: rating/pilihan/ya-tidak/teks, mode anonim, rekap hasil
+
+### Integrasi
+- [x] Penyelesaian aktivitas masuk ke mesin penyelesaian Phase 1 (§40)
+- [x] Ketersediaan aktivitas: jadwal, prasyarat item, prasyarat aktivitas, nilai minimum, kelompok
+- [x] Navigasi Previous/Next antar aktivitas
+- [x] Catatan nilai aktivitas + `GradeProviderInterface` siap untuk Gradebook Phase 3
+- [x] Sinkronisasi nilai ke SIAKAD hanya eksplisit (tidak pernah otomatis)
+- [x] Dasbor siswa (segera dikerjakan, baru dinilai) & guru (menunggu penilaian)
+- [x] Portal wali: status aktivitas anak (read-only)
+- [x] Frontend: player 6 tipe aktivitas, halaman kelola guru, bank soal, wizard
+- [x] Permission granular Phase 2 (72 izin `lms.*` total)
+
+### Pengujian
+- [x] 7 berkas tes Phase 2: assignment, quiz, forum, lesson, choice/survey, security, alur menyeluruh
+- [x] Dokumentasi `docs/08-MODUL-LMS-PHASE-2.md`
+
+### Lanjutan (phase berikutnya)
+- [ ] Gradebook LMS penuh (bobot kategori, ekspor, sinkronisasi terkendali)
+- [ ] Workshop, bank soal institusi dengan workflow persetujuan
+- [ ] Analytics pembelajaran & laporan per siswa/course

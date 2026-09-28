@@ -1,20 +1,32 @@
 <?php
 
+use App\Modules\LMS\Http\Controllers\LmsActivityController;
 use App\Modules\LMS\Http\Controllers\LmsAnnouncementController;
+use App\Modules\LMS\Http\Controllers\LmsAssignmentController;
+use App\Modules\LMS\Http\Controllers\LmsChoiceController;
 use App\Modules\LMS\Http\Controllers\LmsAuthController;
 use App\Modules\LMS\Http\Controllers\LmsBookmarkController;
 use App\Modules\LMS\Http\Controllers\LmsCategoryController;
 use App\Modules\LMS\Http\Controllers\LmsCourseController;
 use App\Modules\LMS\Http\Controllers\LmsDashboardController;
 use App\Modules\LMS\Http\Controllers\LmsEnrollmentController;
+use App\Modules\LMS\Http\Controllers\LmsForumController;
+use App\Modules\LMS\Http\Controllers\LmsGradeController;
 use App\Modules\LMS\Http\Controllers\LmsGroupController;
 use App\Modules\LMS\Http\Controllers\LmsLearningController;
+use App\Modules\LMS\Http\Controllers\LmsLessonController;
 use App\Modules\LMS\Http\Controllers\LmsLearningItemController;
 use App\Modules\LMS\Http\Controllers\LmsProgressController;
+use App\Modules\LMS\Http\Controllers\LmsQuestionBankController;
+use App\Modules\LMS\Http\Controllers\LmsQuestionController;
+use App\Modules\LMS\Http\Controllers\LmsQuizAttemptController;
+use App\Modules\LMS\Http\Controllers\LmsQuizController;
 use App\Modules\LMS\Http\Controllers\LmsPublicController;
 use App\Modules\LMS\Http\Controllers\LmsSearchController;
 use App\Modules\LMS\Http\Controllers\LmsSectionController;
 use App\Modules\LMS\Http\Controllers\LmsSettingsController;
+use App\Modules\LMS\Http\Controllers\LmsSubmissionController;
+use App\Modules\LMS\Http\Controllers\LmsSurveyController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -228,6 +240,257 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
             ->middleware('lms.permission:lms.view')->name('search');
         Route::get('search/suggestions', [LmsSearchController::class, 'suggestions'])
             ->middleware('lms.permission:lms.view')->name('search.suggestions');
+
+        // ==================================================================
+        // PHASE 2 — AKTIVITAS PEMBELAJARAN (§1–§53)
+        // ==================================================================
+
+        // ---------------- Aktivitas (§2, §42–§45) ----------------
+        Route::get('activity-types', [LmsActivityController::class, 'types'])
+            ->middleware('lms.permission:lms.activity.view')->name('activity-types');
+        Route::get('courses/{course}/activities', [LmsActivityController::class, 'index'])
+            ->middleware('lms.permission:lms.activity.view')->name('courses.activities.index');
+        Route::post('sections/{section}/activities', [LmsActivityController::class, 'store'])
+            ->middleware('lms.permission:lms.activity.create')->name('sections.activities.store');
+        Route::get('activities/{activity}', [LmsActivityController::class, 'show'])
+            ->middleware('lms.permission:lms.activity.view')->name('activities.show');
+        Route::match(['put', 'patch'], 'activities/{activity}', [LmsActivityController::class, 'update'])
+            ->middleware('lms.permission:lms.activity.update')->name('activities.update');
+        Route::delete('activities/{activity}', [LmsActivityController::class, 'destroy'])
+            ->middleware('lms.permission:lms.activity.delete')->name('activities.destroy');
+        Route::post('activities/{activity}/publish', [LmsActivityController::class, 'publish'])
+            ->middleware('lms.permission:lms.activity.publish')->name('activities.publish');
+        Route::post('activities/{activity}/unpublish', [LmsActivityController::class, 'unpublish'])
+            ->middleware('lms.permission:lms.activity.publish')->name('activities.unpublish');
+        Route::post('activities/{activity}/archive', [LmsActivityController::class, 'archive'])
+            ->middleware('lms.permission:lms.activity.update')->name('activities.archive');
+        Route::post('activities/{activity}/duplicate', [LmsActivityController::class, 'duplicate'])
+            ->middleware('lms.permission:lms.activity.create')->name('activities.duplicate');
+        Route::get('activities/{activity}/preview', [LmsActivityController::class, 'preview'])
+            ->middleware('lms.permission:lms.activity.preview,lms.activity.update')->name('activities.preview');
+
+        // ---------------- Assignment (§3–§11) ----------------
+        Route::get('activities/{activity}/assignment', [LmsAssignmentController::class, 'show'])
+            ->middleware('lms.permission:lms.assignment.view')->name('assignments.show');
+        Route::match(['put', 'patch'], 'activities/{activity}/assignment', [LmsAssignmentController::class, 'updateConfig'])
+            ->middleware('lms.permission:lms.assignment.update')->name('assignments.update');
+        Route::get('activities/{activity}/assignment/overview', [LmsAssignmentController::class, 'overview'])
+            ->middleware('lms.permission:lms.assignment.grade')->name('assignments.overview');
+        Route::get('activities/{activity}/assignment/statistics', [LmsAssignmentController::class, 'statistics'])
+            ->middleware('lms.permission:lms.assignment.grade')->name('assignments.statistics');
+        Route::post('activities/{activity}/assignment/bulk-grade', [LmsAssignmentController::class, 'bulkGrade'])
+            ->middleware('lms.permission:lms.assignment.grade')->name('assignments.bulk-grade');
+        Route::get('assignments/{assignment}', [LmsAssignmentController::class, 'showByAssignment'])
+            ->middleware('lms.permission:lms.assignment.view')->name('assignments.by-model');
+        Route::get('assignments/{assignment}/submissions', [LmsAssignmentController::class, 'submissionsByAssignment'])
+            ->middleware('lms.permission:lms.submission.view')->name('assignments.submissions');
+        Route::post('assignments/{assignment}/submit', [LmsAssignmentController::class, 'submitByAssignment'])
+            ->middleware('lms.permission:lms.assignment.submit')->name('assignments.submit');
+
+        // ---------------- Submission & penilaian (§5–§9) ----------------
+        Route::get('activities/{activity}/submission-status', [LmsSubmissionController::class, 'status'])
+            ->middleware('lms.permission:lms.submission.view')->name('submissions.status');
+        Route::post('activities/{activity}/submissions/draft', [LmsSubmissionController::class, 'saveDraft'])
+            ->middleware('lms.permission:lms.assignment.submit')->name('submissions.draft');
+        Route::post('activities/{activity}/submissions/submit', [LmsSubmissionController::class, 'submit'])
+            ->middleware('lms.permission:lms.assignment.submit')->name('submissions.submit');
+        Route::get('activities/{activity}/submissions', [LmsSubmissionController::class, 'index'])
+            ->middleware('lms.permission:lms.submission.view')->name('submissions.index');
+        Route::get('submissions/{submission}', [LmsSubmissionController::class, 'show'])
+            ->middleware('lms.permission:lms.submission.view')->name('submissions.show');
+        Route::post('submissions/{submission}/files', [LmsSubmissionController::class, 'upload'])
+            ->middleware('lms.permission:lms.submission.upload')->name('submissions.files.store');
+        Route::delete('submission-files/{file}', [LmsSubmissionController::class, 'deleteFile'])
+            ->middleware('lms.permission:lms.submission.upload')->name('submission-files.destroy');
+        Route::get('submission-files/{file}', [LmsSubmissionController::class, 'download'])
+            ->middleware('lms.permission:lms.submission.view')->name('submission-files.download');
+        Route::post('submissions/{submission}/grade', [LmsSubmissionController::class, 'grade'])
+            ->middleware('lms.permission:lms.submission.grade')->name('submissions.grade');
+        Route::post('submissions/{submission}/return', [LmsSubmissionController::class, 'returnToStudent'])
+            ->middleware('lms.permission:lms.submission.grade')->name('submissions.return');
+        Route::post('submissions/{submission}/reject', [LmsSubmissionController::class, 'reject'])
+            ->middleware('lms.permission:lms.submission.grade')->name('submissions.reject');
+
+        // ---------------- Question bank & soal (§14–§22) ----------------
+        Route::get('question-banks', [LmsQuestionBankController::class, 'index'])
+            ->middleware('lms.permission:lms.question.view,lms.questionbank.manage')->name('question-banks.index');
+        Route::post('question-banks', [LmsQuestionBankController::class, 'store'])
+            ->middleware('lms.permission:lms.questionbank.manage')->name('question-banks.store');
+        Route::get('question-banks/{bank}', [LmsQuestionBankController::class, 'show'])
+            ->middleware('lms.permission:lms.question.view,lms.questionbank.manage')->name('question-banks.show');
+        Route::match(['put', 'patch'], 'question-banks/{bank}', [LmsQuestionBankController::class, 'update'])
+            ->middleware('lms.permission:lms.questionbank.manage')->name('question-banks.update');
+        Route::delete('question-banks/{bank}', [LmsQuestionBankController::class, 'destroy'])
+            ->middleware('lms.permission:lms.questionbank.manage')->name('question-banks.destroy');
+        Route::post('question-banks/{bank}/categories', [LmsQuestionBankController::class, 'storeCategory'])
+            ->middleware('lms.permission:lms.questionbank.manage')->name('question-banks.categories.store');
+        Route::get('question-banks/{bank}/questions', [LmsQuestionBankController::class, 'questions'])
+            ->middleware('lms.permission:lms.question.view,lms.questionbank.manage')->name('question-banks.questions');
+        Route::match(['put', 'patch'], 'question-categories/{category}', [LmsQuestionBankController::class, 'updateCategory'])
+            ->middleware('lms.permission:lms.questionbank.manage')->name('question-categories.update');
+        Route::delete('question-categories/{category}', [LmsQuestionBankController::class, 'destroyCategory'])
+            ->middleware('lms.permission:lms.questionbank.manage')->name('question-categories.destroy');
+
+        Route::get('questions', [LmsQuestionController::class, 'index'])
+            ->middleware('lms.permission:lms.question.view,lms.activity.view')->name('questions.index');
+        Route::post('questions', [LmsQuestionController::class, 'store'])
+            ->middleware('lms.permission:lms.question.create,lms.activity.create')->name('questions.store');
+        Route::get('questions/{question}', [LmsQuestionController::class, 'show'])
+            ->middleware('lms.permission:lms.question.view,lms.activity.view')->name('questions.show');
+        Route::match(['put', 'patch'], 'questions/{question}', [LmsQuestionController::class, 'update'])
+            ->middleware('lms.permission:lms.question.update,lms.activity.update')->name('questions.update');
+        Route::delete('questions/{question}', [LmsQuestionController::class, 'destroy'])
+            ->middleware('lms.permission:lms.question.delete,lms.activity.delete')->name('questions.destroy');
+        Route::post('questions/{question}/duplicate', [LmsQuestionController::class, 'duplicate'])
+            ->middleware('lms.permission:lms.question.create,lms.activity.create')->name('questions.duplicate');
+
+        // ---------------- Quiz & percobaan (§12–§13, §23–§31) ----------------
+        Route::get('activities/{activity}/quiz', [LmsQuizController::class, 'show'])
+            ->middleware('lms.permission:lms.quiz.view')->name('quizzes.show');
+        Route::get('activities/{activity}/quiz/builder', [LmsQuizController::class, 'builder'])
+            ->middleware('lms.permission:lms.quiz.update,lms.quiz.create')->name('quizzes.builder');
+        Route::match(['put', 'patch'], 'activities/{activity}/quiz', [LmsQuizController::class, 'updateConfig'])
+            ->middleware('lms.permission:lms.quiz.update')->name('quizzes.update');
+        Route::post('activities/{activity}/quiz/questions', [LmsQuizController::class, 'addQuestions'])
+            ->middleware('lms.permission:lms.quiz.update')->name('quizzes.questions.store');
+        Route::post('activities/{activity}/quiz/attempts', [LmsQuizAttemptController::class, 'store'])
+            ->middleware('lms.permission:lms.quiz.attempt')->name('quizzes.attempts.store');
+        Route::get('activities/{activity}/quiz/statistics', [LmsQuizController::class, 'statistics'])
+            ->middleware('lms.permission:lms.quiz.grade,lms.quiz.update')->name('quizzes.statistics');
+        Route::get('activities/{activity}/quiz/attempts', [LmsQuizController::class, 'attempts'])
+            ->middleware('lms.permission:lms.quiz.grade,lms.quiz.update')->name('quizzes.attempts.index');
+        Route::get('activities/{activity}/quiz/student-attempts/{user_id}', [LmsQuizAttemptController::class, 'forStudent'])
+            ->middleware('lms.permission:lms.quiz.view')->name('quizzes.attempts.student');
+        Route::get('quizzes/{quiz}', [LmsQuizController::class, 'showByQuiz'])
+            ->middleware('lms.permission:lms.quiz.view')->name('quizzes.by-model');
+        Route::post('quizzes/{quiz}/attempts', [LmsQuizController::class, 'startAttempt'])
+            ->middleware('lms.permission:lms.quiz.attempt')->name('quizzes.attempts.start');
+        Route::get('quizzes/{quiz}/statistics', [LmsQuizController::class, 'statisticsByQuiz'])
+            ->middleware('lms.permission:lms.quiz.grade,lms.quiz.update')->name('quizzes.statistics.by-model');
+
+        Route::get('quiz-slots/{slot}/remove', [LmsQuizController::class, 'removeQuestion'])
+            ->middleware('lms.permission:lms.quiz.update')->name('quiz-slots.remove.get');
+        Route::delete('quiz-slots/{slot}', [LmsQuizController::class, 'removeQuestion'])
+            ->middleware('lms.permission:lms.quiz.update')->name('quiz-slots.remove');
+        Route::match(['put', 'patch'], 'quiz-slots/{slot}', [LmsQuizController::class, 'updateSlot'])
+            ->middleware('lms.permission:lms.quiz.update')->name('quiz-slots.update');
+
+        Route::get('attempts/{attempt}', [LmsQuizAttemptController::class, 'show'])
+            ->middleware('lms.permission:lms.quiz.view')->name('attempts.show');
+        Route::post('attempts/{attempt}/answers', [LmsQuizAttemptController::class, 'saveAnswer'])
+            ->middleware('lms.permission:lms.quiz.attempt')->name('attempts.answers.store');
+        Route::post('attempts/{attempt}/submit', [LmsQuizAttemptController::class, 'submit'])
+            ->middleware('lms.permission:lms.quiz.attempt')->name('attempts.submit');
+        Route::get('attempts/{attempt}/result', [LmsQuizAttemptController::class, 'result'])
+            ->middleware('lms.permission:lms.quiz.view')->name('attempts.result');
+        Route::get('attempts/{attempt}/detail', [LmsQuizController::class, 'attemptDetail'])
+            ->middleware('lms.permission:lms.quiz.grade,lms.quiz.update')->name('attempts.detail');
+        Route::post('quiz-answers/{answer}/grade', [LmsQuizAttemptController::class, 'gradeAnswer'])
+            ->middleware('lms.permission:lms.quiz.grade')->name('quiz-answers.grade');
+
+        // ---------------- Forum (§32–§36) ----------------
+        Route::get('activities/{activity}/forum', [LmsForumController::class, 'show'])
+            ->middleware('lms.permission:lms.forum.view')->name('forums.show');
+        Route::post('activities/{activity}/forum/discussions', [LmsForumController::class, 'storeDiscussion'])
+            ->middleware('lms.permission:lms.forum.reply')->name('forums.discussions.store');
+        Route::match(['put', 'patch'], 'activities/{activity}/forum', [LmsForumController::class, 'updateConfig'])
+            ->middleware('lms.permission:lms.forum.create')->name('forums.update');
+        Route::get('activities/{activity}/forum/moderation', [LmsForumController::class, 'moderationQueue'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('forums.moderation');
+        Route::get('activities/{activity}/forum/statistics', [LmsForumController::class, 'statistics'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('forums.statistics');
+        Route::post('activities/{activity}/forum/subscribe', [LmsForumController::class, 'subscribe'])
+            ->middleware('lms.permission:lms.forum.view')->name('forums.subscribe');
+        Route::delete('activities/{activity}/forum/subscribe', [LmsForumController::class, 'unsubscribe'])
+            ->middleware('lms.permission:lms.forum.view')->name('forums.unsubscribe');
+        Route::get('forums/{forum}', [LmsForumController::class, 'showByForum'])
+            ->middleware('lms.permission:lms.forum.view')->name('forums.by-model');
+        Route::post('forums/{forum}/discussions', [LmsForumController::class, 'storeDiscussionByForum'])
+            ->middleware('lms.permission:lms.forum.reply')->name('forums.discussions.by-model');
+        Route::get('discussions/{discussion}', [LmsForumController::class, 'showDiscussion'])
+            ->middleware('lms.permission:lms.forum.view')->name('discussions.show');
+        Route::post('discussions/{discussion}/posts', [LmsForumController::class, 'storePost'])
+            ->middleware('lms.permission:lms.forum.reply')->name('discussions.posts.store');
+        Route::match(['put', 'patch'], 'forum-posts/{post}', [LmsForumController::class, 'updatePost'])
+            ->middleware('lms.permission:lms.forum.reply')->name('forum-posts.update');
+        Route::delete('forum-posts/{post}', [LmsForumController::class, 'destroyPost'])
+            ->middleware('lms.permission:lms.forum.reply')->name('forum-posts.destroy');
+        Route::post('discussions/{discussion}/pin', [LmsForumController::class, 'pin'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('discussions.pin');
+        Route::post('discussions/{discussion}/lock', [LmsForumController::class, 'lock'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('discussions.lock');
+        Route::post('forum-moderation/{type}/{id}/approve', [LmsForumController::class, 'approve'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('forums.moderate.approve');
+        Route::post('forum-moderation/{type}/{id}/hide', [LmsForumController::class, 'hide'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('forums.moderate.hide');
+        Route::delete('forum-moderation/{type}/{id}', [LmsForumController::class, 'destroyModerated'])
+            ->middleware('lms.permission:lms.forum.moderate')->name('forums.moderate.destroy');
+
+        // ---------------- Lesson (§37) ----------------
+        Route::get('activities/{activity}/lesson', [LmsLessonController::class, 'show'])
+            ->middleware('lms.permission:lms.lesson.view')->name('lessons.show');
+        Route::post('activities/{activity}/lesson/progress', [LmsLessonController::class, 'progress'])
+            ->middleware('lms.permission:lms.lesson.view')->name('lessons.progress');
+        Route::get('activities/{activity}/lesson/builder', [LmsLessonController::class, 'builder'])
+            ->middleware('lms.permission:lms.lesson.update,lms.lesson.create')->name('lessons.builder');
+        Route::match(['put', 'patch'], 'activities/{activity}/lesson', [LmsLessonController::class, 'updateConfig'])
+            ->middleware('lms.permission:lms.lesson.update')->name('lessons.update');
+        Route::post('activities/{activity}/lesson/pages', [LmsLessonController::class, 'storePage'])
+            ->middleware('lms.permission:lms.lesson.create')->name('lessons.pages.store');
+        Route::match(['put', 'patch'], 'lesson-pages/{page}', [LmsLessonController::class, 'updatePage'])
+            ->middleware('lms.permission:lms.lesson.update')->name('lesson-pages.update');
+        Route::delete('lesson-pages/{page}', [LmsLessonController::class, 'destroyPage'])
+            ->middleware('lms.permission:lms.lesson.update')->name('lesson-pages.destroy');
+        Route::get('activities/{activity}/lesson/statistics', [LmsLessonController::class, 'statistics'])
+            ->middleware('lms.permission:lms.lesson.update,lms.lesson.create')->name('lessons.statistics');
+        Route::get('lessons/{lesson}', [LmsLessonController::class, 'showByLesson'])
+            ->middleware('lms.permission:lms.lesson.view')->name('lessons.by-model');
+        Route::post('lessons/{lesson}/progress', [LmsLessonController::class, 'progressByLesson'])
+            ->middleware('lms.permission:lms.lesson.view')->name('lessons.progress.by-model');
+
+        // ---------------- Choice (§38) ----------------
+        Route::get('activities/{activity}/choice', [LmsChoiceController::class, 'show'])
+            ->middleware('lms.permission:lms.choice.view')->name('choices.show');
+        Route::match(['put', 'patch'], 'activities/{activity}/choice', [LmsChoiceController::class, 'updateConfig'])
+            ->middleware('lms.permission:lms.choice.create')->name('choices.update');
+        Route::post('activities/{activity}/choice/respond', [LmsChoiceController::class, 'respond'])
+            ->middleware('lms.permission:lms.choice.respond')->name('choices.respond');
+        Route::get('activities/{activity}/choice/results', [LmsChoiceController::class, 'results'])
+            ->middleware('lms.permission:lms.choice.create')->name('choices.results');
+        Route::get('choices/{choice}', [LmsChoiceController::class, 'showByChoice'])
+            ->middleware('lms.permission:lms.choice.view')->name('choices.by-model');
+        Route::post('choices/{choice}/respond', [LmsChoiceController::class, 'respondByChoice'])
+            ->middleware('lms.permission:lms.choice.respond')->name('choices.respond.by-model');
+
+        // ---------------- Survey (§39) ----------------
+        Route::get('activities/{activity}/survey', [LmsSurveyController::class, 'show'])
+            ->middleware('lms.permission:lms.survey.view')->name('surveys.show');
+        Route::match(['put', 'patch'], 'activities/{activity}/survey', [LmsSurveyController::class, 'updateConfig'])
+            ->middleware('lms.permission:lms.survey.create')->name('surveys.update');
+        Route::post('activities/{activity}/survey/submit', [LmsSurveyController::class, 'submit'])
+            ->middleware('lms.permission:lms.survey.respond')->name('surveys.submit');
+        Route::get('activities/{activity}/survey/results', [LmsSurveyController::class, 'results'])
+            ->middleware('lms.permission:lms.survey.create')->name('surveys.results');
+        Route::delete('survey-questions/{question}', [LmsSurveyController::class, 'destroyQuestion'])
+            ->middleware('lms.permission:lms.survey.create')->name('survey-questions.destroy');
+        Route::get('surveys/{survey}', [LmsSurveyController::class, 'showBySurvey'])
+            ->middleware('lms.permission:lms.survey.view')->name('surveys.by-model');
+        Route::post('surveys/{survey}/submit', [LmsSurveyController::class, 'submitBySurvey'])
+            ->middleware('lms.permission:lms.survey.respond')->name('surveys.submit.by-model');
+
+        // ---------------- Nilai aktivitas (§46–§47) ----------------
+        Route::get('courses/{course}/grades', [LmsGradeController::class, 'courseGrades'])
+            ->middleware('lms.permission:lms.grade.view')->name('courses.grades');
+        Route::get('activities/{activity}/grades', [LmsGradeController::class, 'activityGrades'])
+            ->middleware('lms.permission:lms.grade.view')->name('activities.grades');
+        Route::get('activities/{activity}/grade', [LmsGradeController::class, 'activitySummary'])
+            ->middleware('lms.permission:lms.grade.view')->name('activities.grade');
+        Route::post('activities/{activity}/grades', [LmsGradeController::class, 'store'])
+            ->middleware('lms.permission:lms.grade.manage')->name('activities.grades.store');
+        Route::post('activities/{activity}/grades/push', [LmsGradeController::class, 'push'])
+            ->middleware('lms.permission:lms.grade.manage')->name('activities.grades.push');
+        Route::delete('activity-grades/{grade}', [LmsGradeController::class, 'destroy'])
+            ->middleware('lms.permission:lms.grade.manage')->name('activity-grades.destroy');
 
         // ---------------- Pengaturan & integrasi (§35) ----------------
         Route::get('settings', [LmsSettingsController::class, 'show'])

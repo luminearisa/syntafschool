@@ -10,6 +10,7 @@ import {
   Layers,
   MessagesSquare,
   PlayCircle,
+  Plus,
   Rocket,
   Settings2,
   Users,
@@ -24,6 +25,9 @@ import { cn } from '@/lib/utils';
 import { lmsApi } from '../api/lmsApi';
 import { AnnouncementList } from '../components/AnnouncementList';
 import { AnnouncementPanel, EnrollmentPanel, GroupPanel } from '../components/CourseManagePanels';
+import { ActivityWizard } from '../components/activities/ActivityWizard';
+import { activityApi } from '../api/activityApi';
+import type { ActivityTypeValue } from '../types';
 import { ContentBuilder } from '../components/ContentBuilderPanels';
 import { CurriculumAccordion } from '../components/CurriculumAccordion';
 import { ProgressBar } from '../components/ProgressBar';
@@ -40,6 +44,7 @@ export default function LmsCourseDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabKey>('overview');
+  const [activityWizardSection, setActivityWizardSection] = useState<number | null>(null);
 
   const detail = useQuery({
     queryKey: ['lms', 'course', courseId],
@@ -119,10 +124,6 @@ export default function LmsCourseDetailPage() {
       })),
     ]),
   );
-
-  const assignments = structure.flatMap((section) => section.items.filter((item) => item.activity_type === 'ASSIGNMENT'));
-  const quizzes = structure.flatMap((section) => section.items.filter((item) => item.activity_type === 'QUIZ'));
-  const forums = structure.flatMap((section) => section.items.filter((item) => item.activity_type === 'FORUM'));
 
   const tabs: Array<{ key: TabKey; label: string; icon: typeof BookOpen }> = [
     { key: 'overview', label: 'Overview', icon: BookOpen },
@@ -320,9 +321,35 @@ export default function LmsCourseDetailPage() {
         </Card>
       )}
 
-      {tab === 'assignments' && <ActivityListCard title="Tugas" items={assignments} emptyText="Belum ada tugas pada course ini." courseId={course.id} />}
-      {tab === 'quizzes' && <ActivityListCard title="Kuis" items={quizzes} emptyText="Belum ada kuis pada course ini." courseId={course.id} />}
-      {tab === 'discussions' && <ActivityListCard title="Diskusi" items={forums} emptyText="Belum ada forum diskusi." courseId={course.id} />}
+      {tab === 'assignments' && (
+        <CourseActivityPanel
+          courseId={course.id}
+          type="ASSIGNMENT"
+          title="Tugas"
+          canManage={capabilities.manage}
+          onAdd={(sectionId) => setActivityWizardSection(sectionId)}
+        />
+      )}
+
+      {tab === 'quizzes' && (
+        <CourseActivityPanel
+          courseId={course.id}
+          type="QUIZ"
+          title="Kuis"
+          canManage={capabilities.manage}
+          onAdd={(sectionId) => setActivityWizardSection(sectionId)}
+        />
+      )}
+
+      {tab === 'discussions' && (
+        <CourseActivityPanel
+          courseId={course.id}
+          type="FORUM"
+          title="Forum diskusi"
+          canManage={capabilities.manage}
+          onAdd={(sectionId) => setActivityWizardSection(sectionId)}
+        />
+      )}
 
       {tab === 'grades' && (
         <Card>
@@ -373,6 +400,19 @@ export default function LmsCourseDetailPage() {
         </div>
       )}
 
+      {activityWizardSection !== null && (
+        <ActivityWizard
+          open
+          sectionId={activityWizardSection}
+          onClose={() => setActivityWizardSection(null)}
+          onCreated={(activityId) => {
+            toast.success('Aktivitas dibuat sebagai draf');
+            void queryClient.invalidateQueries({ queryKey: ['lms', 'activities', course.id] });
+            navigate(`/lms/activities/${activityId}/manage`);
+          }}
+        />
+      )}
+
       {tab === 'manage' && capabilities.manage && (
         <div className="space-y-6">
           {lookups.data && (
@@ -421,50 +461,97 @@ function Row({ label, value }: { label: string; value: string | number | undefin
   );
 }
 
-function ActivityListCard({
-  title,
-  items,
-  emptyText,
-  courseId,
-}: {
-  title: string;
-  items: Array<{ id: number; title: string; locked: boolean; completed: boolean; lock_reason: string | null }>;
-  emptyText: string;
-  courseId: number;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardBody>
-        {items.length === 0 ? (
-          <EmptyState title={emptyText} />
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {items.map((item) => (
-              <li key={item.id} className="flex items-center gap-3 py-2">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-slate-800">{item.title}</span>
-                  {item.locked && <span className="text-[11px] text-amber-700">🔒 {item.lock_reason}</span>}
-                </span>
-                {item.completed && <Badge tone="green">Selesai</Badge>}
-                {!item.locked && (
-                  <Link to={`/lms/courses/${courseId}/learn/${item.id}`}>
-                    <Button size="sm" variant="outline">
-                      Buka
-                    </Button>
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardBody>
-    </Card>
-  );
-}
 
 function capabilityCanSelfEnroll(course: { course_type: string; visibility: string; status: string }, allowed: boolean): boolean {
   return !allowed && course.course_type !== 'ACADEMIC' && course.visibility === 'PUBLIC' && course.status === 'PUBLISHED';
+}
+
+
+/**
+ * Panel aktivitas Phase 2 pada halaman course (§43).
+ *
+ * Menampilkan aktivitas per tipe beserta status, tenggat, dan tautan ke halaman
+ * pengerjaan/kelola; guru dapat menambah aktivitas lewat wizard.
+ */
+function CourseActivityPanel({
+  courseId,
+  type,
+  title,
+  canManage,
+  onAdd,
+}: {
+  courseId: number;
+  type: ActivityTypeValue;
+  title: string;
+  canManage: boolean;
+  onAdd: (sectionId: number) => void;
+}) {
+  const structure = useQuery({
+    queryKey: ['lms', 'course', courseId],
+    queryFn: () => lmsApi.course(courseId),
+  });
+
+  const activities = useQuery({
+    queryKey: ['lms', 'activities', courseId, type],
+    queryFn: () => activityApi.listForCourse(courseId, { type }),
+  });
+
+  const sections = structure.data?.structure ?? [];
+  const firstSection = sections[0]?.id ?? null;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+        <CardTitle>{title}</CardTitle>
+        {canManage && firstSection !== null && (
+          <Button size="sm" onClick={() => onAdd(firstSection)}>
+            <Plus className="mr-1 h-4 w-4" /> Aktivitas baru
+          </Button>
+        )}
+      </CardHeader>
+      <CardBody className="space-y-3">
+        {activities.isLoading && <Spinner className="h-5 w-5" />}
+
+        {!activities.isLoading && (activities.data?.data ?? []).length === 0 && (
+          <EmptyState
+            title={`Belum ada ${title.toLowerCase()}`}
+            description={canManage ? 'Tambahkan aktivitas agar siswa dapat mengerjakannya.' : 'Guru belum menambahkan aktivitas ini.'}
+          />
+        )}
+
+        {(activities.data?.data ?? []).map((activity) => (
+          <div key={activity.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Link to={`/lms/activities/${activity.id}`} className="truncate text-sm font-semibold text-slate-900 hover:text-brand-700">
+                  {activity.title}
+                </Link>
+                <Badge tone={activity.status === 'PUBLISHED' ? 'green' : activity.status === 'DRAFT' ? 'gray' : 'amber'}>
+                  {activity.status_label}
+                </Badge>
+                {activity.is_graded && <Badge tone="brand">Dinilai</Badge>}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {activity.due_at ? `Tenggat ${formatDate(activity.due_at, true)}` : 'Tanpa tenggat'}
+                {activity.learning_item ? ` · ${activity.learning_item.title}` : ''}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link to={`/lms/activities/${activity.id}`}>
+                <Button size="sm" variant="outline">
+                  {canManage ? 'Pratinjau' : 'Kerjakan'}
+                </Button>
+              </Link>
+              {canManage && (
+                <Link to={`/lms/activities/${activity.id}/manage`}>
+                  <Button size="sm">Kelola</Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardBody>
+    </Card>
+  );
 }
