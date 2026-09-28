@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,8 @@ export function Modal({
   footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
+  const titleId = useId();
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     if (open) document.addEventListener('keydown', handler);
@@ -33,17 +35,22 @@ export function Modal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-950/55 p-3 backdrop-blur-[2px] sm:items-center sm:p-4">
       <div
         className={cn(
-          'my-8 w-full rounded-xl bg-white shadow-xl',
+          'ui-modal my-8 w-full rounded-xl bg-white shadow-xl',
           sizes[size],
         )}
         role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+          <h3 id={titleId} className="text-base font-semibold text-slate-900">{title}</h3>
           <button
+            type="button"
+            aria-label="Tutup dialog"
+            title="Tutup"
             onClick={onClose}
             className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >

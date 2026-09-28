@@ -7,6 +7,7 @@ interface SearchSelectProps {
   options: SelectOption[];
   value?: string | number | null;
   onChange: (value: string | number | '') => void;
+  onSearchChange?: (query: string) => void;
   placeholder?: string;
   error?: string;
   disabled?: boolean;
@@ -22,6 +23,7 @@ export function SearchSelect({
   options,
   value,
   onChange,
+  onSearchChange,
   placeholder = '-- Pilih --',
   error,
   disabled,
@@ -49,6 +51,7 @@ export function SearchSelect({
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
         setQuery('');
+        onSearchChange?.('');
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -59,6 +62,7 @@ export function SearchSelect({
     onChange(val);
     setOpen(false);
     setQuery('');
+    onSearchChange?.('');
   };
 
   return (
@@ -68,11 +72,11 @@ export function SearchSelect({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:bg-slate-50',
+          'ui-control flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 text-left text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:bg-slate-50',
           error ? 'border-red-400' : 'border-slate-300',
         )}
       >
-        <span className={cn('truncate', !selected && 'text-slate-400')}>
+        <span className={cn('truncate', !selected && 'text-slate-500')}>
           {selected ? selected.label : placeholder}
         </span>
         <span className="flex items-center gap-1">
@@ -82,6 +86,7 @@ export function SearchSelect({
               onClick={(e) => {
                 e.stopPropagation();
                 onChange('');
+                onSearchChange?.('');
               }}
             />
           )}
@@ -96,9 +101,12 @@ export function SearchSelect({
             <input
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                onSearchChange?.(e.target.value);
+              }}
               placeholder="Cari..."
-              className="h-6 w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              className="h-6 w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
             />
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">

@@ -25,10 +25,28 @@ class FinanceBillingController extends BaseApiController
     {
     }
 
+    /** Pilihan santri seperlunya untuk petugas yang berhak membuat tagihan. */
+    public function studentOptions(Request $request): JsonResponse
+    {
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $term = trim((string) ($data['search'] ?? ''));
+
+        $students = Student::query()
+            ->where('is_active', true)
+            ->when($term !== '', fn (Builder $q) => $q->where(fn (Builder $inner) => $inner
+                ->where('full_name', 'like', "%{$term}%")
+                ->orWhere('nis', 'like', "%{$term}%")))
+            ->orderBy('full_name')
+            ->limit(200)
+            ->get(['id', 'nis', 'full_name']);
+
+        return $this->successResponse($students, 'Pilihan siswa berhasil diambil');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = FinanceBilling::query()
-            ->with(['student', 'costCenter'])
+            ->with(['student', 'costCenter', 'invoice'])
             ->withCount('items')
             ->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->string('status')))
             ->when($request->filled('student_id'), fn (Builder $q) => $q->where('student_id', (int) $request->input('student_id')))

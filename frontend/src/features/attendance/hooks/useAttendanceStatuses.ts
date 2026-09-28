@@ -1,39 +1,40 @@
 import { useQuery } from '@tanstack/react-query';
-import { masterDataApi } from '@/features/master-data/api/masterDataApi';
+import { api } from '@/lib/axios';
+import type { ApiResponse } from '@/types';
 import type { AttendanceCode } from '@/types/attendance';
 
-/** Baris master data status presensi (butuh `code`, bukan hanya nama). */
+/** Baris status presensi yang diperlukan oleh form & tombol status cepat. */
 export interface AttendanceStatusRow {
   id: number;
   code: string;
   name: string;
 }
 
-/**
- * Status presensi beserta kodenya.
- *
- * `useOptions('attendance-statuses')` hanya mengembalikan `{value,label}`,
- * sedangkan tombol status cepat butuh `code` (H/A/I/S/T) untuk menentukan
- * tombol mana yang aktif.
- */
+interface AttendanceLookups {
+  statuses: AttendanceStatusRow[];
+  leave_types: { id: number; name: string; requires_attachment: boolean }[];
+  semesters: { id: number; name: string; academic_year_id: number; academic_year?: { id: number; name: string } | null }[];
+}
+
 export function useAttendanceStatuses() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['options', 'attendance-statuses', 'with-code'],
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['attendance', 'lookups'],
     staleTime: 1000 * 60 * 30,
     queryFn: async () => {
-      const rows = await masterDataApi.all('attendance-statuses');
-      return rows.map<AttendanceStatusRow>((row) => ({
-        id: Number(row.id),
-        code: String(row.code ?? ''),
-        name: String(row.name ?? ''),
-      }));
+      const response = await api.get<ApiResponse<AttendanceLookups>>('/attendance-lookups');
+      return response.data.data;
     },
   });
 
-  return { statuses: data ?? [], isLoading };
+  return {
+    statuses: data?.statuses ?? [],
+    leaveTypeOptions: (data?.leave_types ?? []).map((row) => ({ value: row.id, label: row.name })),
+    semesterOptions: (data?.semesters ?? []).map((row) => ({ value: row.id, label: `${row.name} · ${row.academic_year?.name ?? ''}` })),
+    isLoading,
+    isError,
+  };
 }
 
-/** Label singkat untuk tombol status cepat. */
 export const CODE_LABELS: Record<string, string> = {
   H: 'Hadir',
   A: 'Alpa',
@@ -42,33 +43,19 @@ export const CODE_LABELS: Record<string, string> = {
   T: 'Terlambat',
 };
 
-/**
- * Warna badge per kode status.
- *
- * Dijaga di satu tempat supaya tabel presensi, rekap, dan koreksi tidak
- * memakai warna yang berbeda untuk status yang sama.
- */
 export function codeTone(code: string | null | undefined) {
   switch (code as AttendanceCode | undefined | null) {
-    case 'H':
-      return 'green' as const;
-    case 'T':
-      return 'amber' as const;
-    case 'I':
-      return 'blue' as const;
-    case 'S':
-      return 'brand' as const;
-    case 'A':
-      return 'red' as const;
-    default:
-      return 'gray' as const;
+    case 'H': return 'green' as const;
+    case 'T': return 'amber' as const;
+    case 'I': return 'blue' as const;
+    case 'S': return 'brand' as const;
+    case 'A': return 'red' as const;
+    default: return 'gray' as const;
   }
 }
 
-/** Status yang wajib menyertakan jenis izin (sama dengan aturan backend). */
 export const CODES_REQUIRING_LEAVE_TYPE: string[] = ['I', 'S'];
 
-/** Warna persentase kehadiran. */
 export function percentageTone(percentage: number) {
   if (percentage >= 90) return 'green' as const;
   if (percentage >= 75) return 'amber' as const;

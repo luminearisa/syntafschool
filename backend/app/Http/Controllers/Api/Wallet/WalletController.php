@@ -7,6 +7,7 @@ use App\Http\Requests\Wallet\WalletBlockRequest;
 use App\Http\Requests\Wallet\WalletStoreRequest;
 use App\Http\Requests\Wallet\WalletUpdateRequest;
 use App\Http\Resources\WalletResource;
+use App\Models\Student;
 use App\Models\Wallet;
 use App\Services\Wallet\WalletService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -43,6 +44,24 @@ class WalletController extends BaseApiController
      * `search` menutup nomor rekening, nama pemilik, NIS, NIP, ID pemilik
      * (termasuk parent id), dan UID kartu RFID.
      */
+    /** Pilihan santri minimum untuk membuka wallet tanpa membuka endpoint data siswa umum. */
+    public function studentOptions(Request $request): JsonResponse
+    {
+        $data = $request->validate(['search' => ['nullable', 'string', 'max:100']]);
+        $term = trim((string) ($data['search'] ?? ''));
+
+        $students = Student::query()
+            ->where('is_active', true)
+            ->when($term !== '', fn ($query) => $query->where(fn ($inner) => $inner
+                ->where('full_name', 'like', "%{$term}%")
+                ->orWhere('nis', 'like', "%{$term}%")))
+            ->orderBy('full_name')
+            ->limit(200)
+            ->get(['id', 'nis', 'full_name']);
+
+        return $this->successResponse($students, 'Pilihan santri berhasil diambil');
+    }
+
     public function index(Request $request): JsonResponse
     {
         $wallets = $this->paginate($request, $this->wallets->query($request));

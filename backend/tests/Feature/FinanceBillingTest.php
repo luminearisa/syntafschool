@@ -92,6 +92,27 @@ class FinanceBillingTest extends TestCase
     // Generasi billing (§13, §14)
     // =================================================================
 
+    public function test_daftar_billing_memuat_nomor_invoice_yang_sudah_diterbitkan(): void
+    {
+        $this->actingAsRole('finance-admin');
+        $package = $this->package('PKT-LIST-INVOICE');
+        $student = $this->student('S-LIST-INVOICE');
+
+        $generated = $this->postJson('/api/v1/finance/billings/generate', [
+            'fee_package_id' => $package->id,
+            'period_key' => '2026-11',
+            'student_ids' => [$student->id],
+        ])->assertOk();
+        $billingId = (int) $generated->json('data.billings.0');
+        $invoice = $this->postJson("/api/v1/finance/billings/{$billingId}/invoice")
+            ->assertCreated()
+            ->json('data');
+
+        $this->getJson('/api/v1/finance/billings')
+            ->assertOk()
+            ->assertJsonPath('data.0.invoice_number', $invoice['invoice_number']);
+    }
+
     public function test_generate_billing_dari_paket_dan_idempoten(): void
     {
         $this->actingAsRole('finance-admin');

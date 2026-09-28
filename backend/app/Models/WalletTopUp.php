@@ -20,6 +20,9 @@ class WalletTopUp extends BaseModel
 {
     use LogsWalletActivity;
 
+    // The schema intentionally uses the compact name `wallet_topups`.
+    protected $table = 'wallet_topups';
+
     public const METHOD_GATEWAY = 'gateway';
 
     public const METHOD_MANUAL = 'manual';

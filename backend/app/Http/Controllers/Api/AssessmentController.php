@@ -5,9 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Assessment\AssessmentRequest;
 use App\Http\Resources\AssessmentResource;
 use App\Models\Assessment;
+use App\Models\AssessmentType;
 use App\Models\ClassStudent;
 use App\Models\ClassSubject;
+use App\Models\Employee;
 use App\Models\PassingGradeRule;
+use App\Models\SchoolClass;
+use App\Models\Subject;
 use App\Models\Remedial;
 use App\Models\Score;
 use App\Models\Semester;
@@ -47,6 +51,17 @@ class AssessmentController extends BaseApiController
     protected array $with = ['schoolClass', 'subject', 'semester', 'teacher', 'assessmentType'];
 
     public function __construct(protected GradingService $grading) {}
+
+    /** Lookups khusus form assessment; rute dibatasi ke pemegang assessment.create. */
+    public function lookups(): JsonResponse
+    {
+        return $this->successResponse([
+            'classes' => SchoolClass::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code', 'academic_year_id']),
+            'semesters' => Semester::query()->with('academicYear:id,name')->orderByDesc('start_date')->get(['id', 'academic_year_id', 'name', 'start_date', 'end_date', 'is_active']),
+            'types' => AssessmentType::query()->active()->ordered()->get(['id', 'code', 'name', 'category']),
+            'teachers' => Employee::query()->where('is_teacher', true)->where('is_active', true)->orderBy('full_name')->get(['id', 'nip', 'full_name']),
+        ], 'Referensi penilaian berhasil diambil');
+    }
 
     public function index(Request $request): JsonResponse
     {

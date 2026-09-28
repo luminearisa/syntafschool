@@ -13,7 +13,6 @@ import { RolesPage } from '@/features/rbac/pages/RolesPage';
 import { EmployeesPage } from '@/features/employees/pages/EmployeesPage';
 import { StudentsPage } from '@/features/students/pages/StudentsPage';
 import { GuardiansPage } from '@/features/students/pages/GuardiansPage';
-import ModulePlaceholderPage from '@/features/common/pages/ModulePlaceholderPage';
 import NotFoundPage from '@/features/common/pages/NotFoundPage';
 import { TahfizPublicRegistrationPage } from '@/features/tahfiz/pages/TahfizPublicRegistrationPage';
 import { LibraryOpacPage } from '@/features/library/pages/LibraryOpacPage';
@@ -27,27 +26,6 @@ const masterRoutes = MASTER_RESOURCES.map((def) => ({
   element: (
     <PermissionGuard permission="master-data.view">
       <MasterDataPage def={def} />
-    </PermissionGuard>
-  ),
-}));
-
-/** Route placeholder untuk modul yang belum dibangun */
-const placeholderModules: { path: string; title: string; permission: string }[] = [
-  { path: 'employees/attendance', title: 'Absensi Pegawai', permission: 'employee.view' },
-  { path: 'finance/invoices', title: 'Tagihan', permission: 'finance.view' },
-  { path: 'finance/payments', title: 'Pembayaran', permission: 'finance.view' },
-  { path: 'finance/savings', title: 'Tabungan', permission: 'finance.view' },
-  { path: 'assessments', title: 'Penilaian', permission: 'assessment.view' },
-  { path: 'assessments/report-cards', title: 'Rapor', permission: 'assessment.view' },
-  { path: 'inventory', title: 'Inventaris', permission: 'inventory.view' },
-  { path: 'settings/general', title: 'Pengaturan Umum', permission: 'setting.view' },
-];
-
-const placeholderRoutes = placeholderModules.map((m) => ({
-  path: m.path,
-  element: (
-    <PermissionGuard permission={m.permission}>
-      <ModulePlaceholderPage title={m.title} />
     </PermissionGuard>
   ),
 }));
@@ -136,7 +114,6 @@ export const router = createBrowserRouter([
               </PermissionGuard>
             ),
           },
-          ...placeholderRoutes,
           { path: '404', element: <NotFoundPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],

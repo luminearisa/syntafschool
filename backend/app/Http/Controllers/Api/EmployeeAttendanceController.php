@@ -7,6 +7,8 @@ use App\Http\Resources\EmployeeAttendanceResource;
 use App\Models\AttendanceStatus;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
+use App\Models\LeaveType;
+use App\Models\Semester;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,6 +29,16 @@ class EmployeeAttendanceController extends BaseApiController
     ];
 
     protected array $with = ['employee', 'leaveType'];
+
+    /** Lookups presensi yang dapat dibaca petugas kepegawaian maupun akademik. */
+    public function lookups(): JsonResponse
+    {
+        return $this->successResponse([
+            'statuses' => AttendanceStatus::query()->orderBy('id')->get(['id', 'code', 'name']),
+            'leave_types' => LeaveType::query()->orderBy('name')->get(['id', 'name', 'requires_attachment']),
+            'semesters' => Semester::query()->with('academicYear:id,name')->orderByDesc('start_date')->get(['id', 'academic_year_id', 'name', 'start_date', 'end_date', 'is_active']),
+        ], 'Referensi presensi berhasil diambil');
+    }
 
     public function index(Request $request): JsonResponse
     {

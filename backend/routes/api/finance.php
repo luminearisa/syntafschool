@@ -229,6 +229,8 @@ Route::prefix('finance')->name('finance.')->group(function (): void {
         ->middleware('permission:finance.billing.view')->name('billings.other.preview');
     Route::post('billings/other/generate', [FinanceBillingController::class, 'otherGenerate'])
         ->middleware('permission:finance.billing.create')->name('billings.other.generate');
+    Route::get('billing-students', [FinanceBillingController::class, 'studentOptions'])
+        ->middleware('permission:finance.billing.create')->name('billing-students');
     Route::get('billings', [FinanceBillingController::class, 'index'])
         ->middleware('permission:finance.billing.view')->name('billings.index');
     Route::post('billings', [FinanceBillingController::class, 'store'])

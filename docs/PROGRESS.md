@@ -537,15 +537,32 @@ Modul mandiri dengan 6 tabel, 6 model, 5 service, 6 controller, **24 route** di 
 - [ ] `npm run lint` masih tidak dapat dijalankan (eslint belum terpasang — berlaku seluruh repo).
 - [ ] **`npm audit` melaporkan 2 kerentanan moderate pada `react-router-dom`** (open redirect & constructor injection) — **pre-existing**, bukan dari dependensi baru; perbaikannya butuh upgrade mayor ke react-router 7 sehingga tidak dilakukan tanpa persetujuan.
 
+### Kesiapan UI end-to-end — 2026-09-28
+
+Rute yang sebelumnya menampilkan `ModulePlaceholderPage` sekarang memakai halaman operasional dan API nyata. Cakupan yang ditutup pada batch ini:
+
+- [x] **Tagihan & invoice** — buat billing siswa dengan rincian, terbitkan invoice, cari/filter daftar tagihan dan sisa piutang.
+- [x] **Pembayaran** — catat tunai atau transfer, tandai transfer menunggu verifikasi, verifikasi/tolak, dan perbarui piutang melalui service ledger finance.
+- [x] **Tabungan / wallet** — buka wallet siswa, lihat saldo/buku besar, dan verifikasi antrean top up. Saldo tetap hanya bergerak lewat ledger.
+- [x] **Absensi pegawai** — alias menu Kepegawaian memakai halaman presensi/rekap yang sudah ada; permission UI dan endpoint mendukung `employee.*` tanpa memutus rute akademik lama.
+- [x] **Penilaian inti (A7)** — CRUD penilaian, input nilai kelas secara bulk, dan alur ajukan → verifikasi → finalisasi/lock → buka revisi.
+- [x] **Rapor inti (A9)** — generate snapshot dari nilai yang sudah final + rekap kehadiran, catatan wali kelas, review/persetujuan/publikasi, dan PDF per siswa. Laporan yang terbit tidak dapat dibuat ulang.
+- [x] **Inventaris sekolah** — CRUD aset/persediaan, saldo awal, mutasi masuk/keluar beralasan, riwayat audit, dan filter stok menipis; tidak mengubah stock opname koleksi perpustakaan.
+- [x] **Pengaturan umum** — baca/tulis profil sekolah dengan validasi identitas, kontak, dan jenjang.
+
+**Verifikasi batch:** frontend `npm run build` sukses; backend 22 tes terkait termasuk RBAC (89 assertion), ditambah regression suite Assessment (45/320), Attendance (56/218), serta Finance Billing/Payment (37/240) lulus. Browser smoke pada alur tagihan → invoice → pembayaran tunai berhasil; wallet, inventaris, rapor, pengaturan, dan alias absensi termuat. Vite masih memberi peringatan chunk JavaScript >500 kB; pemecahan bundle belum dikerjakan.
+
+**Batas cakupan yang masih tersisa:** halaman konfigurasi bobot/skala/KKTP dan remedial A7; transkrip/dokumen akademik A9; modul ujian A8, kenaikan kelas A10, analitik A12; operasi finance lain (pengeluaran, pembelian, closing, rekonsiliasi); top up dari portal pengguna tetap lewat alur portal terpisah.
+
 ### Tahap berikutnya
 - [x] ~~**Modul Tahfiz / Al-Quran Management System**~~ — **selesai** (backend + frontend), lihat bagian di atas
 - [x] ~~**Modul Library / Perpustakaan — Step 1 (Fondasi)**~~ — **selesai**
 - [x] ~~**Modul Library / Perpustakaan — Step 2 (Master Data)**~~ — **selesai**
 - [x] ~~**Modul Library / Perpustakaan — Fase 3 (Katalog, Koleksi & Keanggotaan + OPAC)**~~ — **selesai**
 - [x] ~~**Modul Library / Perpustakaan — Fase 4 + Phase 5 (Sirkulasi, Laporan, Finalisasi)**~~ — **selesai** (backend + frontend); Phase 5 adalah fase final sesuai spesifikasi
-- [ ] Frontend A7 (`src/features/assessment/**`)
+- [x] A7 — frontend inti penilaian & input nilai; konfigurasi bobot/KKTP/remedial masih menyusul
 - [ ] **A8** Bank Soal & Ujian
-- [ ] **A9** Rapor / Transkrip (+ ekspor PDF)
+- [x] A9 — generate, review, publikasi, dan PDF rapor; transkrip/dokumen masih menyusul
 - [ ] **A10** Kenaikan Kelas & Kelulusan
 - [ ] **A12** Analitik, Alur Persetujuan, Ekspor
 - [ ] Upload foto siswa (kolom `students.photo_path` sudah ada)
@@ -583,14 +600,14 @@ Seeder berikut dibuat agar modul di atasnya bisa diuji:
 - Belum ada pagination server-side untuk relasi anak (wali & riwayat dimuat sekaligus di detail siswa) — aman untuk skala sekolah, perlu ditinjau bila satu siswa punya riwayat lintas bertahun-tahun
 
 ## Fase 3 — Keuangan & Penilaian
-- [ ] Komponen biaya & tagihan
-- [ ] Pembayaran & tabungan
-- [ ] Input nilai & rapor
+- [x] Billing/invoice siswa, pembayaran & verifikasi, daftar wallet/saldo dan top up pending (alur inti frontend + API)
+- [x] CRUD penilaian, input nilai massal, transisi submit/verifikasi/finalisasi dan rapor semester/PDF
+- [ ] Konfigurasi bobot/skala/KKTP/remedial A7, transkrip/dokumen A9, serta modul A8/A10/A12
 
 ## Fase 4 — Pendukung
-- [ ] Perpustakaan
-- [ ] Inventaris
-- [ ] Laporan & ekspor
+- [x] Perpustakaan (lihat penyelesaian modul Library di atas)
+- [x] Inventaris sekolah dengan mutasi stok yang dapat diaudit
+- [ ] Laporan dan ekspor lintas modul
 
 ## Fase 5 — Portal & PPDB
 - [ ] Portal siswa

@@ -45,6 +45,15 @@ export const domainRoutes: RouteObject[] = [
       </PermissionGuard>
     ),
   },
+  {
+    // Alias untuk menu Kepegawaian; memakai layar dan data yang sama.
+    path: 'employees/attendance',
+    element: (
+      <PermissionGuard permission="employee.view">
+        <EmployeeAttendancePage />
+      </PermissionGuard>
+    ),
+  },
 ];
 
 export const domainMenu: MenuChild[] = [

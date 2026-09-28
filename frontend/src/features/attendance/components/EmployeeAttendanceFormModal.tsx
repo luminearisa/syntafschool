@@ -8,7 +8,6 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { SearchSelect } from '@/components/ui/SearchSelect';
 import { useEmployeeOptions } from '@/hooks/useLookupOptions';
-import { useOptions } from '@/hooks/useOptions';
 import type { EmployeeAttendance, EmployeeAttendancePayload } from '@/types/attendance';
 
 interface Props {
@@ -55,8 +54,7 @@ export function EmployeeAttendanceFormModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { options: employeeOptions } = useEmployeeOptions(false);
-  const { options: leaveTypeOptions } = useOptions('leave-types');
-  const { statuses } = useAttendanceStatuses();
+  const { leaveTypeOptions, statuses } = useAttendanceStatuses();
 
   useEffect(() => {
     if (!open) return;

@@ -1,58 +1,86 @@
-import { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, GraduationCap } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { ChevronDown, GraduationCap, Sparkles, X } from 'lucide-react';
 import { MENU_ITEMS, type MenuItem } from '@/constants/menu';
 import { usePermission } from '@/hooks/usePermission';
 import { cn } from '@/lib/utils';
 
-function NavChild({ label, to }: { label: string; to: string }) {
+function NavChild({
+  label,
+  to,
+  siblingPaths,
+  onNavigate,
+}: {
+  label: string;
+  to: string;
+  siblingPaths: string[];
+  onNavigate?: () => void;
+}) {
+  const { pathname } = useLocation();
+  const pathMatches = pathname === to || pathname.startsWith(`${to}/`);
+  const deeperSiblingMatches = siblingPaths.some(
+    (path) => path.startsWith(`${to}/`) && (pathname === path || pathname.startsWith(`${path}/`)),
+  );
+  const isActive = pathMatches && !deeperSiblingMatches;
+
   return (
-    <NavLink
+    <Link
       to={to}
-      className={({ isActive }) =>
-        cn(
-          'block rounded-md px-3 py-1.5 text-sm transition-colors',
-          isActive
-            ? 'bg-brand-600/10 font-medium text-brand-700'
-            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
-        )
-      }
+      onClick={onNavigate}
+      aria-current={isActive ? 'page' : undefined}
+      className={cn('sidebar-child-link', isActive && 'is-active')}
     >
       {label}
-    </NavLink>
+    </Link>
   );
 }
 
-function NavGroup({ item }: { item: MenuItem }) {
+function NavGroup({
+  item,
+  onNavigate,
+}: {
+  item: MenuItem;
+  onNavigate?: () => void;
+}) {
   const location = useLocation();
   const children = item.children ?? [];
-  const hasActiveChild = children.some((c) =>
-    location.pathname.startsWith(c.to),
+  const groupId = useId();
+  const hasActiveChild = children.some(
+    (child) => location.pathname === child.to || location.pathname.startsWith(`${child.to}/`),
   );
   const [open, setOpen] = useState(hasActiveChild);
   const Icon = item.icon;
 
+  useEffect(() => {
+    if (hasActiveChild) setOpen(true);
+  }, [hasActiveChild]);
+  const siblingPaths = children.map((child) => child.to);
+
   return (
-    <div>
+    <div className="sidebar-nav-group">
       <button
-        onClick={() => setOpen((o) => !o)}
+        type="button"
+        aria-expanded={open}
+        aria-controls={groupId}
+        onClick={() => setOpen((value) => !value)}
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-          hasActiveChild
-            ? 'text-brand-700'
-            : 'text-slate-600 hover:bg-slate-100',
+          'sidebar-link sidebar-group-trigger',
+          hasActiveChild && 'has-active-child',
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left">{item.label}</span>
-        <ChevronDown
-          className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
-        />
+        <Icon className="sidebar-link-icon" aria-hidden="true" />
+        <span>{item.label}</span>
+        <ChevronDown className="sidebar-chevron" aria-hidden="true" />
       </button>
       {open && children.length > 0 && (
-        <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 pl-3">
-          {children.map((c) => (
-            <NavChild key={c.to} {...c} />
+        <div id={groupId} className="sidebar-children">
+          {children.map((child) => (
+            <NavChild
+              key={child.to}
+              {...child}
+              siblingPaths={siblingPaths}
+              onNavigate={onNavigate}
+            />
           ))}
         </div>
       )}
@@ -60,57 +88,74 @@ function NavGroup({ item }: { item: MenuItem }) {
   );
 }
 
-/** Saring item menu sesuai permission pengguna */
+/** Filter the menu to the permissions held by the current user. */
 function useFilteredMenu(): MenuItem[] {
   const { can } = usePermission();
 
   return MENU_ITEMS.map((item) => {
     if (item.children) {
-      const children = item.children.filter((c) => can(c.permission));
-      if (!can(item.permission) && children.length === 0) return null;
+      const children = item.children.filter((child) => can(child.permission));
+      if (children.length === 0) return null;
       return { ...item, children };
     }
     return can(item.permission) ? item : null;
-  }).filter((i): i is MenuItem => i !== null);
+  }).filter((item): item is MenuItem => item !== null);
 }
 
-export function Sidebar() {
+export function Sidebar({
+  onNavigate,
+  onClose,
+}: {
+  onNavigate?: () => void;
+  onClose?: () => void;
+} = {}) {
   const menu = useFilteredMenu();
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-16 items-center gap-2 border-b border-slate-100 px-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white">
-          <GraduationCap className="h-5 w-5" />
+    <aside className="app-sidebar" aria-label="Navigasi utama">
+      <div className="sidebar-brand-row">
+        <div className="sidebar-brand-mark" aria-hidden="true">
+          <GraduationCap className="h-5 w-5" strokeWidth={1.8} />
         </div>
-        <div className="leading-tight">
-          <p className="text-sm font-bold text-slate-900">Syntaf School</p>
-          <p className="text-[11px] text-slate-400">ERP Sekolah</p>
+        <div>
+          <p className="sidebar-brand-title">Syntaf School</p>
+          <p className="sidebar-brand-subtitle">ERP sekolah</p>
         </div>
-      </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {menu.map((item) =>
-          item.children ? (
-            <NavGroup key={item.label} item={item} />
-          ) : (
-            <NavLink
-              key={item.to}
-              to={item.to!}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-brand-600 text-white'
-                    : 'text-slate-600 hover:bg-slate-100',
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ),
+        {onClose && (
+          <button type="button" className="sidebar-close-button" aria-label="Tutup navigasi" onClick={onClose}>
+            <X aria-hidden="true" />
+          </button>
         )}
+      </div>
+
+      <nav className="sidebar-nav" aria-label="Menu aplikasi">
+        <p className="sidebar-section-label">Navigasi utama</p>
+        <div className="sidebar-menu-list">
+          {menu.map((item) =>
+            item.children ? (
+              <NavGroup key={item.label} item={item} onNavigate={onNavigate} />
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to!}
+                end={item.to === '/'}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  cn('sidebar-link', isActive && 'is-active')
+                }
+              >
+                <item.icon className="sidebar-link-icon" aria-hidden="true" />
+                <span>{item.label}</span>
+              </NavLink>
+            ),
+          )}
+        </div>
       </nav>
+
+      <div className="sidebar-footer">
+        <Sparkles className="h-3.5 w-3.5 text-emerald-300" aria-hidden="true" />
+        <span>Ruang kerja sekolah</span>
+      </div>
     </aside>
   );
 }

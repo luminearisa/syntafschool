@@ -12,7 +12,6 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Textarea } from '@/components/ui/Textarea';
 import { SearchSelect } from '@/components/ui/SearchSelect';
 import { useStudentOptions } from '@/hooks/useLookupOptions';
-import { useOptions } from '@/hooks/useOptions';
 import type { AttendanceCorrectionPayload } from '@/types/attendance';
 
 interface Props {
@@ -52,8 +51,7 @@ export function CorrectionFormModal({ open, submitting, serverErrors, onClose, o
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { options: studentOptions } = useStudentOptions();
-  const { options: leaveTypeOptions } = useOptions('leave-types');
-  const { statuses } = useAttendanceStatuses();
+  const { leaveTypeOptions, statuses } = useAttendanceStatuses();
 
   useEffect(() => {
     if (!open) return;

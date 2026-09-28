@@ -19,18 +19,20 @@ import { ppdbMenu } from '@/routes/domains/ppdb';
 import { tahfizMenu } from '@/routes/domains/tahfiz';
 import { libraryMenu } from '@/routes/domains/library';
 import { boardingMenu } from '@/routes/domains/boarding';
+import { financeMenu } from '@/routes/domains/finance';
+import { assessmentsMenu } from '@/routes/domains/assessments';
 
 export interface MenuChild {
   label: string;
   to: string;
-  permission?: string;
+  permission?: string | string[];
 }
 
 export interface MenuItem {
   label: string;
   icon: LucideIcon;
   to?: string;
-  permission?: string;
+  permission?: string | string[];
   children?: MenuChild[];
 }
 
@@ -84,21 +86,14 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     label: 'Keuangan',
     icon: Wallet,
-    permission: 'finance.view',
-    children: [
-      { label: 'Tagihan', to: '/finance/invoices', permission: 'finance.view' },
-      { label: 'Pembayaran', to: '/finance/payments', permission: 'finance.view' },
-      { label: 'Tabungan', to: '/finance/savings', permission: 'finance.view' },
-    ],
+    permission: ['finance.view', 'wallet.view'],
+    children: financeMenu,
   },
   {
     label: 'Penilaian',
     icon: FileBarChart,
     permission: 'assessment.view',
-    children: [
-      { label: 'Penilaian', to: '/assessments', permission: 'assessment.view' },
-      { label: 'Rapor', to: '/assessments/report-cards', permission: 'assessment.view' },
-    ],
+    children: assessmentsMenu,
   },
   {
     label: "Tahfiz / Al-Qur'an",

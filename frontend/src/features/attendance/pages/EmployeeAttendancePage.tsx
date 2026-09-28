@@ -136,7 +136,7 @@ export function EmployeeAttendancePage() {
           >
             <RefreshCw className={listQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </Button>
-          <Can perm={['academic.attendance', 'academic.create']}>
+          <Can perm={['employee.create', 'academic.attendance', 'academic.create']}>
             <Button
               onClick={() => {
                 setEditing(null);
@@ -219,7 +219,7 @@ export function EmployeeAttendancePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-2 font-medium">Pegawai</th>
                   <th className="px-4 py-2 font-medium">Tanggal</th>
                   <th className="px-4 py-2 font-medium">Masuk</th>
@@ -237,7 +237,7 @@ export function EmployeeAttendancePage() {
                       <div className="font-medium text-slate-800">
                         {row.employee?.full_name ?? '-'}
                       </div>
-                      <div className="font-mono text-xs text-slate-400">
+                      <div className="font-mono text-xs text-slate-500">
                         {row.employee?.nip ?? ''}
                       </div>
                     </td>
@@ -257,30 +257,34 @@ export function EmployeeAttendancePage() {
                     </td>
                     <td className="px-4 py-2">
                       <Can
-                        perm={['academic.attendance', 'academic.update']}
+                        perm={['employee.update', 'employee.delete', 'academic.attendance', 'academic.update', 'academic.delete']}
                         fallback={<span className="text-xs text-slate-400">—</span>}
                       >
                         <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Edit"
-                            onClick={() => {
-                              setEditing(row);
-                              setServerErrors({});
-                              setFormOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Hapus"
-                            onClick={() => setDeleting(row)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                          </Button>
+                          <Can perm={['employee.update', 'academic.attendance', 'academic.update']}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Edit"
+                              onClick={() => {
+                                setEditing(row);
+                                setServerErrors({});
+                                setFormOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </Can>
+                          <Can perm={['employee.delete', 'academic.attendance', 'academic.delete']}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Hapus"
+                              onClick={() => setDeleting(row)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </Can>
                         </div>
                       </Can>
                     </td>
@@ -329,7 +333,7 @@ export function EmployeeAttendancePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-400">
+                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-2 font-medium">Pegawai</th>
                   <th className="px-3 py-2 text-center font-medium">Hari Tercatat</th>
                   <th className="px-3 py-2 text-center font-medium">H</th>
@@ -344,7 +348,7 @@ export function EmployeeAttendancePage() {
                   <tr key={item.employee_id} className="border-b border-slate-50 last:border-0">
                     <td className="px-4 py-2">
                       <div className="font-medium text-slate-800">{item.employee.full_name}</div>
-                      <div className="font-mono text-xs text-slate-400">{item.employee.nip ?? ''}</div>
+                      <div className="font-mono text-xs text-slate-500">{item.employee.nip ?? ''}</div>
                     </td>
                     <td className="px-3 py-2 text-center text-slate-700">{item.total_days}</td>
                     <td className="px-3 py-2 text-center text-slate-700">{item.present}</td>

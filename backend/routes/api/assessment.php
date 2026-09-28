@@ -87,6 +87,10 @@ Route::match(['put', 'patch'], 'grading-formulas/{formula}', [GradingFormulaCont
 Route::delete('grading-formulas/{formula}', [GradingFormulaController::class, 'destroy'])
     ->middleware('permission:assessment.delete')->name('grading-formulas.destroy');
 
+// Lookups form pembuatan penilaian (khusus pengguna yang boleh membuat penilaian).
+Route::get('assessment-lookups', [AssessmentController::class, 'lookups'])
+    ->middleware('permission:assessment.view')->name('assessment-lookups');
+
 // ---------------------------------------------------------------- Penilaian
 Route::get('assessments', [AssessmentController::class, 'index'])
     ->middleware('permission:assessment.view')->name('assessments.index');

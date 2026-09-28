@@ -15,7 +15,6 @@ import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchSelect } from '@/components/ui/SearchSelect';
 import { Can } from '@/components/common/Can';
-import { useOptions } from '@/hooks/useOptions';
 import { getErrorMessage, getValidationErrors } from '@/lib/axios';
 import type { SelectOption } from '@/constants/masterData';
 import type { BulkAttendanceEntryPayload, BulkAttendancePayload } from '@/types/attendance';
@@ -63,9 +62,7 @@ export function StudentAttendancePage() {
   const [rows, setRows] = useState<Record<number, RowState>>({});
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
-  const { options: semesterOptions } = useOptions('semesters');
-  const { options: leaveTypeOptions } = useOptions('leave-types');
-  const { statuses } = useAttendanceStatuses();
+  const { semesterOptions, leaveTypeOptions, statuses } = useAttendanceStatuses();
 
   const classesQuery = useQuery({
     queryKey: ['classes', 'all-for-attendance'],

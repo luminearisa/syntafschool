@@ -110,6 +110,8 @@ class RolePermissionSeeder extends Seeder
             'audit.view',
         ],
         'assessment' => ['view', 'create', 'update', 'delete'],
+        // Rapor memiliki lingkaran akses tersendiri karena siswa hanya boleh melihat nilainya sendiri.
+        'report-card' => ['view', 'generate', 'update', 'approve', 'publish'],
         // Modul Library (Step 1 — fondasi). Aksi bersarang menghasilkan nama
         // berjenjang, mis. "library.settings.view" & "library.location.create".
         'library' => [
@@ -217,7 +219,7 @@ class RolePermissionSeeder extends Seeder
     /** @var array<string, list<string>> */
     protected array $roles = [
         'super-admin' => ['*'],
-        'admin-sekolah' => ['master-data', 'academic', 'student', 'employee', 'finance', 'assessment', 'library', 'inventory', 'ppdb', 'wallet', 'boarding', 'report', 'user', 'setting', 'tahfiz'],
+        'admin-sekolah' => ['master-data', 'academic', 'student', 'employee', 'finance', 'assessment', 'report-card', 'library', 'inventory', 'ppdb', 'wallet', 'boarding', 'report', 'user', 'setting', 'tahfiz'],
         // Kepala sekolah hanya memantau uang: lihat daftar, buku besar, dan laporan.
         // Satu-satunya hak menulisnya di modul finance adalah persetujuan
         // kelayakan finansial (§11) dan keputusan keberesan (§12): ia sudah
@@ -225,7 +227,7 @@ class RolePermissionSeeder extends Seeder
         // meski orang tuanya belum lunas" dan "ijazahnya boleh keluar dulu"
         // diambil oleh orang yang sama dengan keputusan akademiknya — bukan oleh
         // bendahara, dan bukan oleh frontend.
-        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'student:view', 'employee:view', 'finance:view', 'finance:eligibility.view', 'finance:eligibility.approve', 'finance:clearance.view', 'finance:clearance.approve', 'finance:clearance.waive', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export', 'boarding:view', 'boarding:dashboard.view', 'boarding:report.view'],
+        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'report-card:view', 'report-card:approve', 'report-card:publish', 'student:view', 'employee:view', 'finance:view', 'finance:eligibility.view', 'finance:eligibility.approve', 'finance:clearance.view', 'finance:clearance.approve', 'finance:clearance.waive', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export', 'boarding:view', 'boarding:dashboard.view', 'boarding:report.view'],
         // Bendahara = pengelola keuangan: top up, penarikan, adjustment, reversal.
         // Sengaja tidak menyebut modul `wallet` secara utuh — konfigurasi modul
         // (settings.*) dan penutupan wallet permanen (wallet.close) hak admin.
@@ -249,7 +251,7 @@ class RolePermissionSeeder extends Seeder
             'wallet:withdrawal.view', 'wallet:ledger.view',
         ],
         // Guru Tahfiz: lihat, catat setoran, dan menilai. Tidak menghapus data.
-        'guru' => ['academic:view', 'academic:grade', 'academic:attendance', 'student:view', 'assessment', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
+        'guru' => ['academic:view', 'academic:grade', 'academic:attendance', 'student:view', 'assessment', 'report-card:view', 'report-card:generate', 'report-card:update', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
         // Musyrif/musyrifah: memantau seluruh halaqah (view + laporan) DAN seluruh
         // hak wali kamar asrama, ditambah wewenang yang hanya boleh dipakai
         // pengasuh tetap: menyetujui izin/kepulangan, mencatat prestasi, dan
@@ -318,7 +320,7 @@ class RolePermissionSeeder extends Seeder
             'boarding:view', 'boarding:health.view', 'boarding:health.manage',
             'boarding:visitor.view', 'boarding:permission.view',
         ],
-        'wali-kelas' => ['academic:view', 'academic:grade', 'academic:attendance', 'academic:approve', 'student:view', 'assessment', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
+        'wali-kelas' => ['academic:view', 'academic:grade', 'academic:attendance', 'academic:approve', 'student:view', 'assessment', 'report-card:view', 'report-card:generate', 'report-card:update', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
         'staf' => ['master-data:view', 'student:view', 'employee:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:update'],
         // Peserta Tahfiz (termasuk siswa yang mengikuti program): lihat progress sendiri.
         // `siswa` dan `wali-murid` sengaja TIDAK diberi permission boarding apa

@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Route;
 |
 | File ini dimuat otomatis oleh routes/api.php di dalam grup `v1` +
 | `auth:sanctum`, jadi tidak perlu prefix maupun middleware auth di sini.
-| Otorisasi tetap per-route lewat `permission:academic.*`.
+| Otorisasi ditegakkan per-route: `academic.*` untuk proses akademik dan
+| `employee.*` untuk layar kepegawaian (alias yang lama tetap didukung).
 |
 | Catatan permission: guru memegang `academic.attendance` untuk mencatat
 | presensi, sedangkan persetujuan koreksi khusus `academic.approve`.
@@ -49,24 +50,28 @@ Route::get('attendance-recap/student/{student}', [StudentAttendanceController::c
 Route::get('attendance-recap/class/{class}', [StudentAttendanceController::class, 'recapClass'])
     ->middleware('permission:academic.view')->name('attendance-recap.class');
 
+// Referensi status/izin/semester dapat dibaca staf kepegawaian atau akademik.
+Route::get('attendance-lookups', [EmployeeAttendanceController::class, 'lookups'])
+    ->middleware('permission:employee.view|academic.view')->name('attendance-lookups');
+
 // ----------------------------------------------------------- Presensi pegawai
 Route::get('employee-attendances', [EmployeeAttendanceController::class, 'index'])
-    ->middleware('permission:academic.view')->name('employee-attendances.index');
+    ->middleware('permission:employee.view|academic.view')->name('employee-attendances.index');
 
 Route::get('employee-attendances/recap', [EmployeeAttendanceController::class, 'recap'])
-    ->middleware('permission:academic.view')->name('employee-attendances.recap');
+    ->middleware('permission:employee.view|academic.view')->name('employee-attendances.recap');
 
 Route::post('employee-attendances', [EmployeeAttendanceController::class, 'store'])
-    ->middleware('permission:academic.attendance|academic.create')->name('employee-attendances.store');
+    ->middleware('permission:employee.create|academic.attendance|academic.create')->name('employee-attendances.store');
 
 Route::get('employee-attendances/{employeeAttendance}', [EmployeeAttendanceController::class, 'show'])
-    ->middleware('permission:academic.view')->name('employee-attendances.show');
+    ->middleware('permission:employee.view|academic.view')->name('employee-attendances.show');
 
 Route::match(['put', 'patch'], 'employee-attendances/{employeeAttendance}', [EmployeeAttendanceController::class, 'update'])
-    ->middleware('permission:academic.attendance|academic.update')->name('employee-attendances.update');
+    ->middleware('permission:employee.update|academic.attendance|academic.update')->name('employee-attendances.update');
 
 Route::delete('employee-attendances/{employeeAttendance}', [EmployeeAttendanceController::class, 'destroy'])
-    ->middleware('permission:academic.attendance|academic.delete')->name('employee-attendances.destroy');
+    ->middleware('permission:employee.delete|academic.attendance|academic.delete')->name('employee-attendances.destroy');
 
 // ---------------------------------------------------------- Koreksi presensi
 Route::get('attendance-corrections', [AttendanceCorrectionController::class, 'index'])

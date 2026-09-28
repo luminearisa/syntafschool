@@ -6,6 +6,8 @@ export function ConfirmDialog({
   title = 'Konfirmasi',
   message,
   loading,
+  confirmLabel = 'Hapus',
+  confirmVariant = 'danger',
   onConfirm,
   onCancel,
 }: {
@@ -13,6 +15,8 @@ export function ConfirmDialog({
   title?: string;
   message: string;
   loading?: boolean;
+  confirmLabel?: string;
+  confirmVariant?: 'primary' | 'danger' | 'outline';
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -27,8 +31,8 @@ export function ConfirmDialog({
           <Button variant="outline" onClick={onCancel} disabled={loading}>
             Batal
           </Button>
-          <Button variant="danger" onClick={onConfirm} loading={loading}>
-            Hapus
+          <Button variant={confirmVariant} onClick={onConfirm} loading={loading}>
+            {confirmLabel}
           </Button>
         </>
       }
