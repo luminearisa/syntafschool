@@ -6,6 +6,8 @@ use App\Modules\LMS\Database\Seeders\LmsActivityDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsGradebookDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsPermissionSeeder;
+use App\Modules\Supervisi\Database\Seeders\SupInstrumentSeeder;
+use App\Modules\Supervisi\Database\Seeders\SupPermissionSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -17,6 +19,9 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             // Modul LMS: permission granular lms.* (§35).
             LmsPermissionSeeder::class,
+            // Modul Supervisi: permission granular supervisi.* + instrumen bawaan.
+            SupPermissionSeeder::class,
+            SupInstrumentSeeder::class,
             ReferenceSeeder::class,
             AcademicSeeder::class,
             ReferenceFinanceLibrarySeeder::class,

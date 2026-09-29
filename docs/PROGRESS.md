@@ -965,3 +965,58 @@ Dokumentasi: [`docs/14-MODUL-LMS-PHASE-5.md`](14-MODUL-LMS-PHASE-5.md) ·
 - [ ] Sisa UI: pemutar konten interaktif, rekap kehadiran kelas langsung,
       moderasi ulasan, impor/ekspor & SCORM, dasbor engagement guru
 - [ ] PDF/XLSX laporan & sertifikat; uji restore basis data pada lingkungan nyata
+
+
+---
+
+## Modul Supervisi — Fase Riset (selesai)
+
+Riset lengkap sebelum implementasi: dasar hukum, model, instrumen baku, penskoran,
+penilaian kinerja pegawai, benchmark perangkat lunak, dan rancangan teknis.
+
+- [x] Riset konsep & prinsip supervisi akademik/manajerial/klinis
+- [x] Dasar hukum: PP 19/2017, Permendikbud 6 & 15/2018, Permendiknas 12/13/16/24,
+      PermennegPANRB 16/2009 (PKG), PermenPANRB 6/2022 + SE BKN 18/2024 (SKP/e-Kinerja),
+      Panduan Pengelolaan Kinerja PMM 2024–2025
+- [x] Model: supervisi klinis (Goldhammer 5, Cogan 8, Acheson & Gall 3),
+      developmental supervision (Glickman), lesson study (plan–do–see),
+      coaching PMM (A–E), Marzano 0–4, Danielson, TAP/NIET
+- [x] Teknik individual (9) & kelompok (18) + pemilihan berbasis tujuan & kondisi guru
+- [x] **Instrumen baku beserta butir & penskorannya**: perangkat pembelajaran 12,
+      telaah RPP 36 (0–2, maks 72), observasi pelaksanaan 40, penilaian hasil belajar 11,
+      rubrik GTK 5, dampak/outcome 5, wawancara pra 8 & pasca 9, analisis data, RTL,
+      instrumen tendik per jabatan, PKG 14/17 + tugas tambahan, NKKS, koreksi kehadiran
+- [x] Ambang & konversi: 90/80/70 (supervisi) dan 91/76/61/51 (PKG) + % angka kredit
+- [x] Penilaian pegawai: bobot kriteria, skala 1–5, multi-sumber (360°), PIP,
+      kuadran SKP (hasil kerja × perilaku kerja) + pembinaan kinerja
+- [x] Benchmark perangkat lunak: StaffTrac, NEE Data Tool, iObservation,
+      Flint/Education Walkthrough + praktik baik & 9 jebakan umum
+- [x] Rancangan teknis: 21 fitur, state machine, 30+ tabel `sup_*`, mesin penilaian,
+      23 instrumen bawaan, API, UI, laporan wajib, integrasi, keamanan, 5 fase
+- [ ] **Menunggu keputusan** (skala baku, bobot ke penilaian kinerja, siapa supervisor,
+      multi-sumber, cakupan SKP, frekuensi minimum, visibilitas hasil) — §16 blueprint
+- [ ] Implementasi Fase 1 (migrasi, model, seeder instrumen, izin, service inti)
+
+Dokumen: [`docs/supervisi/00-RESEARCH-SUPERVISI.md`](supervisi/00-RESEARCH-SUPERVISI.md) ·
+[`docs/supervisi/01-BLUEPRINT-MODUL-SUPERVISI.md`](supervisi/01-BLUEPRINT-MODUL-SUPERVISI.md)
+
+
+### Modul Supervisi — Fase 1 (selesai)
+
+- [x] Keputusan desain ditetapkan (skala fleksibel skala/angka, registry supervisor,
+      peer tanpa finalisasi, bobot supervisi default 0% = bukti pendukung)
+- [x] 4 migrasi / 30 tabel `sup_*` + 21 enum domain
+- [x] Registry supervisor: pilih siapa saja yang boleh menilai, cakupan, kapasitas,
+      masa berlaku, hak finalisasi + peta cakupan & peringatan tata kelola
+- [x] Pembuat instrumen fleksibel: indikator `SCALE` (rubrik) atau `NUMBER`
+      (min/maks/langkah/satuan/arah), `BOOLEAN`, teks/tanggal/berkas; versi terbit beku
+- [x] Mesin skor: bobot, `NA`, konversi 100, predikat; 22 instrumen bawaan terbit
+      (termasuk telaah RPP 36 butir/72, pengamatan 40 butir/40, PKG 14/56, PKG BK 17/68)
+- [x] API `/api/v1/supervisi/*` + 44 permission `supervisi.*` untuk 9 peran ERP
+- [x] Antarmuka: Pengaturan Supervisor, Pustaka Instrumen, Pembuat Instrumen
+      (menu grup Akademik) — lolos `tsc -b` + `vite build`, diuji di browser
+- [x] 32 tes (158 asersi) hijau; regresi modul lain tetap hijau
+- [ ] Fase 2–5 (kegiatan & penskoran lapangan, RTL, PKG/NKKS/koreksi kehadiran,
+      analitik & laporan wajib, kalibrasi, mode luring)
+
+Dokumen: [`docs/supervisi/03-IMPLEMENTASI-FASE-1.md`](supervisi/03-IMPLEMENTASI-FASE-1.md)
