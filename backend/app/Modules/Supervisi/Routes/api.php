@@ -7,6 +7,11 @@ use App\Modules\Supervisi\Http\Controllers\SupProgramController;
 use App\Modules\Supervisi\Http\Controllers\SupScheduleController;
 use App\Modules\Supervisi\Http\Controllers\SupSettingController;
 use App\Modules\Supervisi\Http\Controllers\SupSupervisorController;
+use App\Modules\Supervisi\Http\Controllers\SupVisitAcknowledgmentController;
+use App\Modules\Supervisi\Http\Controllers\SupVisitConferenceController;
+use App\Modules\Supervisi\Http\Controllers\SupVisitController;
+use App\Modules\Supervisi\Http\Controllers\SupVisitEvidenceController;
+use App\Modules\Supervisi\Http\Controllers\SupVisitFindingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -132,4 +137,55 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
         ->middleware('permission:supervisi.schedule.manage')->name('supervisi.schedules.cancel');
     Route::post('schedules/{schedule}/invite', [SupScheduleController::class, 'invite'])
         ->middleware('permission:supervisi.schedule.manage')->name('supervisi.schedules.invite');
+
+    // ---------------- Kegiatan supervisi (pelaksanaan) ----------------
+    Route::get('visits', [SupVisitController::class, 'index'])
+        ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.index');
+    Route::post('visits', [SupVisitController::class, 'store'])
+        ->middleware('permission:supervisi.visit.create')->name('supervisi.visits.store');
+    Route::get('visits/{visit}', [SupVisitController::class, 'show'])
+        ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.show');
+    Route::match(['put', 'patch'], 'visits/{visit}', [SupVisitController::class, 'update'])
+        ->middleware('permission:supervisi.visit.execute')->name('supervisi.visits.update');
+    Route::delete('visits/{visit}', [SupVisitController::class, 'destroy'])
+        ->middleware('permission:supervisi.visit.create')->name('supervisi.visits.destroy');
+
+    Route::put('visits/{visit}/answers', [SupVisitController::class, 'answers'])
+        ->middleware('permission:supervisi.visit.execute')->name('supervisi.visits.answers');
+    Route::get('visits/{visit}/preview', [SupVisitController::class, 'preview'])
+        ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.preview');
+    Route::post('visits/{visit}/submit', [SupVisitController::class, 'submit'])
+        ->middleware('permission:supervisi.visit.execute')->name('supervisi.visits.submit');
+    Route::post('visits/{visit}/finalize', [SupVisitController::class, 'finalize'])
+        ->middleware('permission:supervisi.visit.finalize')->name('supervisi.visits.finalize');
+    Route::post('visits/{visit}/reopen', [SupVisitController::class, 'reopen'])
+        ->middleware('permission:supervisi.visit.reopen')->name('supervisi.visits.reopen');
+    Route::post('visits/{visit}/cancel', [SupVisitController::class, 'cancel'])
+        ->middleware('permission:supervisi.visit.cancel')->name('supervisi.visits.cancel');
+
+    // Wawancara pra & pasca-observasi
+    Route::get('visits/{visit}/conferences', [SupVisitConferenceController::class, 'index'])
+        ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.conferences.index');
+    Route::put('visits/{visit}/conferences/{kind}', [SupVisitConferenceController::class, 'record'])
+        ->middleware('permission:supervisi.conference.manage')->name('supervisi.visits.conferences.record');
+
+    // Temuan analisis data
+    Route::get('visits/{visit}/findings', [SupVisitFindingController::class, 'index'])
+        ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.findings.index');
+    Route::put('visits/{visit}/findings', [SupVisitFindingController::class, 'replace'])
+        ->middleware('permission:supervisi.visit.execute')->name('supervisi.visits.findings.replace');
+
+    // Bukti kegiatan
+    Route::post('visits/{visit}/evidence', [SupVisitEvidenceController::class, 'store'])
+        ->middleware('permission:supervisi.evidence.manage')->name('supervisi.visits.evidence.store');
+    Route::delete('visits/{visit}/evidence/{evidence}', [SupVisitEvidenceController::class, 'destroy'])
+        ->middleware('permission:supervisi.evidence.manage')->name('supervisi.visits.evidence.destroy');
+
+    // Tanda tangan hasil & keberatan
+    Route::post('visits/{visit}/acknowledge', [SupVisitAcknowledgmentController::class, 'acknowledge'])
+        ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.acknowledge');
+    Route::post('visits/{visit}/dispute', [SupVisitAcknowledgmentController::class, 'dispute'])
+        ->middleware('permission:supervisi.dispute.create')->name('supervisi.visits.dispute');
+    Route::post('disputes/{dispute}/resolve', [SupVisitAcknowledgmentController::class, 'resolve'])
+        ->middleware('permission:supervisi.dispute.resolve')->name('supervisi.disputes.resolve');
 });

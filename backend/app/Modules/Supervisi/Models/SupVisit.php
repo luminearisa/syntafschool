@@ -107,6 +107,16 @@ class SupVisit extends BaseModel
         return $this->belongsTo(SupProgram::class, 'program_id');
     }
 
+    public function schedule(): BelongsTo
+    {
+        return $this->belongsTo(SupSchedule::class, 'schedule_id');
+    }
+
+    public function assignment(): BelongsTo
+    {
+        return $this->belongsTo(SupAssignment::class, 'assignment_id');
+    }
+
     public function supervisor(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'supervisor_employee_id');
@@ -139,5 +149,11 @@ class SupVisit extends BaseModel
     public function isFinalized(): bool
     {
         return $this->finalized_at !== null;
+    }
+
+    /** Kegiatan masih dapat diisi (belum final & belum dibatalkan). */
+    public function isEditable(): bool
+    {
+        return ! $this->isFinalized() && $this->status !== VisitStatus::CANCELLED;
     }
 }

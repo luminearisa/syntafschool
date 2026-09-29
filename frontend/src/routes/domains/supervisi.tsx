@@ -4,12 +4,17 @@ import { PermissionGuard } from '@/routes/PermissionGuard';
 import SupervisiSupervisorsPage from '@/features/supervisi/pages/SupervisiSupervisorsPage';
 import SupervisiInstrumentsPage from '@/features/supervisi/pages/SupervisiInstrumentsPage';
 import SupervisiInstrumentBuilderPage from '@/features/supervisi/pages/SupervisiInstrumentBuilderPage';
+import SupervisiVisitsPage from '@/features/supervisi/pages/SupervisiVisitsPage';
+import SupervisiVisitDetailPage from '@/features/supervisi/pages/SupervisiVisitDetailPage';
 
 /**
- * Modul Supervisi (Fase 1).
+ * Modul Supervisi.
  *
- * Berisi pengaturan supervisor (memilih siapa saja yang boleh menilai) dan
- * pustaka/pembuat instrumen (indikator berskala maupun bertipe angka).
+ * Fase 1 — pengaturan: siapa yang boleh menilai (registry supervisor) dan
+ * penyusunan instrumen (skala rubrik maupun entri angka).
+ * Fase 2 — pelaksanaan: daftar kegiatan, pengisian instrumen di kelas,
+ * wawancara, temuan, finalisasi, tanda tangan, dan keberatan.
+ *
  * Otorisasi tetap ditegakkan backend (`supervisi.*`); guard di sini hanya
  * menyembunyikan halaman yang pasti ditolak.
  */
@@ -38,9 +43,26 @@ export const domainRoutes: RouteObject[] = [
       </PermissionGuard>
     ),
   },
+  {
+    path: 'supervisi/visits',
+    element: (
+      <PermissionGuard permission="supervisi.visit.view">
+        <SupervisiVisitsPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'supervisi/visits/:visitId',
+    element: (
+      <PermissionGuard permission="supervisi.visit.view">
+        <SupervisiVisitDetailPage />
+      </PermissionGuard>
+    ),
+  },
 ];
 
 export const domainMenu: MenuChild[] = [
+  { label: 'Kegiatan Supervisi', to: '/supervisi/visits', permission: 'supervisi.visit.view' },
   { label: 'Pengaturan Supervisor', to: '/supervisi', permission: 'supervisi.view' },
   { label: 'Instrumen Supervisi', to: '/supervisi/instruments', permission: 'supervisi.instrument.view' },
 ];

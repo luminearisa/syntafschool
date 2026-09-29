@@ -77,6 +77,14 @@ abstract class SupTestCase extends TestCase
         return $user;
     }
 
+    /** Autentikasi sebagai akun tertentu (mengembalikan test case agar mudah dirantai). */
+    protected function actingAsUser(User $user): static
+    {
+        Sanctum::actingAs($user);
+
+        return $this;
+    }
+
     /** Daftarkan pegawai sebagai supervisor lewat service (aturan produksi). */
     protected function registerSupervisor(array $attributes = []): SupSupervisor
     {
@@ -87,5 +95,91 @@ abstract class SupTestCase extends TestCase
                 'kind' => 'KEPALA_SEKOLAH',
                 'can_finalize' => true,
             ]);
+    }
+
+    /**
+     * Instrumen kecil siap pakai (terbit) untuk pengujian pelaksanaan.
+     *
+     * Susunannya sengaja mencampur tipe input agar sekaligus menguji mesin
+     * skor: satu indikator skala rubrik, satu entri angka, satu ya/tidak,
+     * dan satu narasi.
+     *
+     * @param  array<string,mixed>  $overrides
+     * @return array{instrument: \App\Modules\Supervisi\Models\SupInstrument, version: \App\Modules\Supervisi\Models\SupInstrumentVersion}
+     */
+    protected function publishedInstrument(array $overrides = []): array
+    {
+        $builder = app(\App\Modules\Supervisi\Application\Services\InstrumentBuilderService::class);
+        $user = User::factory()->create(['is_active' => true]);
+
+        $instrument = $builder->createInstrument([
+            'name' => $overrides['name'] ?? 'Instrumen Uji Supervisi',
+            'category' => $overrides['category'] ?? 'AKADEMIK',
+            'target_type' => $overrides['target_type'] ?? 'GURU',
+            'scoring_mode' => $overrides['scoring_mode'] ?? 'PERCENT',
+        ], $user);
+
+        $version = $builder->createVersion($instrument, [], $user);
+
+        $sections = $overrides['sections'] ?? [[
+            'title' => 'Pelaksanaan Pembelajaran',
+            'weight' => 1,
+            'indicators' => [
+                [
+                    'statement' => 'Menyampaikan tujuan pembelajaran dengan jelas',
+                    'guidance' => 'Tujuan disampaikan lisan/tertulis dan dipahami peserta didik.',
+                    'input_type' => 'SCALE',
+                    'weight' => 1,
+                    'is_required' => true,
+                    'min_comment_below' => 2,
+                    'options' => [
+                        ['label' => 'Kurang', 'score' => 1, 'tone' => 'RED'],
+                        ['label' => 'Cukup', 'score' => 2, 'tone' => 'AMBER'],
+                        ['label' => 'Baik', 'score' => 3, 'tone' => 'GREEN'],
+                        ['label' => 'Sangat Baik', 'score' => 4, 'tone' => 'GREEN'],
+                    ],
+                ],
+                [
+                    'statement' => 'Jumlah peserta didik yang terlibat aktif (orang)',
+                    'input_type' => 'NUMBER',
+                    'weight' => 1,
+                    'score_min' => 0,
+                    'score_max' => 10,
+                    'score_step' => 1,
+                    'score_unit' => 'orang',
+                    'direction' => 'HIGHER_BETTER',
+                ],
+                [
+                    'statement' => 'Guru menutup pembelajaran dengan refleksi',
+                    'input_type' => 'BOOLEAN',
+                    'weight' => 1,
+                    'score_yes' => 1,
+                    'score_no' => 0,
+                    'score_partial' => 0.5,
+                ],
+                [
+                    'statement' => 'Catatan fakta observasi',
+                    'input_type' => 'LONG_TEXT',
+                    'weight' => 1,
+                    'is_required' => false,
+                ],
+            ],
+        ]];
+
+        $version = $builder->syncStructure($version, $sections, $user);
+        $version = $builder->publish($version, $user);
+
+        return ['instrument' => $instrument->refresh(), 'version' => $version];
+    }
+
+    /** Kegiatan supervisi dengan seluruh relasi yang dibutuhkan presenter. */
+    protected function visitWithRelations(\App\Modules\Supervisi\Models\SupVisit $visit): \App\Modules\Supervisi\Models\SupVisit
+    {
+        return $visit->load([
+            'answers', 'scores', 'conferences', 'findings', 'evidence',
+            'acknowledgments', 'disputes', 'revisions',
+            'instrumentVersion.sections.indicators.options',
+            'instrumentVersion.gradeScale',
+        ])->loadCount(['answers', 'findings']);
     }
 }

@@ -29,6 +29,10 @@ class SupSettingController extends SupController
                 ['key' => 'min_visits_kepala_sekolah', 'label' => 'Minimum supervisi kepala sekolah per tahun', 'type' => 'int'],
                 ['key' => 'supervision_weight_percent', 'label' => 'Bobot hasil supervisi dalam penilaian kinerja (%)', 'type' => 'float'],
                 ['key' => 'attendance_correction_active', 'label' => 'Aktifkan koreksi kehadiran pada PKG', 'type' => 'bool'],
+                ['key' => 'require_post_conference', 'label' => 'Wajib wawancara pasca-observasi sebelum finalisasi', 'type' => 'bool'],
+                ['key' => 'finding_required_below_percent', 'label' => 'Wajib temuan/rekomendasi bila nilai akhir di bawah (%)', 'type' => 'float'],
+                ['key' => 'require_action_plan_before_finalize', 'label' => 'Wajib RTL sebelum finalisasi (aktif mulai Fase 3)', 'type' => 'bool'],
+                ['key' => 'dispute_window_days', 'label' => 'Batas hari pengajuan keberatan setelah hasil final', 'type' => 'int'],
             ],
             'supervision_weight_note' => 'Bobot 0% berarti hasil supervisi hanya menjadi bukti pendukung, bukan komponen resmi penilaian kinerja.',
         ], 'Pengaturan modul supervisi');

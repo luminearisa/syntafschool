@@ -33,7 +33,8 @@ class SupPermissionSeeder extends Seeder
         'supervisi.schedule.view', 'supervisi.schedule.manage',
 
         // Kegiatan supervisi
-        'supervisi.visit.view', 'supervisi.visit.create', 'supervisi.visit.execute', 'supervisi.visit.finalize',
+        'supervisi.visit.view', 'supervisi.visit.view.all', 'supervisi.visit.create',
+        'supervisi.visit.execute', 'supervisi.visit.finalize',
         'supervisi.visit.cancel', 'supervisi.visit.reopen',
         'supervisi.conference.manage', 'supervisi.evidence.manage',
 
@@ -69,7 +70,7 @@ class SupPermissionSeeder extends Seeder
             'supervisi.program.view',
             'supervisi.assignment.view',
             'supervisi.schedule.view',
-            'supervisi.visit.view',
+            'supervisi.visit.view', 'supervisi.visit.view.all',
             'supervisi.action_plan.view',
             'supervisi.appraisal.view',
             'supervisi.report.view', 'supervisi.report.export',
@@ -93,6 +94,7 @@ class SupPermissionSeeder extends Seeder
             'supervisi.view',
             'supervisi.instrument.view',
             'supervisi.visit.view',
+            'supervisi.visit.create',
             'supervisi.schedule.view',
             'supervisi.visit.execute',
             'supervisi.conference.manage',

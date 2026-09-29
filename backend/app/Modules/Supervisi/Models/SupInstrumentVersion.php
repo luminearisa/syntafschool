@@ -7,6 +7,7 @@ use App\Modules\Supervisi\Domain\Enums\InstrumentVersionStatus;
 use App\Modules\Supervisi\Domain\Enums\ScoringMode;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * Versi instrumen.
@@ -44,9 +45,20 @@ class SupInstrumentVersion extends BaseModel
         return $this->hasMany(SupSection::class, 'version_id')->orderBy('sort_order');
     }
 
-    public function indicators(): HasMany
+    /**
+     * Seluruh indikator versi ini (melalui bagian/section).
+     *
+     * Indikator melekat pada bagian, sehingga relasinya memakai `hasManyThrough`
+     * — bukan kolom `version_id` pada tabel indikator.
+     */
+    public function indicators(): HasManyThrough
     {
-        return $this->hasMany(SupIndicator::class, 'version_id');
+        return $this->hasManyThrough(
+            SupIndicator::class,
+            SupSection::class,
+            'version_id',
+            'section_id',
+        )->orderBy('sup_sections.sort_order')->orderBy('sup_indicators.sort_order');
     }
 
     public function isEditable(): bool

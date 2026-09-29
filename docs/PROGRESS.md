@@ -1020,3 +1020,26 @@ Dokumen: [`docs/supervisi/00-RESEARCH-SUPERVISI.md`](supervisi/00-RESEARCH-SUPER
       analitik & laporan wajib, kalibrasi, mode luring)
 
 Dokumen: [`docs/supervisi/03-IMPLEMENTASI-FASE-1.md`](supervisi/03-IMPLEMENTASI-FASE-1.md)
+
+
+### Modul Supervisi — Fase 2 (selesai)
+
+- [x] Pelaksanaan kegiatan: buat dari instrumen terbit, isi instrumen
+      (skala rubrik / entri angka / ya-tidak / pilihan ganda / narasi),
+      wawancara pra & pasca-observasi, temuan, finalisasi
+- [x] Nilai dihitung server: klien hanya mengirim pilihan/angka mentah,
+      validasi NA, rentang, langkah, dan komentar wajib di bawah ambang
+- [x] Finalisasi berchecklist + **snapshot beku bersidik jari** sehingga
+      revisi instrumen tidak mengubah hasil lama; pembukaan ulang tercatat
+- [x] Tanda tangan penerimaan (guru), keberatan + keputusan moderator,
+      riwayat revisi, unggah bukti foto/dokumen/tautan
+- [x] Tata kelola: guru hanya melihat miliknya, peer/mentor tidak boleh
+      finalisasi, tak boleh menilai diri sendiri, pemegang
+      `supervisi.visit.view.all` memantau seluruh sekolah
+- [x] API `/api/v1/supervisi/visits/*` + UI tiga tab (Observasi, Wawancara &
+      Temuan, Hasil & Tanda Tangan) dengan bilah skor sementara
+- [x] 16 tes Fase 2 (total 48 tes/297 asersi hijau); build produksi frontend
+      hijau; diuji di browser nyata
+- [ ] Fase 3–5 (RTL & PKG/NKKS, analitik & laporan wajib, mode luring, OpenAPI)
+
+Dokumen: [`docs/supervisi/04-IMPLEMENTASI-FASE-2.md`](supervisi/04-IMPLEMENTASI-FASE-2.md)

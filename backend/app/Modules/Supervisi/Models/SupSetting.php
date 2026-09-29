@@ -23,6 +23,11 @@ class SupSetting extends BaseModel
         'supervision_weight_percent' => 0,
         'attendance_correction_active' => true,
         'report_signature_requires_head' => true,
+        // Fase 2 — aturan pelaksanaan & finalisasi kegiatan.
+        'require_post_conference' => true,
+        'finding_required_below_percent' => 80,
+        'require_action_plan_before_finalize' => false, // diaktifkan pada Fase 3 (RTL)
+        'dispute_window_days' => 7,
     ];
 
     public function typedValue(): mixed
