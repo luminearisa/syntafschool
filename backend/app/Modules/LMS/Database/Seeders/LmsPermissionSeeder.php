@@ -48,6 +48,25 @@ class LmsPermissionSeeder extends Seeder
         'rubric.create', 'rubric.manage', 'rubric.assess',
         'outcome.manage', 'outcome.assess',
         'competency.manage', 'competency.assess',
+
+        // Phase 4 — learning path, prasyarat, drip, konten interaktif, kelas langsung,
+        // sertifikat, badge, gamifikasi, ulasan, template/salin/arsip, pesan.
+        'learning_path.view', 'learning_path.manage',
+        'drip.manage', 'prerequisite.manage',
+        'interactive.view', 'interactive.create', 'interactive.update', 'interactive.delete',
+        'interactive.publish', 'interactive.respond',
+        'live.view', 'live.manage', 'live.attendance', 'live.join', 'live.recording.manage',
+        'certificate.view', 'certificate.manage', 'certificate.issue', 'certificate.revoke',
+        'certificate.template.manage', 'certificate.view_own', 'certificate.view_child',
+        'certificate.download_own',
+        'badge.view', 'badge.manage', 'badge.award', 'badge.view_own', 'badge.view_child',
+        'gamification.view', 'gamification.manage', 'gamification.view_own', 'leaderboard.view',
+        'review.view', 'review.create', 'review.moderate',
+        'feedback.submit', 'feedback.view',
+        'template.view', 'template.manage',
+        'course.copy', 'course.archive',
+        'engagement.view', 'engagement.view_own', 'engagement.view_child',
+        'message.send', 'message.view',
     ];
 
     /**
@@ -71,6 +90,12 @@ class LmsPermissionSeeder extends Seeder
             'lms.submission.view', 'lms.grade.view',
             'lms.gradebook.view', 'lms.grade.view_own',
             'lms.rubric.create', 'lms.outcome.manage', 'lms.competency.manage',
+            // Phase 4 — pengawas membaca seluruh capaian, boleh menerbitkan sertifikat.
+            'lms.learning_path.view', 'lms.interactive.view', 'lms.live.view',
+            'lms.certificate.view', 'lms.certificate.issue', 'lms.certificate.template.manage',
+            'lms.badge.view', 'lms.gamification.view', 'lms.leaderboard.view',
+            'lms.review.view', 'lms.review.moderate', 'lms.feedback.view',
+            'lms.template.view', 'lms.engagement.view', 'lms.message.view', 'lms.message.send',
         ],
         'guru' => [
             'lms.view', 'lms.category.view',
@@ -96,6 +121,20 @@ class LmsPermissionSeeder extends Seeder
             'lms.rubric.create', 'lms.rubric.manage', 'lms.rubric.assess',
             'lms.outcome.manage', 'lms.outcome.assess',
             'lms.competency.manage', 'lms.competency.assess',
+            // Phase 4 — guru mengelola jalur belajar, kelas langsung, sertifikat,
+            // badge, dan template course-nya sendiri.
+            'lms.learning_path.view', 'lms.learning_path.manage',
+            'lms.drip.manage', 'lms.prerequisite.manage',
+            'lms.interactive.view', 'lms.interactive.create', 'lms.interactive.update',
+            'lms.interactive.delete', 'lms.interactive.publish',
+            'lms.live.view', 'lms.live.manage', 'lms.live.attendance', 'lms.live.recording.manage',
+            'lms.certificate.view', 'lms.certificate.issue', 'lms.certificate.revoke',
+            'lms.certificate.template.manage',
+            'lms.badge.view', 'lms.badge.manage', 'lms.badge.award',
+            'lms.gamification.view', 'lms.gamification.manage', 'lms.leaderboard.view',
+            'lms.review.view', 'lms.review.moderate', 'lms.feedback.view',
+            'lms.template.view', 'lms.template.manage', 'lms.course.copy', 'lms.course.archive',
+            'lms.engagement.view', 'lms.message.view', 'lms.message.send',
         ],
         'wali-kelas' => [
             'lms.view', 'lms.course.view', 'lms.content.view',
@@ -105,6 +144,11 @@ class LmsPermissionSeeder extends Seeder
             'lms.submission.view', 'lms.grade.view',
             'lms.gradebook.view', 'lms.grade.review', 'lms.grade.approve',
             'lms.outcome.manage', 'lms.competency.manage',
+            // Phase 4 — wali kelas memantau capaian & aktivitas, tanpa menyunting materi.
+            'lms.learning_path.view', 'lms.interactive.view', 'lms.live.view',
+            'lms.certificate.view', 'lms.badge.view', 'lms.gamification.view', 'lms.leaderboard.view',
+            'lms.review.view', 'lms.review.moderate', 'lms.feedback.view',
+            'lms.template.view', 'lms.engagement.view', 'lms.message.view', 'lms.message.send',
         ],
         'siswa' => [
             'lms.view', 'lms.course.view', 'lms.content.view', 'lms.bookmark.manage',
@@ -117,6 +161,15 @@ class LmsPermissionSeeder extends Seeder
             'lms.grade.view', 'lms.submission.view', 'lms.submission.upload',
             // Phase 3 — siswa melihat nilainya sendiri & dapat mengajukan banding.
             'lms.grade.view_own', 'lms.grade.request_review',
+            // Phase 4 — siswa belajar lewat konten interaktif, mengikuti kelas
+            // langsung, dan hanya melihat capaian miliknya sendiri (§54).
+            'lms.learning_path.view',
+            'lms.interactive.view', 'lms.interactive.respond',
+            'lms.live.view', 'lms.live.join',
+            'lms.certificate.view_own', 'lms.certificate.download_own',
+            'lms.badge.view_own', 'lms.gamification.view_own', 'lms.leaderboard.view',
+            'lms.review.create', 'lms.feedback.submit',
+            'lms.engagement.view_own', 'lms.message.view', 'lms.message.send',
         ],
         'wali-murid' => [
             'lms.view', 'lms.course.view', 'lms.parent.view', 'lms.student.view',
@@ -125,6 +178,11 @@ class LmsPermissionSeeder extends Seeder
             'lms.lesson.view', 'lms.choice.view', 'lms.survey.view', 'lms.grade.view',
             // Phase 3 — wali hanya membaca nilai & umpan balik anak yang sah.
             'lms.grade.view_child', 'lms.grade.view_child_feedback',
+            // Phase 4 — wali membaca capaian anak (sertifikat, badge, kehadiran
+            // kelas langsung) tanpa kemampuan mengubah apa pun.
+            'lms.learning_path.view', 'lms.live.view',
+            'lms.certificate.view_child', 'lms.badge.view_child', 'lms.engagement.view_child',
+            'lms.message.view',
         ],
     ];
 

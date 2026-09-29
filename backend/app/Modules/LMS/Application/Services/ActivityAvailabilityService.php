@@ -25,6 +25,7 @@ class ActivityAvailabilityService
     public function __construct(
         private readonly CourseCompletionService $completions,
         private readonly ActivityCompletionService $activityCompletion,
+        private readonly DripContentService $drip,
     ) {}
 
     public function evaluate(
@@ -67,6 +68,20 @@ class ActivityAvailabilityService
         }
 
         $item = $activity->learningItem;
+
+        // Phase 4 (§4): pelepasan bertahap. Diperiksa sebelum prasyarat supaya
+        // siswa melihat alasan "belum waktunya" alih-alih alasan turunan.
+        if ($item !== null) {
+            $course = $activity->course ?? $item->course;
+
+            if ($course !== null) {
+                $drip = $this->drip->evaluate($course, $enrollment, $item->section, $item, (int) $activity->id);
+
+                if (! $drip->allowed) {
+                    return $drip;
+                }
+            }
+        }
 
         if ($item !== null) {
             $itemDecision = $this->completions->satisfiesPrerequisites($enrollment, $item);

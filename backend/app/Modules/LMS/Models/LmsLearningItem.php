@@ -65,6 +65,18 @@ class LmsLearningItem extends BaseModel
         return $this->hasOne(LmsResource::class, 'learning_item_id');
     }
 
+    /**
+     * Baris aktivitas milik item ini (§2, §13, §26).
+     *
+     * Satu item hanya boleh punya satu aktivitas (`lms_activities.learning_item_id`
+     * unik), sehingga relasi ini aman dipakai untuk prasyarat bertipe (§3),
+     * badge berbasis forum (§26), dan kelas langsung yang menempel pada aktivitas.
+     */
+    public function activity(): HasOne
+    {
+        return $this->hasOne(LmsActivity::class, 'learning_item_id');
+    }
+
     public function chapters(): HasMany
     {
         return $this->hasMany(LmsBookChapter::class, 'learning_item_id')->orderBy('sort_order');

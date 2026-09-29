@@ -3,10 +3,11 @@
 namespace App\Modules\LMS\Providers;
 
 use App\Models\Setting;
-use App\Modules\LMS\Domain\Contracts\AcademicActivityFeedInterface;
-use App\Modules\LMS\Domain\Contracts\AcademicGradeProviderInterface;
-use App\Modules\LMS\Domain\Contracts\AcademicCourseProviderInterface;
+use App\Modules\LMS\Application\Support\LiveMeetingRegistry;
 use App\Modules\LMS\Application\Support\QuestionTypeRegistry;
+use App\Modules\LMS\Domain\Contracts\AcademicActivityFeedInterface;
+use App\Modules\LMS\Domain\Contracts\AcademicCourseProviderInterface;
+use App\Modules\LMS\Domain\Contracts\AcademicGradeProviderInterface;
 use App\Modules\LMS\Domain\Contracts\ClassProviderInterface;
 use App\Modules\LMS\Domain\Contracts\GradeProviderInterface;
 use App\Modules\LMS\Domain\Contracts\StudentProviderInterface;
@@ -14,8 +15,6 @@ use App\Modules\LMS\Domain\Contracts\TeacherProviderInterface;
 use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
 use App\Modules\LMS\Http\Controllers\LmsSettingsController;
 use App\Modules\LMS\Http\Middleware\EnsureLmsPermission;
-use App\Modules\LMS\Observers\LmsActivityGradeObserver;
-use App\Modules\LMS\Observers\LmsActivityObserver;
 use App\Modules\LMS\Http\Middleware\ResolveLmsActor;
 use App\Modules\LMS\Infrastructure\Providers\ErpAcademicActivityFeed;
 use App\Modules\LMS\Infrastructure\Providers\ErpAcademicCourseProvider;
@@ -23,17 +22,20 @@ use App\Modules\LMS\Infrastructure\Providers\ErpClassProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpStudentProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpUserProvider;
+use App\Modules\LMS\Infrastructure\Providers\LinkOnlyMeetingProvider;
 use App\Modules\LMS\Infrastructure\Providers\LmsGradeProvider;
 use App\Modules\LMS\Infrastructure\Providers\SiakadAcademicGradeProvider;
-use App\Modules\LMS\Infrastructure\Providers\StandaloneAcademicGradeProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneAcademicActivityFeed;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneAcademicCourseProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneClassProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneStudentProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneUserProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneAcademicGradeProvider;
 use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsActivityGrade;
+use App\Modules\LMS\Observers\LmsActivityGradeObserver;
+use App\Modules\LMS\Observers\LmsActivityObserver;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -92,6 +94,16 @@ class LmsServiceProvider extends ServiceProvider
         // Registry tipe soal dipakai bersama oleh penilaian kuis & lesson.
         $this->app->singleton(QuestionTypeRegistry::class);
 
+        // Phase 4 — penyedia pertemuan daring (§17). Registry sengaja singleton
+        // supaya integrasi provider (Zoom/Meet/custom) cukup didaftarkan sekali
+        // di sini; tanpa pendaftaran, provider tautan-saja tetap dipakai.
+        $this->app->singleton(LiveMeetingRegistry::class, function ($app) {
+            $registry = new LiveMeetingRegistry;
+            $registry->register(new LinkOnlyMeetingProvider);
+
+            return $registry;
+        });
+
         // Sumber nilai aktivitas untuk Gradebook Phase 3 (§46).
         $this->app->singleton(GradeProviderInterface::class, LmsGradeProvider::class);
 
@@ -127,6 +139,7 @@ class LmsServiceProvider extends ServiceProvider
             GradeProviderInterface::class,
             AcademicGradeProviderInterface::class,
             QuestionTypeRegistry::class,
+            LiveMeetingRegistry::class,
         ];
     }
 
@@ -208,6 +221,26 @@ class LmsServiceProvider extends ServiceProvider
                 'parent_view_grades' => 'lms.parent.can_view_grades',
                 'parent_view_feedback' => 'lms.parent.can_view_feedback',
                 'upload_max_kb' => 'lms.uploads.max_size_kb',
+
+                // Phase 4 — sakelar modul opsional (§1, §13, §21, §28, §31, §58).
+                'enforce_sequential' => 'lms.learning_path.enforce_sequential',
+                'drip_enabled' => 'lms.drip.enabled',
+                'live_default_provider' => 'lms.live.default_provider',
+                'live_join_window_minutes' => 'lms.live.join_window_minutes',
+                'live_join_grace_minutes' => 'lms.live.join_grace_minutes',
+                'live_recording_threshold' => 'lms.live.recording_completion_threshold',
+                'certificate_enabled' => 'lms.certificate.enabled',
+                'certificate_passing_grade' => 'lms.certificate.passing_grade',
+                'gamification_enabled' => 'lms.gamification.enabled',
+                'leaderboard_enabled' => 'lms.gamification.leaderboard_enabled',
+                'leaderboard_display' => 'lms.gamification.display',
+                'streak_enabled' => 'lms.gamification.streak.enabled',
+                'review_enabled' => 'lms.reviews.enabled',
+                'review_auto_approve' => 'lms.reviews.auto_approve',
+                'review_display_name' => 'lms.reviews.public_display_name',
+                'engagement_enabled' => 'lms.engagement.enabled',
+                'health_inactive_days' => 'lms.engagement.health.inactive_days',
+                'health_low_completion_percent' => 'lms.engagement.health.low_completion_percent',
             ];
 
             foreach ($map as $key => $configKey) {

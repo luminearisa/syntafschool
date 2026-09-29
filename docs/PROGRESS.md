@@ -825,3 +825,74 @@ tetap sumber resmi nilai akademik.
 - [ ] Workshop & penilaian sebaya
 - [ ] Bank soal institusi dengan workflow persetujuan
 - [ ] Analitik pembelajaran lanjutan & laporan multi-tahun
+
+---
+
+## Fase LMS Phase 4 — Advanced Learning Experience
+
+Melanjutkan Phase 1–3 **tanpa membuat mesin baru**: konten interaktif, kelas
+langsung, rekaman, dan sertifikat semuanya menempel pada `lms_learning_items`
+sehingga penyelesaian, progress, prasyarat, dan akses tetap dihitung mesin
+course yang sama. Dokumentasi: [`docs/10-MODUL-LMS-PHASE-4.md`](10-MODUL-LMS-PHASE-4.md).
+
+Status: **fondasi (migrasi + model + enum + service) selesai**; lapisan HTTP &
+UI menyusul.
+
+### Skema & domain
+- [x] 8 migrasi Phase 4: jalur belajar/prasyarat/drip, konten interaktif, kelas
+      langsung, sertifikat, gamifikasi, ulasan, engagement, dan kolom tambahan
+      Phase 1–3 (semuanya opsional dengan default aman)
+- [x] 25 model baru (`LmsLearningPath`, `LmsInteractiveContent`, `LmsLiveSession`,
+      `LmsCertificate`, `LmsBadge`, `LmsGamificationPoint`, `LmsLearningStreak`,
+      `LmsCourseReview`, `LmsLearningEvent`, `LmsCourseTemplate`,
+      `LmsCourseArchive`, …)
+- [x] 17 enum domain (LearningPathMode, InteractiveContentType, LiveSessionStatus,
+      CertificateStatus, BadgeRuleType, GamificationEventType, ReviewStatus,
+      LearningEventType, LearningHealthStatus, CourseCompletionRule, …)
+- [x] Relasi Phase 4 pada `LmsCourse`, `LmsEnrollment`, dan
+      `LmsLearningItem::activity()` (prasyarat bertipe, badge forum, kelas langsung)
+- [x] Konfigurasi `config/lms.php`: blok `learning_path`, `drip`, `interactive`,
+      `live`, `certificate`, `gamification`, `reviews`, `engagement`, `messaging`
+
+### Service
+- [x] `LearningPathService`, `PrerequisiteService`, `DripContentService` (§1–§4)
+- [x] `InteractiveContentService` — normalisasi per tipe, versi, pemutar tanpa
+      kunci jawaban, evaluasi completion (§7–§12)
+- [x] `LiveSessionService` + `LiveMeetingProviderInterface`/`LiveMeetingRegistry`
+      — jendela gabung, kehadiran MANUAL/SELF/PROVIDER, rekaman (§13–§17)
+- [x] `CertificateService` — kelayakan berdaftar, penerbitan idempoten per
+      enrollment, verifikasi publik berjejak, template & placeholder (§21–§25)
+- [x] `BadgeService` & `GamificationService` — aturan otomatis/manual, ledger XP
+      ber-`dedupe_key`, rentetan belajar + bonus mingguan, leaderboard privasi
+      (§26–§30)
+- [x] `CourseReviewService` — ulasan termoderasi + cache rating, umpan balik
+      kualitatif (§31–§32)
+- [x] `LmsMessagingService` — pesan guru ↔ siswa/wali lewat notification center (§33–§35)
+- [x] `LearningHealthService` — ON_TRACK/AT_RISK/INACTIVE/COMPLETED, daftar
+      perlu perhatian, tren aktivitas (§58–§61)
+- [x] `CourseTemplateService`, `CourseCopyService`, `CourseArchiveService` —
+      template, salin konten tanpa data siswa, arsip yang dapat dipulihkan
+      (§46–§51)
+- [x] `LmsNotifier` + 4 notifikasi Phase 4 (badge, sertifikat, jadwal kelas,
+      moderasi ulasan)
+
+### Keamanan & operasional
+- [x] Anti-abuse: XP `dedupe_key` unik, badge unik per (badge, siswa, course),
+      sertifikat unik per enrollment (§72)
+- [x] Payload siswa tidak memuat kunci jawaban, `host_url`, atau `passcode`
+- [x] Permission Phase 4 (138 izin `lms.*`; 46 izin baru) untuk admin, kepala
+      sekolah, guru, wali kelas, siswa, dan wali murid
+- [x] Sakelar modul opsional dapat diubah dari `lms.settings` tanpa deploy
+- [x] 37 skenario tes baru: `LmsPhase4FoundationTest` (20) &
+      `LmsPhase4ExperienceTest` (17)
+
+### Lanjutan (langkah berikutnya)
+- [ ] HTTP layer: controller + route Phase 4 (kelas langsung, konten interaktif,
+      sertifikat, badge/leaderboard, ulasan, template/salin/arsip, pesan,
+      dasbor engagement)
+- [ ] Frontend: pemutar konten interaktif, halaman kelas langsung & rekap
+      kehadiran, halaman sertifikat + verifikasi publik, galeri badge &
+      leaderboard, moderasi ulasan, dasbor kesehatan belajar
+- [ ] Pekerjaan terjadwal: penutupan status sesi, penerbitan sertifikat otomatis,
+      evaluasi badge berkala, penyegaran cache kesehatan belajar
+- [ ] PDF sertifikat mengikuti template (kolom `file_path` sudah disiapkan)

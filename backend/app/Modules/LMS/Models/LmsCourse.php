@@ -3,6 +3,7 @@
 namespace App\Modules\LMS\Models;
 
 use App\Models\BaseModel;
+use App\Modules\LMS\Domain\Enums\CourseCompletionRule;
 use App\Modules\LMS\Domain\Enums\CourseLevel;
 use App\Modules\LMS\Domain\Enums\CourseStatus;
 use App\Modules\LMS\Domain\Enums\CourseType;
@@ -38,7 +39,93 @@ class LmsCourse extends BaseModel
         'is_featured' => 'boolean',
         'max_students' => 'integer',
         'estimated_minutes' => 'integer',
+        // Phase 4 — kelulusan, sertifikat, gamifikasi, ulasan, retake.
+        'completion_rule' => CourseCompletionRule::class,
+        'completion_min_progress' => 'decimal:2',
+        'completion_min_grade' => 'decimal:2',
+        'required_final_activity_id' => 'integer',
+        'certificate_enabled' => 'boolean',
+        'certificate_template_id' => 'integer',
+        'certificate_min_progress' => 'decimal:2',
+        'certificate_min_grade' => 'decimal:2',
+        'certificate_required_competency_id' => 'integer',
+        'gamification_enabled' => 'boolean',
+        'leaderboard_enabled' => 'boolean',
+        'review_enabled' => 'boolean',
+        'allow_retake' => 'boolean',
+        'max_attempts' => 'integer',
+        'rating_average' => 'decimal:2',
+        'rating_count' => 'integer',
+        'learning_path_enabled' => 'boolean',
+        'drip_enabled' => 'boolean',
     ];
+
+    /* ---------------------------------------------------------------------
+     | Relasi Phase 4 (§1, §13, §21, §26, §31, §47)
+     * ------------------------------------------------------------------- */
+
+    public function learningPaths(): HasMany
+    {
+        return $this->hasMany(LmsLearningPath::class, 'course_id')->orderBy('sort_order');
+    }
+
+    public function dripRules(): HasMany
+    {
+        return $this->hasMany(LmsDripRule::class, 'course_id');
+    }
+
+    public function liveSessions(): HasMany
+    {
+        return $this->hasMany(LmsLiveSession::class, 'course_id')->orderBy('start_at');
+    }
+
+    public function recordings(): HasMany
+    {
+        return $this->hasMany(LmsLiveSessionRecording::class, 'course_id')->orderByDesc('created_at');
+    }
+
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(LmsCertificate::class, 'course_id');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(LmsCourseReview::class, 'course_id');
+    }
+
+    public function interactiveContents(): HasMany
+    {
+        return $this->hasMany(LmsInteractiveContent::class, 'course_id');
+    }
+
+    public function learningEvents(): HasMany
+    {
+        return $this->hasMany(LmsLearningEvent::class, 'course_id');
+    }
+
+    /** Course yang diarsipkan tidak lagi menerima perubahan konten (§49). */
+    public function isArchived(): bool
+    {
+        return $this->status === CourseStatus::ARCHIVED;
+    }
+
+    public function isReadOnly(): bool
+    {
+        return $this->isArchived();
+    }
+
+    /** Apakah sertifikat diaktifkan untuk course ini (§21). */
+    public function certificateEnabled(): bool
+    {
+        return (bool) $this->certificate_enabled;
+    }
+
+    /** Apakah gamifikasi (XP/badge) aktif — selalu opsional (§28). */
+    public function gamificationEnabled(): bool
+    {
+        return (bool) $this->gamification_enabled;
+    }
 
     public function category(): BelongsTo
     {

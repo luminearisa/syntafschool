@@ -28,6 +28,8 @@ class CourseAccessService
     public function __construct(
         private readonly CourseCompletionService $completions,
         private readonly StudentProviderInterface $students,
+        private readonly DripContentService $drip,
+        private readonly LearningPathService $learningPaths,
     ) {}
 
     public function decide(LmsCourse $course, ?LmsActor $actor, ?LmsLearningItem $item = null, ?LmsCourseSection $section = null): AccessDecision
@@ -195,6 +197,26 @@ class CourseAccessService
             if (! $sectionDecision->allowed) {
                 return $sectionDecision;
             }
+
+            // Phase 4 (§4): pelepasan bertahap pada tingkat bagian.
+            $drip = $this->drip->evaluate($course, $enrollment, $section, null);
+
+            if (! $drip->allowed) {
+                return $drip;
+            }
+
+            // Phase 4 (§2): learning path berurutan mengunci modul berikutnya.
+            if ($enrollment !== null && config('lms.learning_path.enforce_sequential', true)) {
+                $found = $this->learningPaths->moduleForSection($course, $section);
+
+                if ($found !== null) {
+                    $gate = $this->learningPaths->gate($found['path'], $found['module'], $course, $enrollment);
+
+                    if (! $gate->allowed) {
+                        return $gate;
+                    }
+                }
+            }
         }
 
         if ($item !== null) {
@@ -213,10 +235,18 @@ class CourseAccessService
                 return $windowDecision;
             }
 
+            // Phase 4 (§4): drip pada tingkat materi.
             if ($readOnly || $enrollment === null) {
                 return $decision;
             }
 
+            $itemDrip = $this->drip->evaluate($course, $enrollment, $section, $item);
+
+            if (! $itemDrip->allowed) {
+                return $itemDrip;
+            }
+
+            // Prasyarat materi & aktivitas (§3, §21) — satu mesin: completion.
             $prerequisite = $this->completions->satisfiesPrerequisites($enrollment, $item);
 
             if (! $prerequisite->allowed) {

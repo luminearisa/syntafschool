@@ -6,6 +6,7 @@ use App\Models\BaseModel;
 use App\Modules\LMS\Domain\Enums\EnrollmentMethod;
 use App\Modules\LMS\Domain\Enums\EnrollmentRole;
 use App\Modules\LMS\Domain\Enums\EnrollmentStatus;
+use App\Modules\LMS\Domain\Enums\LearningHealthStatus;
 use App\Modules\LMS\Models\Concerns\LogsLmsActivity;
 use App\Modules\LMS\Models\Concerns\ResolvesIdentity;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,7 +34,35 @@ class LmsEnrollment extends BaseModel
         'last_accessed_at' => 'datetime',
         'progress_percent' => 'decimal:2',
         'metadata' => 'array',
+        // Phase 4 — riwayat percobaan, XP, dan indikator aktivitas.
+        'attempt_number' => 'integer',
+        'xp_points' => 'integer',
+        'last_event_at' => 'datetime',
+        'health_status' => LearningHealthStatus::class,
+        'health_computed_at' => 'datetime',
     ];
+
+    /** Sertifikat yang terbit dari enrollment ini (§23, §42). */
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(LmsCertificate::class, 'enrollment_id');
+    }
+
+    public function badgeAwards(): HasMany
+    {
+        return $this->hasMany(LmsBadgeAward::class, 'enrollment_id');
+    }
+
+    public function review(): HasOne
+    {
+        return $this->hasOne(LmsCourseReview::class, 'enrollment_id');
+    }
+
+    /** Attempt ke-berapa untuk course ini — dipakai policy retake (§42). */
+    public function isRetake(): bool
+    {
+        return (int) $this->attempt_number > 1;
+    }
 
     public function course(): BelongsTo
     {
