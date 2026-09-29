@@ -306,6 +306,31 @@ cd backend && php artisan test tests/Feature/Lms
 | `LmsGradebookSecurityTest` | isolasi nilai siswa, larangan menulis nilai, wali bukan anak sah, guru course lain, tamu, item tersembunyi, nilai terkunci, koreksi massal, batas maksimum, extra credit |
 | `LmsGradebookFlowTest` | alur tugas → submission → penilaian → gradebook → rilis → siswa & wali; kuis → auto grade → gradebook; rubric → nilai akhir; outcome & kompetensi dari aktivitas; rilis → kunci → sync → koreksi → re-sync; matriks nilai guru + filter |
 
+### Data contoh & akun demo
+
+```bash
+cd backend
+php artisan migrate --force
+php artisan db:seed --force
+php artisan db:seed --class="App\Modules\LMS\Database\Seeders\LmsGradebookDemoSeeder" --force
+```
+
+`LmsGradebookDemoSeeder` bersifat idempoten: ia menyiapkan kategori + bobot,
+komponen manual, nilai aktivitas, penilaian rubric, learning outcome, kompetensi,
+serta merilis nilai sebagian siswa (satu siswa dibiarkan belum dirilis agar status
+"menunggu" dapat dilihat). Bila course belum punya peserta, seeder membuat akun
+demo `siswa<n>@syntaf.sch.id` (peran `siswa`) dan `wali<n>@syntaf.sch.id`
+(peran `wali-murid`) dengan kata sandi `password` — berguna untuk memeriksa
+tampilan nilai siswa maupun wali tanpa menyiapkan data manual.
+
+Halaman yang dapat langsung diperiksa:
+
+| Peran | Halaman |
+|---|---|
+| guru/admin | `/lms/courses/{courseId}/gradebook` (5 tab) |
+| siswa | `/lms/grades`, `/lms/performance` |
+| wali | `/lms/children/{childUserId}/grades` |
+
 ---
 
 ## 13. Peta Definition of Done (§64)
@@ -332,7 +357,7 @@ cd backend && php artisan test tests/Feature/Lms
 | Permission & security | ✅ | 89 izin `lms.*`, `canAccessCourseGrades` (kepemilikan course) |
 | Audit & idempotensi sync | ✅ | `lms_grade_histories`, `lms_grade_syncs.payload_hash` |
 | API & frontend | ✅ | 279 rute, 10 berkas frontend Phase 3 |
-| Unit/feature/integration/E2E test | ✅ | 8 berkas tes Phase 3 |
+| Unit/feature/integration/E2E test | ✅ | 8 berkas tes Phase 3; suite LMS **198 tes / 1559 assertion** hijau |
 
 Belum termasuk Phase 3 (disiapkan untuk phase berikutnya): Gradebook penuh
 dengan ekspor Excel/PDF, Workshop, bank soal institusi dengan workflow
