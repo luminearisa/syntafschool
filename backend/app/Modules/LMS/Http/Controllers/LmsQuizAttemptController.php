@@ -2,15 +2,14 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\ActivityAvailabilityService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\QuizAttemptService;
-use App\Modules\LMS\Application\Services\QuizService;
 use App\Modules\LMS\Application\Services\QuizGradingService;
+use App\Modules\LMS\Application\Services\QuizService;
 use App\Modules\LMS\Http\Controllers\Concerns\ResolvesActivities;
+use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsQuizAnswer;
-use App\Modules\LMS\Models\LmsQuizAttempt as QuizAttempt;
 use App\Modules\LMS\Models\LmsQuizAttempt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

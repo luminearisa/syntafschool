@@ -298,6 +298,117 @@ class InteractiveContentService
     }
 
     /** @return list<array<string, mixed>> */
+    /** Konten interaktif milik satu materi (null bila materi bukan konten interaktif). */
+    public function forItem(int $itemId): ?LmsInteractiveContent
+    {
+        return LmsInteractiveContent::query()->where('learning_item_id', $itemId)->first();
+    }
+
+    /**
+     * Payload untuk guru/penulis konten: termasuk kunci jawaban & statistik.
+     *
+     * @return array<string, mixed>
+     */
+    public function payload(LmsInteractiveContent $content, bool $forStaff = false): array
+    {
+        $base = [
+            'id' => (int) $content->id,
+            'learning_item_id' => (int) $content->learning_item_id,
+            'content_type' => $content->content_type?->value ?? (string) $content->content_type,
+            'title' => $content->title,
+            'description' => $content->description,
+            'status' => $content->status?->value ?? (string) $content->status,
+            'version' => (int) ($content->version ?? 1),
+            'completion_rule' => $content->completion_rule ?? null,
+            'completion_min_score' => $content->completion_min_score !== null ? (float) $content->completion_min_score : null,
+            'completion_min_slides' => $content->completion_min_slides !== null ? (int) $content->completion_min_slides : null,
+            'required_interactions' => $content->required_interactions !== null ? (int) $content->required_interactions : null,
+            'payload' => $forStaff ? $content->payload : null,
+            'settings' => $content->settings,
+            'published_at' => $content->published_at?->toIso8601String(),
+            'updated_at' => $content->updated_at?->toIso8601String(),
+        ];
+
+        if ($forStaff) {
+            $base['statistics'] = $this->statistics($content);
+        }
+
+        return $base;
+    }
+
+    /**
+     * Riwayat versi konten (§13: attempt lama tetap dapat direkonstruksi).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function versions(LmsInteractiveContent $content, int $limit = 20): array
+    {
+        return \App\Modules\LMS\Models\LmsInteractiveContentVersion::query()
+            ->where('interactive_content_id', $content->id)
+            ->orderByDesc('version')
+            ->limit($limit)
+            ->get()
+            ->map(fn ($version) => [
+                'id' => (int) $version->id,
+                'version' => (int) $version->version,
+                'title' => $version->title,
+                'created_at' => $version->created_at?->toIso8601String(),
+            ])
+            ->all();
+    }
+
+    /**
+     * Duplikat konten ke materi baru (dipakai saat item diduplikasi).
+     */
+    public function duplicate(LmsInteractiveContent $content, LmsActor $actor): LmsInteractiveContent
+    {
+        $copy = LmsInteractiveContent::query()->create([
+            'learning_item_id' => $content->learning_item_id,
+            'content_type' => $content->content_type,
+            'title' => \Illuminate\Support\Str::limit('Salinan '.$content->title, 180, ''),
+            'description' => $content->description,
+            'payload' => $content->payload,
+            'settings' => $content->settings,
+            'completion_rule' => $content->completion_rule,
+            'completion_min_score' => $content->completion_min_score,
+            'completion_min_slides' => $content->completion_min_slides,
+            'required_interactions' => $content->required_interactions,
+            'status' => InteractiveContentStatus::DRAFT,
+            'version' => 1,
+            'created_by' => $actor->id,
+        ]);
+
+        return $copy;
+    }
+
+    /**
+     * Progres siswa pada konten interaktif (dipakai pemutar & daftar progres).
+     *
+     * @return array<string, mixed>
+     */
+    public function progress(LmsInteractiveContent $content, LmsEnrollment $enrollment): array
+    {
+        $responses = \App\Modules\LMS\Models\LmsInteractiveResponse::query()
+            ->where('interactive_content_id', $content->id)
+            ->where('user_id', $enrollment->user_id)
+            ->get();
+
+        $completion = \App\Modules\LMS\Models\LmsActivityCompletion::query()
+            ->where('enrollment_id', $enrollment->id)
+            ->where('learning_item_id', $content->learning_item_id)
+            ->first();
+
+        return [
+            'interactive_content_id' => (int) $content->id,
+            'learning_item_id' => (int) $content->learning_item_id,
+            'responses' => $responses->count(),
+            'score' => $responses->max('score') !== null ? (float) $responses->max('score') : null,
+            'completed' => $completion !== null && $completion->status === 'COMPLETE',
+            'completed_at' => $completion?->completed_at?->toIso8601String(),
+            'state' => $this->stateFor($content, $responses->last()?->responses),
+        ];
+    }
+
     public function forCourse(int $courseId, ?InteractiveContentType $type = null): array
     {
         return LmsInteractiveContent::query()

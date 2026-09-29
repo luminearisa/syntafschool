@@ -48,6 +48,7 @@ class ActivityService
             ActivityType::LESSON => app(LessonService::class),
             ActivityType::CHOICE => app(ChoiceService::class),
             ActivityType::SURVEY => app(SurveyService::class),
+            ActivityType::SCORM => app(ScormActivityService::class),
             default => throw ValidationException::withMessages([
                 'activity_type' => 'Tipe aktivitas '.$type->value.' belum tersedia pada Phase 2.',
             ]),

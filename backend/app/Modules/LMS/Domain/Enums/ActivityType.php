@@ -16,6 +16,7 @@ enum ActivityType: string
     case SURVEY = 'SURVEY';
     case CHOICE = 'CHOICE';
     case WORKSHOP = 'WORKSHOP';
+    case SCORM = 'SCORM';
 
     public function label(): string
     {
@@ -26,6 +27,7 @@ enum ActivityType: string
             self::LESSON => 'Pelajaran',
             self::SURVEY => 'Survei',
             self::CHOICE => 'Pilihan',
+            self::SCORM => 'Paket SCORM',
             self::WORKSHOP => 'Workshop',
         };
     }

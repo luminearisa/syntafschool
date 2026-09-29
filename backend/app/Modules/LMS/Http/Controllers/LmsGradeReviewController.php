@@ -3,9 +3,11 @@
 namespace App\Modules\LMS\Http\Controllers;
 
 use App\Modules\LMS\Application\Services\CourseAccessService;
+use App\Modules\LMS\Application\Services\GradebookService;
 use App\Modules\LMS\Application\Services\GradeReviewService;
 use App\Modules\LMS\Application\Services\GradeStatisticsService;
-use App\Modules\LMS\Application\Services\GradebookService;
+use App\Modules\LMS\Domain\Contracts\StudentProviderInterface;
+use App\Modules\LMS\Domain\Support\LmsActor;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsGradeItem;
@@ -162,7 +164,7 @@ class LmsGradeReviewController extends LmsController
         return $this->successResponse($this->reviews->payload($review->refresh()), 'Catatan tersimpan');
     }
 
-    private function authorizeView(LmsGradeReview $review, \App\Modules\LMS\Domain\Support\LmsActor $actor): void
+    private function authorizeView(LmsGradeReview $review, LmsActor $actor): void
     {
         $isOwner = (int) $review->user_id === $actor->id;
         $isParent = $actor->isParent() && $review->is_parent_visible && $this->parentWatches($review, $actor);
@@ -171,7 +173,7 @@ class LmsGradeReviewController extends LmsController
         $this->authorizeLms($isOwner || $isParent || $isTeacher, 'Anda tidak berhak melihat banding nilai ini.');
     }
 
-    private function authorizeTeacher(LmsGradeReview $review, \App\Modules\LMS\Domain\Support\LmsActor $actor): void
+    private function authorizeTeacher(LmsGradeReview $review, LmsActor $actor): void
     {
         $this->authorizeLms(
             $this->isCourseTeacher($review, $actor) && ($actor->can('lms.grade.review') || $actor->can('lms.grade.approve')),
@@ -179,7 +181,7 @@ class LmsGradeReviewController extends LmsController
         );
     }
 
-    private function isCourseTeacher(LmsGradeReview $review, \App\Modules\LMS\Domain\Support\LmsActor $actor): bool
+    private function isCourseTeacher(LmsGradeReview $review, LmsActor $actor): bool
     {
         $courseId = $review->gradebook()->first()?->course_id;
 
@@ -192,9 +194,9 @@ class LmsGradeReviewController extends LmsController
         return $course !== null && $this->canAccessCourseGrades($actor, $course);
     }
 
-    private function parentWatches(LmsGradeReview $review, \App\Modules\LMS\Domain\Support\LmsActor $actor): bool
+    private function parentWatches(LmsGradeReview $review, LmsActor $actor): bool
     {
-        foreach (app(\App\Modules\LMS\Domain\Contracts\StudentProviderInterface::class)->childrenOf($actor) as $child) {
+        foreach (app(StudentProviderInterface::class)->childrenOf($actor) as $child) {
             if ((int) ($child->userId ?? 0) === (int) $review->user_id) {
                 return true;
             }

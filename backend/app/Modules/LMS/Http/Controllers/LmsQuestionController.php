@@ -2,9 +2,10 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\QuestionService;
+use App\Modules\LMS\Domain\Enums\QuestionType;
+use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsQuestion;
 use Illuminate\Http\JsonResponse;
@@ -126,7 +127,7 @@ class LmsQuestionController extends LmsController
             'category_id' => ['nullable', 'integer', 'exists:lms_question_categories,id'],
             'course_id' => ['nullable', 'integer', 'exists:lms_courses,id'],
             'name' => ['nullable', 'string', 'max:255'],
-            'question_type' => [$required, 'string', 'in:'.implode(',', \App\Modules\LMS\Domain\Enums\QuestionType::values())],
+            'question_type' => [$required, 'string', 'in:'.implode(',', QuestionType::values())],
             'question_text' => [$required, 'string'],
             'general_feedback' => ['nullable', 'string'],
             'default_mark' => ['nullable', 'numeric', 'min:0.5', 'max:100'],

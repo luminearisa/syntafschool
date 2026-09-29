@@ -6,19 +6,22 @@ use App\Modules\LMS\Application\Services\ActivityGradeService;
 use App\Modules\LMS\Application\Services\AssessmentResultService;
 use App\Modules\LMS\Application\Services\CompetencyAssessmentService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
+use App\Modules\LMS\Application\Services\CourseProgressService;
 use App\Modules\LMS\Application\Services\FinalGradeService;
 use App\Modules\LMS\Application\Services\GradebookService;
 use App\Modules\LMS\Application\Services\GradeCalculationService;
 use App\Modules\LMS\Application\Services\GradeReleaseService;
 use App\Modules\LMS\Application\Services\GradeReviewService;
 use App\Modules\LMS\Application\Services\GradeStatisticsService;
+use App\Modules\LMS\Application\Services\LmsCalendarService;
 use App\Modules\LMS\Application\Services\OutcomeAssessmentService;
+use App\Modules\LMS\Domain\Contracts\StudentProviderInterface;
+use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
 use App\Modules\LMS\Domain\Support\LmsActor;
 use App\Modules\LMS\Http\LmsController;
-use App\Modules\LMS\Models\LmsActivityGrade;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsEnrollment;
-use App\Modules\LMS\Models\LmsGradeItem;
+use App\Modules\LMS\Models\LmsGradeHistory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -131,10 +134,10 @@ class LmsGradeViewController extends LmsController
             $release = $this->releases->forStudent($gradebook, $target);
             $isReleased = $release?->isVisible() ?? false;
 
-            $targetActor = app(\App\Modules\LMS\Domain\Contracts\UserProviderInterface::class)->find($target);
+            $targetActor = app(UserProviderInterface::class)->find($target);
             $progress = $targetActor === null
                 ? null
-                : app(\App\Modules\LMS\Application\Services\CourseProgressService::class)->summary($course, $targetActor);
+                : app(CourseProgressService::class)->summary($course, $targetActor);
 
             $calculation = $this->calculation->calculate($gradebook, $target);
 
@@ -219,7 +222,7 @@ class LmsGradeViewController extends LmsController
         }
 
         $courses = $this->courseIdsFor($child);
-        $childActor = app(\App\Modules\LMS\Domain\Contracts\UserProviderInterface::class)->find($child);
+        $childActor = app(UserProviderInterface::class)->find($child);
         $rows = [];
         $upcoming = [];
 
@@ -268,7 +271,7 @@ class LmsGradeViewController extends LmsController
             ];
 
             if ($childActor !== null) {
-                $agenda = app(\App\Modules\LMS\Application\Services\LmsCalendarService::class)
+                $agenda = app(LmsCalendarService::class)
                     ->agenda($childActor, now()->toDateString(), now()->addDays(45)->toDateString());
 
                 foreach (array_merge($agenda['this_week'], $agenda['upcoming']) as $entry) {
@@ -342,7 +345,7 @@ class LmsGradeViewController extends LmsController
     /** @return list<array<string, mixed>> */
     private function historyForCourse($gradebook, int $userId): array
     {
-        return \App\Modules\LMS\Models\LmsGradeHistory::query()
+        return LmsGradeHistory::query()
             ->where('gradebook_id', $gradebook->id)
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
@@ -472,7 +475,7 @@ class LmsGradeViewController extends LmsController
 
     private function parentWatches(LmsActor $actor, int $childUserId): bool
     {
-        foreach (app(\App\Modules\LMS\Domain\Contracts\StudentProviderInterface::class)->childrenOf($actor) as $child) {
+        foreach (app(StudentProviderInterface::class)->childrenOf($actor) as $child) {
             if ((int) ($child->userId ?? 0) === $childUserId) {
                 return true;
             }

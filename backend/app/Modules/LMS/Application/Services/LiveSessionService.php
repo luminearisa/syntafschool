@@ -110,6 +110,66 @@ class LiveSessionService
     }
 
     /** Sesi terdekat untuk dasbor siswa, lintas course yang diikuti. */
+    /**
+     * Payload satu sesi untuk UI (guru mendapat rekap kehadiran).
+     *
+     * @return array<string, mixed>
+     */
+    public function payload(LmsLiveSession $session, bool $forStaff = false): array
+    {
+        $summary = $forStaff ? $this->attendanceSummary($session) : null;
+
+        return $this->row($session->fresh(), $forStaff, $summary);
+    }
+
+    /**
+     * Sesi yang sedang berlangsung (LIVE) pada course yang diikuti seorang siswa.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function liveNowForUser(int $userId, int $limit = 5): array
+    {
+        $courseIds = LmsEnrollment::query()
+            ->where('user_id', $userId)
+            ->where('role', 'STUDENT')
+            ->pluck('course_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($courseIds === []) {
+            return [];
+        }
+
+        return LmsLiveSession::query()
+            ->with('course:id,name,code')
+            ->whereIn('course_id', $courseIds)
+            ->whereNotNull('published_at')
+            ->where('status', LiveSessionStatus::LIVE->value)
+            ->orderBy('start_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (LmsLiveSession $session) => $this->row($session, false))
+            ->all();
+    }
+
+    /**
+     * Sesi berikutnya yang belum selesai pada sebuah course (§13).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function nextSession(LmsCourse $course): ?array
+    {
+        $session = LmsLiveSession::query()
+            ->where('course_id', $course->id)
+            ->whereNotNull('published_at')
+            ->whereNotIn('status', [LiveSessionStatus::CANCELLED->value, LiveSessionStatus::COMPLETED->value])
+            ->where('start_at', '>=', now()->subMinutes($this->graceMinutes()))
+            ->orderBy('start_at')
+            ->first();
+
+        return $session === null ? null : $this->row($session, false);
+    }
+
     public function forStudent(int $userId, int $limit = 5): array
     {
         $courseIds = LmsEnrollment::query()
@@ -1119,19 +1179,6 @@ class LiveSessionService
     }
 
     /** Ringkasan singkat untuk dasbor kursus (tanpa query per sesi). */
-    public function nextSession(LmsCourse $course): ?array
-    {
-        $session = LmsLiveSession::query()
-            ->where('course_id', $course->id)
-            ->whereNotNull('published_at')
-            ->whereIn('status', [LiveSessionStatus::SCHEDULED->value, LiveSessionStatus::LIVE->value])
-            ->orderBy('start_at')
-            ->first();
-
-        return $session === null ? null : $this->row($session, false);
-    }
-
-    /** Jumlah sesi menunggu rekap kehadiran (indikator tugas guru). */
     public function pendingAttendanceCount(LmsCourse $course): int
     {
         return LmsLiveSession::query()

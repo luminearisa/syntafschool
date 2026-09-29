@@ -2,13 +2,14 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\ActivityAvailabilityService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\DiscussionService;
 use App\Modules\LMS\Application\Services\ForumModerationService;
 use App\Modules\LMS\Application\Services\ForumService;
 use App\Modules\LMS\Http\Controllers\Concerns\ResolvesActivities;
+use App\Modules\LMS\Http\LmsController;
+use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsForum;
 use App\Modules\LMS\Models\LmsForumDiscussion;
 use App\Modules\LMS\Models\LmsForumPost;
@@ -256,7 +257,7 @@ class LmsForumController extends LmsController
         return $this->successResponse($this->forums->statistics($model), 'Statistik forum berhasil diambil');
     }
 
-    /** @return array{0: \App\Modules\LMS\Models\LmsActivity, 1: LmsForumPost|LmsForumDiscussion} */
+    /** @return array{0: LmsActivity, 1: LmsForumPost|LmsForumDiscussion} */
     protected function resolveModerationTarget(Request $request, string $type, int $id): array
     {
         if ($type === 'post') {

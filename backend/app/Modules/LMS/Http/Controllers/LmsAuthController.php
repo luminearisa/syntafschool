@@ -4,7 +4,6 @@ namespace App\Modules\LMS\Http\Controllers;
 
 use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
 use App\Modules\LMS\Domain\Enums\ActorRole;
-use App\Modules\LMS\Domain\Support\LmsActor;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Http\Middleware\ResolveLmsActor;
 use App\Modules\LMS\Models\LmsUser;

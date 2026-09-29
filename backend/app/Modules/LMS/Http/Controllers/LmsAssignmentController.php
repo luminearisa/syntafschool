@@ -2,7 +2,6 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\ActivityAvailabilityService;
 use App\Modules\LMS\Application\Services\ActivityService;
 use App\Modules\LMS\Application\Services\AssignmentGradingService;
@@ -10,6 +9,7 @@ use App\Modules\LMS\Application\Services\AssignmentService;
 use App\Modules\LMS\Application\Services\AssignmentSubmissionService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Http\Controllers\Concerns\ResolvesActivities;
+use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsAssignment;
 use App\Modules\LMS\Models\LmsAssignmentSubmission;
 use Illuminate\Http\JsonResponse;

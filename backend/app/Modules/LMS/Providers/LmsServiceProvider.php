@@ -3,13 +3,22 @@
 namespace App\Modules\LMS\Providers;
 
 use App\Models\Setting;
+use App\Modules\LMS\Application\Services\LmsGateway;
 use App\Modules\LMS\Application\Support\LiveMeetingRegistry;
 use App\Modules\LMS\Application\Support\QuestionTypeRegistry;
 use App\Modules\LMS\Domain\Contracts\AcademicActivityFeedInterface;
 use App\Modules\LMS\Domain\Contracts\AcademicCourseProviderInterface;
 use App\Modules\LMS\Domain\Contracts\AcademicGradeProviderInterface;
 use App\Modules\LMS\Domain\Contracts\ClassProviderInterface;
+use App\Modules\LMS\Domain\Contracts\AttendanceProviderInterface;
+use App\Modules\LMS\Domain\Contracts\CalendarProviderInterface;
+use App\Modules\LMS\Domain\Contracts\EnrollmentProviderInterface;
+use App\Modules\LMS\Domain\Contracts\FileStorageProviderInterface;
+use App\Modules\LMS\Domain\Contracts\FinancialEligibilityProviderInterface;
 use App\Modules\LMS\Domain\Contracts\GradeProviderInterface;
+use App\Modules\LMS\Domain\Contracts\InteractiveContentProviderInterface;
+use App\Modules\LMS\Domain\Contracts\NotificationProviderInterface;
+use App\Modules\LMS\Domain\Contracts\ParentProviderInterface;
 use App\Modules\LMS\Domain\Contracts\StudentProviderInterface;
 use App\Modules\LMS\Domain\Contracts\TeacherProviderInterface;
 use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
@@ -17,11 +26,19 @@ use App\Modules\LMS\Http\Controllers\LmsSettingsController;
 use App\Modules\LMS\Http\Middleware\EnsureLmsPermission;
 use App\Modules\LMS\Http\Middleware\ResolveLmsActor;
 use App\Modules\LMS\Infrastructure\Providers\ErpAcademicActivityFeed;
+use App\Modules\LMS\Infrastructure\Providers\ErpAcademicEnrollmentProvider;
+use App\Modules\LMS\Infrastructure\Providers\DatabaseNotificationProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpAcademicCourseProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpClassProvider;
+use App\Modules\LMS\Infrastructure\Providers\ErpAttendanceProvider;
+use App\Modules\LMS\Infrastructure\Providers\ErpCalendarProvider;
+use App\Modules\LMS\Infrastructure\Providers\ErpFinancialEligibilityProvider;
+use App\Modules\LMS\Infrastructure\Providers\ErpParentProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpStudentProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpUserProvider;
+use App\Modules\LMS\Infrastructure\Providers\LocalFileStorageProvider;
+use App\Modules\LMS\Infrastructure\Providers\LocalInteractiveContentProvider;
 use App\Modules\LMS\Infrastructure\Providers\LinkOnlyMeetingProvider;
 use App\Modules\LMS\Infrastructure\Providers\LmsGradeProvider;
 use App\Modules\LMS\Infrastructure\Providers\SiakadAcademicGradeProvider;
@@ -32,10 +49,18 @@ use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneStudentProvide
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneUserProvider;
 use App\Modules\LMS\Infrastructure\Providers\StandaloneAcademicGradeProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneAttendanceProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneCalendarProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneEnrollmentProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneFinancialEligibilityProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneParentProvider;
 use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsActivityGrade;
 use App\Modules\LMS\Observers\LmsActivityGradeObserver;
 use App\Modules\LMS\Observers\LmsActivityObserver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -113,6 +138,91 @@ class LmsServiceProvider extends ServiceProvider
         $this->app->singleton(AcademicGradeProviderInterface::class, fn () => config('lms.standalone', false)
             ? new StandaloneAcademicGradeProvider
             : new SiakadAcademicGradeProvider);
+
+        /*
+        |------------------------------------------------------------------
+        | Phase 5 — gerbang integrasi lengkap (§4, §8, §9)
+        |------------------------------------------------------------------
+        |
+        | Seluruh kontrak di bawah ini dipilih **sekali** di sini. Business
+        | logic hanya memakai `LmsGateway`, sehingga tidak ada pemeriksaan
+        | `standalone` yang tersebar di service.
+        |
+        | `lms.providers.*` dapat diisi kelas lain (mis. penyimpanan S3 atau
+        | wali dari sistem sekolah) tanpa mengubah kode LMS.
+        */
+        $this->app->singleton(ParentProviderInterface::class, fn () => $this->resolveProvider(
+            'parent',
+            ErpParentProvider::class,
+            StandaloneParentProvider::class,
+        ));
+
+        $this->app->singleton(EnrollmentProviderInterface::class, fn ($app) => $this->resolveProvider(
+            'enrollment',
+            ErpAcademicEnrollmentProvider::class,
+            StandaloneEnrollmentProvider::class,
+            [$app->make(ClassProviderInterface::class)],
+        ));
+
+        $this->app->singleton(NotificationProviderInterface::class, fn () => $this->resolveProvider(
+            'notification',
+            DatabaseNotificationProvider::class,
+            DatabaseNotificationProvider::class,
+        ));
+
+        $this->app->singleton(CalendarProviderInterface::class, fn () => $this->resolveProvider(
+            'calendar',
+            ErpCalendarProvider::class,
+            StandaloneCalendarProvider::class,
+        ));
+
+        $this->app->singleton(FileStorageProviderInterface::class, fn () => $this->resolveProvider(
+            'files',
+            LocalFileStorageProvider::class,
+            LocalFileStorageProvider::class,
+        ));
+
+        $this->app->singleton(AttendanceProviderInterface::class, fn () => $this->resolveProvider(
+            'attendance',
+            ErpAttendanceProvider::class,
+            StandaloneAttendanceProvider::class,
+        ));
+
+        $this->app->singleton(FinancialEligibilityProviderInterface::class, fn () => $this->resolveProvider(
+            'finance',
+            ErpFinancialEligibilityProvider::class,
+            StandaloneFinancialEligibilityProvider::class,
+        ));
+
+        $this->app->singleton(InteractiveContentProviderInterface::class, fn () => $this->resolveProvider(
+            'interactive_content',
+            LocalInteractiveContentProvider::class,
+            LocalInteractiveContentProvider::class,
+        ));
+
+        // Gerbang tunggal: seluruh service berbicara ke sini, bukan ke provider.
+        $this->app->singleton(LmsGateway::class);
+    }
+
+    /**
+     * Pilih implementasi kontrak: pengaturan eksplisit menang, lalu mode.
+     *
+     * @param  class-string  $integrated
+     * @param  class-string  $standalone
+     * @param  list<object>  $dependencies
+     */
+    private function resolveProvider(string $key, string $integrated, string $standalone, array $dependencies = []): object
+    {
+        $configured = config('lms.providers.'.$key);
+        $class = is_string($configured) && $configured !== ''
+            ? $configured
+            : (config('lms.standalone', false) ? $standalone : $integrated);
+
+        if (! class_exists($class)) {
+            $class = config('lms.standalone', false) ? $standalone : $integrated;
+        }
+
+        return $dependencies === [] ? new $class : new $class(...$dependencies);
     }
 
     public function boot(): void
@@ -125,6 +235,71 @@ class LmsServiceProvider extends ServiceProvider
         $this->registerMiddleware();
         $this->registerRoutes();
         $this->registerGradebookObservers();
+        $this->registerCommands();
+        $this->registerRateLimiters();
+    }
+
+    /**
+     * Rate limit LMS (§30).
+     *
+     * Batasnya dapat diubah sekolah lewat `config/lms.php` tanpa deploy. Setiap
+     * limiter dibedakan per pengguna (bukan per IP) bila pengguna dikenal, supaya
+     * satu jaringan sekolah (NAT) tidak saling menghabiskan kuota.
+     */
+    private function registerRateLimiters(): void
+    {
+        $limits = (array) config('lms.rate_limits', []);
+
+        $limiters = [
+            'lms-certificate-verify' => ['certificate_verify', 30],
+            'lms-live-join' => ['live_join', 30],
+            'lms-interactive-respond' => ['quiz_answer', 120],
+            'lms-message' => ['notification', 60],
+            'lms-course-import' => ['course_import', 10],
+            'lms-file-upload' => ['file_upload', 30],
+            'lms-scorm-tracking' => ['scorm_tracking', 300],
+            'lms-report-export' => ['report_export', 20],
+            'lms-grade-sync' => ['grade_sync', 60],
+            'lms-public-api' => ['public_api', 120],
+            'lms-quiz-attempt' => ['quiz_attempt', 10],
+            'lms-quiz-answer' => ['quiz_answer', 120],
+            'lms-submission' => ['submission', 20],
+            'lms-forum-post' => ['forum_post', 30],
+            'lms-search' => ['search', 60],
+        ];
+
+        foreach ($limiters as $name => [$key, $default]) {
+            $perMinute = max(1, (int) ($limits[$key] ?? $default));
+
+            RateLimiter::for($name, function (Request $request) use ($perMinute): Limit {
+                $identifier = $request->user()?->getAuthIdentifier();
+
+                return Limit::perMinute($perMinute)->by($identifier !== null ? 'user:'.$identifier : 'ip:'.$request->ip());
+            });
+        }
+    }
+
+    /**
+     * Perintah artisan modul (§11).
+     *
+     * Didaftarkan dari sini (bukan Kernel) supaya modul tetap dapat dipindahkan
+     * utuh tanpa menyentuh berkas inti aplikasi.
+     */
+    private function registerCommands(): void
+    {
+        if (! $this->app->runningInConsole()) {
+            return;
+        }
+
+        $this->commands([
+            \App\Modules\LMS\Console\Commands\LmsHealthCommand::class,
+            \App\Modules\LMS\Console\Commands\LmsIntegrityCommand::class,
+            \App\Modules\LMS\Console\Commands\LmsGradeSyncCommand::class,
+            \App\Modules\LMS\Console\Commands\LmsReminderCommand::class,
+            \App\Modules\LMS\Console\Commands\LmsAutomationCommand::class,
+            \App\Modules\LMS\Console\Commands\LmsPruneCommand::class,
+            \App\Modules\LMS\Console\Commands\LmsReportCommand::class,
+        ]);
     }
 
     public function provides(): array

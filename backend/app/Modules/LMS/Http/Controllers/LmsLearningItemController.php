@@ -11,7 +11,6 @@ use App\Modules\LMS\Domain\Enums\ItemType;
 use App\Modules\LMS\Domain\Enums\ResourceType;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Http\Resources\LmsLearningItemResource;
-use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsCourseSection;
 use App\Modules\LMS\Models\LmsLearningItem;
 use App\Modules\LMS\Models\LmsResource;

@@ -6,12 +6,14 @@ use App\Modules\LMS\Application\Services\AssessmentResultService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\GradebookService;
 use App\Modules\LMS\Application\Services\GradeCorrectionService;
+use App\Modules\LMS\Application\Services\GradeStatisticsService;
 use App\Modules\LMS\Application\Services\RubricAssessmentService;
+use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
 use App\Modules\LMS\Domain\Enums\EnrollmentRole;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsAssessmentResult;
-use App\Modules\LMS\Models\LmsGradeItem;
 use App\Modules\LMS\Models\LmsEnrollment;
+use App\Modules\LMS\Models\LmsGradeItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -74,7 +76,7 @@ class LmsAssessmentResultController extends LmsController
                 'rubric_id' => $item->rubric_id === null ? null : (int) $item->rubric_id,
             ],
             'students' => $students,
-            'statistics' => app(\App\Modules\LMS\Application\Services\GradeStatisticsService::class)->itemStatistics($item),
+            'statistics' => app(GradeStatisticsService::class)->itemStatistics($item),
             'is_frozen' => $this->gradebooks->isFrozen($item->gradebook()->firstOrFail()),
         ], 'Nilai komponen berhasil diambil');
     }
@@ -283,7 +285,7 @@ class LmsAssessmentResultController extends LmsController
     private function students(LmsGradeItem $item): array
     {
         $courseId = $item->gradebook()->firstOrFail()->course_id;
-        $provider = app(\App\Modules\LMS\Domain\Contracts\UserProviderInterface::class);
+        $provider = app(UserProviderInterface::class);
 
         return LmsEnrollment::query()
             ->where('course_id', $courseId)

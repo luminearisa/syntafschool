@@ -4,13 +4,14 @@ namespace App\Modules\LMS\Http\Controllers;
 
 use App\Modules\LMS\Application\Services\AssessmentResultService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
+use App\Modules\LMS\Application\Services\FinalGradeService;
 use App\Modules\LMS\Application\Services\GradebookService;
 use App\Modules\LMS\Application\Services\GradeCalculationService;
 use App\Modules\LMS\Application\Services\GradeExportService;
 use App\Modules\LMS\Application\Services\GradeItemService;
 use App\Modules\LMS\Application\Services\GradeReleaseService;
 use App\Modules\LMS\Application\Services\GradeStatisticsService;
-use App\Modules\LMS\Application\Services\FinalGradeService;
+use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsGradebook;
@@ -544,7 +545,7 @@ class LmsGradebookController extends LmsController
 
     private function studentName(int $userId, LmsCourse $course): ?string
     {
-        $provider = app(\App\Modules\LMS\Domain\Contracts\UserProviderInterface::class);
+        $provider = app(UserProviderInterface::class);
 
         return $provider->find($userId)?->name;
     }

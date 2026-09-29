@@ -143,6 +143,134 @@ class GradeSyncService
      * @param  list<int>  $userIds
      * @return array<string, mixed>
      */
+    /** Kunci provider akademik yang dipakai (untuk jejak & pengaturan). */
+    public function providerKey(): string
+    {
+        return $this->integration->provider()->key();
+    }
+
+    /** Apakah provider akademik benar-benar siap menerima nilai saat ini? */
+    public function providerAvailable(): bool
+    {
+        return $this->integration->provider()->isAvailable();
+    }
+
+    /** Payload nilai satu siswa (§40) — dipakai jalur sinkron & jalur antrean. */
+    public function payloadFor(LmsGradebook $gradebook, int $userId): array
+    {
+        return $this->integration->payload($gradebook, $userId);
+    }
+
+    /**
+     * Kirim payload yang **sudah** disiapkan antrean (§6).
+     *
+     * Dipisah dari `syncStudent()` supaya aturan penguncian, riwayat nilai, dan
+     * pemetaan status hanya ada di satu tempat: jalur langsung (tombol "Sync
+     * Now" di gradebook) dan jalur antrean memakai aturan yang sama.
+     *
+     * @return array<string, mixed>
+     */
+    public function pushQueued(LmsGradeSync $sync, ?LmsActor $actor = null): array
+    {
+        $provider = $this->integration->provider();
+        $payload = (array) $sync->payload;
+
+        $sync->fill([
+            'status' => GradeSyncStatus::SYNCING,
+            'provider' => $provider->key(),
+            'last_attempt_at' => now(),
+        ])->save();
+
+        $response = $provider->push($payload);
+
+        $providerAvailable = $provider->isAvailable();
+
+        DB::transaction(function () use ($sync, $response, $actor, $providerAvailable): void {
+            $sync->fill([
+                'status' => match (true) {
+                    $response['accepted'] => GradeSyncStatus::SYNCED,
+                    $providerAvailable => GradeSyncStatus::FAILED,
+                    default => GradeSyncStatus::SKIPPED,
+                },
+                'external_type' => $response['external_type'],
+                'external_id' => $response['external_id'],
+                'external_ref' => $response['external_ref'],
+                'error_message' => $response['accepted'] ? null : $response['message'],
+                'synced_at' => $response['accepted'] ? now() : null,
+            ])->save();
+
+            if ($response['accepted']) {
+                $gradebook = LmsGradebook::query()->find($sync->gradebook_id);
+
+                if ($gradebook !== null) {
+                    $release = $this->releases->forStudent($gradebook, (int) $sync->user_id);
+
+                    if ($release !== null && ! $release->isLocked()) {
+                        $this->releases->lock($release, $actor ?? $this->systemActor(), 'Dikunci setelah sinkronisasi ke SIAKAD.');
+                    }
+
+                    $sync->fill(['locked_at' => now(), 'locked_by' => $actor?->id])->save();
+                }
+            }
+
+            LmsGradeHistory::query()->create([
+                'gradebook_id' => $sync->gradebook_id,
+                'user_id' => (int) $sync->user_id,
+                'student_id' => $sync->student_id,
+                'action' => $response['accepted'] ? GradeHistoryAction::SYNCED : GradeHistoryAction::SYNC_FAILED,
+                'source' => 'QUEUE',
+                'previous_value' => null,
+                'new_value' => $payload['result']['final_grade'] ?? null,
+                'reason' => $response['message'],
+                'actor_id' => $actor?->id,
+            ]);
+        });
+
+        $this->audit('LMS_GRADE_SYNC_PROCESSED', $sync, [
+            'course_id' => LmsGradebook::query()->whereKey($sync->gradebook_id)->value('course_id'),
+            'accepted' => (bool) $response['accepted'],
+            'status' => $sync->status->value,
+            'external_ref' => $response['external_ref'],
+        ]);
+
+        return [
+            'accepted' => (bool) $response['accepted'],
+            'status' => $sync->status->value,
+            'message' => $response['message'],
+            'external_type' => $response['external_type'],
+            'external_id' => $response['external_id'],
+            'external_ref' => $response['external_ref'],
+        ];
+    }
+
+    /**
+     * Penerima pemberitahuan kegagalan sinkronisasi: guru pengampu course.
+     *
+     * @return list<int>
+     */
+    public function handlersFor(LmsGradebook $gradebook): array
+    {
+        $course = $gradebook->course()->first();
+
+        if ($course === null) {
+            return [];
+        }
+
+        $teacherIds = $course->teachers()->pluck('users.id')->all();
+
+        if ($teacherIds === []) {
+            $teacherIds = array_filter([$course->teacher_id]);
+        }
+
+        return array_values(array_unique(array_map('intval', $teacherIds)));
+    }
+
+    /** Aktor sistem untuk aksi otomatis (job) tanpa pengguna (§11). */
+    private function systemActor(): LmsActor
+    {
+        return \App\Modules\LMS\Domain\Support\LmsSystemActor::make();
+    }
+
     public function syncGradebook(LmsGradebook $gradebook, array $userIds, LmsActor $actor): array
     {
         $rows = [];

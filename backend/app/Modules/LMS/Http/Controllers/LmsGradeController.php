@@ -2,11 +2,11 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\ActivityGradeService;
 use App\Modules\LMS\Application\Services\ActivityGradeSyncService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Http\Controllers\Concerns\ResolvesActivities;
+use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsActivityGrade;
 use App\Modules\LMS\Models\LmsCourse;

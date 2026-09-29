@@ -2,10 +2,10 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\QuestionBankService;
 use App\Modules\LMS\Application\Services\QuestionService;
+use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsQuestionBank;
 use App\Modules\LMS\Models\LmsQuestionCategory;

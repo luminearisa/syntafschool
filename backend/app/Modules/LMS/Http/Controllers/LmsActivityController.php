@@ -2,14 +2,13 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\ActivityAvailabilityService;
 use App\Modules\LMS\Application\Services\ActivityService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Domain\Enums\ActivityType;
 use App\Modules\LMS\Http\Controllers\Concerns\ResolvesActivities;
+use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Http\Resources\LmsActivityResource;
-use App\Modules\LMS\Models\LmsActivity;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsCourseSection;
 use Illuminate\Http\JsonResponse;

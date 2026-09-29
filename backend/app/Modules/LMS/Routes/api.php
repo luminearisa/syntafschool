@@ -7,6 +7,18 @@ use App\Modules\LMS\Http\Controllers\LmsChoiceController;
 use App\Modules\LMS\Http\Controllers\LmsAuthController;
 use App\Modules\LMS\Http\Controllers\LmsBookmarkController;
 use App\Modules\LMS\Http\Controllers\LmsCategoryController;
+use App\Modules\LMS\Http\Controllers\LmsCertificateController;
+use App\Modules\LMS\Http\Controllers\LmsCourseLifecycleController;
+use App\Modules\LMS\Http\Controllers\LmsEngagementController;
+use App\Modules\LMS\Http\Controllers\LmsGamificationController;
+use App\Modules\LMS\Http\Controllers\LmsGovernanceController;
+use App\Modules\LMS\Http\Controllers\LmsGradeSyncQueueController;
+use App\Modules\LMS\Http\Controllers\LmsImportExportController;
+use App\Modules\LMS\Http\Controllers\LmsInteractiveContentController;
+use App\Modules\LMS\Http\Controllers\LmsLiveSessionController;
+use App\Modules\LMS\Http\Controllers\LmsReportController;
+use App\Modules\LMS\Http\Controllers\LmsReviewController;
+use App\Modules\LMS\Http\Controllers\LmsScormController;
 use App\Modules\LMS\Http\Controllers\LmsCourseController;
 use App\Modules\LMS\Http\Controllers\LmsDashboardController;
 use App\Modules\LMS\Http\Controllers\LmsEnrollmentController;
@@ -58,6 +70,12 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
     Route::prefix('public')->name('public.')->group(function (): void {
         Route::get('home', [LmsPublicController::class, 'home'])->name('home');
         Route::get('courses', [LmsPublicController::class, 'courses'])->name('courses');
+
+        // Verifikasi sertifikat publik (§25) — dibatasi agar token tidak dapat
+        // dienumerasi (§30).
+        Route::get('certificates/verify', [LmsCertificateController::class, 'verify'])
+            ->middleware('throttle:lms-certificate-verify')
+            ->name('certificates.verify');
         Route::get('courses/{slug}', [LmsPublicController::class, 'course'])->name('courses.show');
         Route::get('categories', [LmsPublicController::class, 'categories'])->name('categories');
         Route::get('teachers', [LmsPublicController::class, 'teachers'])->name('teachers');
@@ -244,7 +262,7 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
             ->middleware('lms.permission:lms.bookmark.manage,lms.view')->name('bookmarks.destroy');
 
         // ---------------- Pencarian (§31) ----------------
-        Route::get('search', [LmsSearchController::class, 'index'])
+        Route::get('search', [LmsSearchController::class, 'index'])->middleware('throttle:lms-search')
             ->middleware('lms.permission:lms.view')->name('search');
         Route::get('search/suggestions', [LmsSearchController::class, 'suggestions'])
             ->middleware('lms.permission:lms.view')->name('search.suggestions');
@@ -306,7 +324,7 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
             ->middleware('lms.permission:lms.submission.view')->name('submissions.index');
         Route::get('submissions/{submission}', [LmsSubmissionController::class, 'show'])
             ->middleware('lms.permission:lms.submission.view')->name('submissions.show');
-        Route::post('submissions/{submission}/files', [LmsSubmissionController::class, 'upload'])
+        Route::post('submissions/{submission}/files', [LmsSubmissionController::class, 'upload'])->middleware('throttle:lms-file-upload')
             ->middleware('lms.permission:lms.submission.upload')->name('submissions.files.store');
         Route::delete('submission-files/{file}', [LmsSubmissionController::class, 'deleteFile'])
             ->middleware('lms.permission:lms.submission.upload')->name('submission-files.destroy');
@@ -361,7 +379,7 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
             ->middleware('lms.permission:lms.quiz.update')->name('quizzes.update');
         Route::post('activities/{activity}/quiz/questions', [LmsQuizController::class, 'addQuestions'])
             ->middleware('lms.permission:lms.quiz.update')->name('quizzes.questions.store');
-        Route::post('activities/{activity}/quiz/attempts', [LmsQuizAttemptController::class, 'store'])
+        Route::post('activities/{activity}/quiz/attempts', [LmsQuizAttemptController::class, 'store'])->middleware('throttle:lms-quiz-attempt')
             ->middleware('lms.permission:lms.quiz.attempt')->name('quizzes.attempts.store');
         Route::get('activities/{activity}/quiz/statistics', [LmsQuizController::class, 'statistics'])
             ->middleware('lms.permission:lms.quiz.grade,lms.quiz.update')->name('quizzes.statistics');
@@ -385,9 +403,9 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
 
         Route::get('attempts/{attempt}', [LmsQuizAttemptController::class, 'show'])
             ->middleware('lms.permission:lms.quiz.view')->name('attempts.show');
-        Route::post('attempts/{attempt}/answers', [LmsQuizAttemptController::class, 'saveAnswer'])
+        Route::post('attempts/{attempt}/answers', [LmsQuizAttemptController::class, 'saveAnswer'])->middleware('throttle:lms-quiz-answer')
             ->middleware('lms.permission:lms.quiz.attempt')->name('attempts.answers.store');
-        Route::post('attempts/{attempt}/submit', [LmsQuizAttemptController::class, 'submit'])
+        Route::post('attempts/{attempt}/submit', [LmsQuizAttemptController::class, 'submit'])->middleware('throttle:lms-quiz-answer')
             ->middleware('lms.permission:lms.quiz.attempt')->name('attempts.submit');
         Route::get('attempts/{attempt}/result', [LmsQuizAttemptController::class, 'result'])
             ->middleware('lms.permission:lms.quiz.view')->name('attempts.result');
@@ -399,7 +417,7 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
         // ---------------- Forum (§32–§36) ----------------
         Route::get('activities/{activity}/forum', [LmsForumController::class, 'show'])
             ->middleware('lms.permission:lms.forum.view')->name('forums.show');
-        Route::post('activities/{activity}/forum/discussions', [LmsForumController::class, 'storeDiscussion'])
+        Route::post('activities/{activity}/forum/discussions', [LmsForumController::class, 'storeDiscussion'])->middleware('throttle:lms-forum-post')
             ->middleware('lms.permission:lms.forum.reply')->name('forums.discussions.store');
         Route::match(['put', 'patch'], 'activities/{activity}/forum', [LmsForumController::class, 'updateConfig'])
             ->middleware('lms.permission:lms.forum.create')->name('forums.update');
@@ -675,5 +693,219 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
             ->middleware('lms.permission:lms.grade.review')->name('grade-reviews.close');
         Route::post('grade-reviews/{review}/comments', [LmsGradeReviewController::class, 'comment'])->name('grade-reviews.comment');
 
+    /*
+    |--------------------------------------------------------------------------
+    | PHASE 4 — KELAS LANGSUNG, KONTEN INTERAKTIF, SERTIFIKAT, GAMIFIKASI
+    |--------------------------------------------------------------------------
+    |
+    | Seluruh endpoint memanggil service Phase 4 yang sama dengan yang diuji
+    | unit; controller hanya memvalidasi masukan dan menegakkan otorisasi
+    | kepemilikan course (§35, §44).
+    |
+    */
+    Route::prefix('live-sessions')->name('live.')->group(function (): void {
+        Route::get('{session}', [LmsLiveSessionController::class, 'show'])->name('show');
+        Route::put('{session}', [LmsLiveSessionController::class, 'update'])
+            ->middleware('lms.permission:lms.live.manage')->name('update');
+        Route::delete('{session}', [LmsLiveSessionController::class, 'destroy'])
+            ->middleware('lms.permission:lms.live.manage')->name('destroy');
+        Route::post('{session}/publish', [LmsLiveSessionController::class, 'publish'])
+            ->middleware('lms.permission:lms.live.manage')->name('publish');
+        Route::post('{session}/cancel', [LmsLiveSessionController::class, 'cancel'])
+            ->middleware('lms.permission:lms.live.manage')->name('cancel');
+        Route::post('{session}/refresh', [LmsLiveSessionController::class, 'refresh'])
+            ->middleware('lms.permission:lms.live.manage')->name('refresh');
+        Route::get('{session}/join', [LmsLiveSessionController::class, 'joinInfo'])->name('join-info');
+        Route::post('{session}/join', [LmsLiveSessionController::class, 'join'])
+            ->middleware('throttle:lms-live-join')->name('join');
+        Route::get('{session}/attendance', [LmsLiveSessionController::class, 'attendance'])
+            ->middleware('lms.permission:lms.live.attendance')->name('attendance');
+        Route::post('{session}/attendance', [LmsLiveSessionController::class, 'markAttendance'])
+            ->middleware('lms.permission:lms.live.attendance')->name('attendance.mark');
+        Route::post('{session}/recordings', [LmsLiveSessionController::class, 'addRecording'])
+            ->middleware('lms.permission:lms.live.recording.manage')->name('recordings.store');
     });
+
+    Route::delete('live-recordings/{recording}', [LmsLiveSessionController::class, 'deleteRecording'])
+        ->middleware('lms.permission:lms.live.recording.manage')->name('live.recordings.destroy');
+    Route::post('live-recordings/{recording}/watch', [LmsLiveSessionController::class, 'watchRecording'])
+        ->name('live.recordings.watch');
+
+    Route::get('my/live-sessions', [LmsLiveSessionController::class, 'mine'])->name('live.mine');
+
+    /* Konten interaktif (§7–§12). */
+    Route::get('interactive/{content}', [LmsInteractiveContentController::class, 'show'])->name('interactive.show');
+    Route::put('interactive/{content}', [LmsInteractiveContentController::class, 'update'])
+        ->middleware('lms.permission:lms.interactive.update')->name('interactive.update');
+    Route::delete('interactive/{content}', [LmsInteractiveContentController::class, 'destroy'])
+        ->middleware('lms.permission:lms.interactive.delete')->name('interactive.destroy');
+    Route::post('interactive/{content}/publish', [LmsInteractiveContentController::class, 'publish'])
+        ->middleware('lms.permission:lms.interactive.publish')->name('interactive.publish');
+    Route::post('interactive/{content}/duplicate', [LmsInteractiveContentController::class, 'duplicate'])
+        ->middleware('lms.permission:lms.interactive.create')->name('interactive.duplicate');
+    Route::get('interactive/{content}/versions', [LmsInteractiveContentController::class, 'versions'])
+        ->middleware('lms.permission:lms.interactive.view')->name('interactive.versions');
+    Route::get('interactive/{content}/progress', [LmsInteractiveContentController::class, 'progress'])
+        ->name('interactive.progress');
+    Route::post('interactive/{content}/respond', [LmsInteractiveContentController::class, 'respond'])
+        ->middleware('throttle:lms-interactive-respond')->name('interactive.respond');
+
+    /* Sertifikat (§21–§25). */
+    Route::get('my/certificates', [LmsCertificateController::class, 'mine'])->name('certificates.mine');
+    Route::get('my/certificates/{certificate}', [LmsCertificateController::class, 'show'])->name('certificates.show');
+    Route::get('my/certificates/{certificate}/download', [LmsCertificateController::class, 'download'])
+        ->name('certificates.download');
+
+    Route::get('certificate-templates', [LmsCertificateController::class, 'templates'])
+        ->middleware('lms.permission:lms.certificate.template.manage')->name('certificate.templates');
+    Route::get('certificate-templates/placeholders', [LmsCertificateController::class, 'placeholders'])
+        ->middleware('lms.permission:lms.certificate.template.manage')->name('certificate.placeholders');
+    Route::post('certificate-templates', [LmsCertificateController::class, 'storeTemplate'])
+        ->middleware('lms.permission:lms.certificate.template.manage')->name('certificate.templates.store');
+    Route::put('certificate-templates/{template}', [LmsCertificateController::class, 'updateTemplate'])
+        ->middleware('lms.permission:lms.certificate.template.manage')->name('certificate.templates.update');
+
+    Route::get('certificates/{certificate}/verifications', [LmsCertificateController::class, 'verifications'])
+        ->middleware('lms.permission:lms.certificate.manage')->name('certificates.verifications');
+    Route::post('certificates/{certificate}/revoke', [LmsCertificateController::class, 'revoke'])
+        ->middleware('lms.permission:lms.certificate.revoke')->name('certificates.revoke');
+
+    /* Gamifikasi, badge, dan poin (§26–§30). */
+    Route::get('my/gamification', [LmsGamificationController::class, 'mine'])->name('gamification.mine');
+    Route::get('badges', [LmsGamificationController::class, 'catalog'])
+        ->middleware('lms.permission:lms.badge.view')->name('badges.index');
+    Route::post('badges', [LmsGamificationController::class, 'storeBadge'])
+        ->middleware('lms.permission:lms.badge.manage')->name('badges.store');
+    Route::put('badges/{badge}', [LmsGamificationController::class, 'updateBadge'])
+        ->middleware('lms.permission:lms.badge.manage')->name('badges.update');
+    Route::put('badges/{badge}/rules', [LmsGamificationController::class, 'syncRules'])
+        ->middleware('lms.permission:lms.badge.manage')->name('badges.rules');
+    Route::delete('badges/{badge}', [LmsGamificationController::class, 'destroyBadge'])
+        ->middleware('lms.permission:lms.badge.manage')->name('badges.destroy');
+    Route::post('badges/{badge}/award', [LmsGamificationController::class, 'award'])
+        ->middleware('lms.permission:lms.badge.award')->name('badges.award');
+    Route::delete('badge-awards/{award}', [LmsGamificationController::class, 'revoke'])
+        ->middleware('lms.permission:lms.badge.award')->name('badges.revoke');
+
+    /* Ulasan & umpan balik (§31–§32). */
+    Route::get('courses/{course}/reviews', [LmsReviewController::class, 'index'])->name('reviews.index');
+    Route::post('courses/{course}/reviews', [LmsReviewController::class, 'store'])
+        ->middleware('lms.permission:lms.review.create')->name('reviews.store');
+    Route::put('reviews/{review}', [LmsReviewController::class, 'update'])->name('reviews.update');
+    Route::delete('reviews/{review}', [LmsReviewController::class, 'destroy'])->name('reviews.destroy');
+    Route::post('reviews/{review}/helpful', [LmsReviewController::class, 'helpful'])->name('reviews.helpful');
+    Route::get('courses/{course}/reviews/moderation', [LmsReviewController::class, 'moderation'])
+        ->middleware('lms.permission:lms.review.moderate')->name('reviews.moderation');
+    Route::post('reviews/{review}/moderate', [LmsReviewController::class, 'moderate'])
+        ->middleware('lms.permission:lms.review.moderate')->name('reviews.moderate');
+    Route::post('courses/{course}/feedback', [LmsReviewController::class, 'submitFeedback'])
+        ->middleware('lms.permission:lms.feedback.submit')->name('feedback.store');
+    Route::get('courses/{course}/feedback', [LmsReviewController::class, 'feedback'])
+        ->middleware('lms.permission:lms.feedback.view')->name('feedback.index');
+
+    /* Pemantauan belajar & pesan (§33–§35, §58–§61). */
+    Route::get('my/learning-health', [LmsEngagementController::class, 'myHealth'])->name('engagement.mine');
+    Route::get('students/{enrollment}/health', [LmsEngagementController::class, 'studentHealth'])->name('engagement.student');
+    Route::get('courses/{course}/health', [LmsEngagementController::class, 'courseHealth'])
+        ->middleware('lms.permission:lms.engagement.view')->name('engagement.health');
+    Route::get('courses/{course}/engagement', [LmsEngagementController::class, 'courseEngagement'])
+        ->middleware('lms.permission:lms.engagement.view')->name('engagement.course');
+    Route::post('courses/{course}/messages', [LmsEngagementController::class, 'sendMessage'])
+        ->middleware(['lms.permission:lms.message.send', 'throttle:lms-message'])->name('engagement.message');
+    Route::get('courses/{course}/messages/recipients', [LmsEngagementController::class, 'recipients'])
+        ->middleware('lms.permission:lms.message.view')->name('engagement.recipients');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PHASE 5 — SIKLUS HIDUP, IMPOR/EKSPOR, SCORM, LAPORAN, TATA KELOLA
+    |--------------------------------------------------------------------------
+    */
+    Route::get('course-templates', [LmsCourseLifecycleController::class, 'templates'])
+        ->middleware('lms.permission:lms.template.view')->name('templates.index');
+    Route::get('course-templates/{template}', [LmsCourseLifecycleController::class, 'showTemplate'])
+        ->middleware('lms.permission:lms.template.view')->name('templates.show');
+    Route::post('course-templates/{template}/apply', [LmsCourseLifecycleController::class, 'applyTemplate'])
+        ->middleware('lms.permission:lms.template.manage')->name('templates.apply');
+    Route::post('course-templates/{template}/create-course', [LmsCourseLifecycleController::class, 'createFromTemplate'])
+        ->middleware('lms.permission:lms.template.manage')->name('templates.create-course');
+
+    Route::post('course-archives/{archive}/restore', [LmsCourseLifecycleController::class, 'restore'])
+        ->middleware('lms.permission:lms.course.archive')->name('archives.restore');
+
+    Route::get('course-imports', [LmsImportExportController::class, 'history'])
+        ->middleware('lms.permission:lms.course.import')->name('imports.index');
+    Route::get('course-imports/{import}', [LmsImportExportController::class, 'showImport'])
+        ->middleware('lms.permission:lms.course.import')->name('imports.show');
+    Route::post('course-imports/upload', [LmsImportExportController::class, 'upload'])
+        ->middleware('lms.permission:lms.course.import')->name('imports.upload');
+    Route::post('course-imports/validate', [LmsImportExportController::class, 'validateImport'])
+        ->middleware('lms.permission:lms.course.import')->name('imports.validate');
+    Route::post('course-imports', [LmsImportExportController::class, 'import'])
+        ->middleware(['lms.permission:lms.course.import', 'throttle:lms-course-import'])->name('imports.import');
+    Route::post('course-backups/verify', [LmsImportExportController::class, 'verifyBackup'])
+        ->middleware('lms.permission:lms.course.import')->name('backups.verify');
+    Route::post('course-backups/restore', [LmsImportExportController::class, 'restore'])
+        ->middleware('lms.permission:lms.course.import')->name('backups.restore');
+
+    /* SCORM (§12). */
+    Route::get('scorm/packages', [LmsScormController::class, 'index'])
+        ->middleware('lms.permission:lms.scorm.view')->name('scorm.index');
+    Route::post('scorm/packages', [LmsScormController::class, 'import'])
+        ->middleware(['lms.permission:lms.scorm.manage', 'throttle:lms-file-upload'])->name('scorm.import');
+    Route::get('scorm/packages/{package}', [LmsScormController::class, 'show'])
+        ->middleware('lms.permission:lms.scorm.view')->name('scorm.show');
+    Route::post('scorm/packages/{package}/activity', [LmsScormController::class, 'createActivity'])
+        ->middleware('lms.permission:lms.scorm.manage')->name('scorm.activity');
+    Route::post('scorm/activities/{activity}/launch', [LmsScormController::class, 'launch'])
+        ->middleware('throttle:lms-scorm-tracking')->name('scorm.launch');
+    Route::post('scorm/attempts/{attempt}/commit', [LmsScormController::class, 'commit'])
+        ->middleware('throttle:lms-scorm-tracking')->name('scorm.commit');
+    Route::get('scorm/activities/{activity}/tracking', [LmsScormController::class, 'tracking'])->name('scorm.tracking');
+
+    /* Report Center (§22). */
+    Route::get('reports', [LmsReportController::class, 'catalog'])
+        ->middleware('lms.permission:lms.report.view')->name('reports.catalog');
+    Route::get('reports/exports', [LmsReportController::class, 'exports'])
+        ->middleware('lms.permission:lms.report.export')->name('reports.exports');
+    Route::get('reports/exports/{export}/download', [LmsReportController::class, 'download'])
+        ->middleware('lms.permission:lms.report.export')->name('reports.download');
+    Route::get('reports/{key}', [LmsReportController::class, 'run'])
+        ->middleware('lms.permission:lms.report.view')->name('reports.run');
+    Route::post('reports/{key}/export', [LmsReportController::class, 'export'])
+        ->middleware(['lms.permission:lms.report.export', 'throttle:lms-report-export'])->name('reports.export');
+
+    /* Tata kelola: audit, integritas, kesehatan (§23, §24, §42). */
+    Route::get('health', [LmsGovernanceController::class, 'health'])
+        ->middleware('throttle:lms-public-api')->name('health');
+    Route::get('integration', [LmsGovernanceController::class, 'integration'])->name('integration');
+    Route::get('audit', [LmsGovernanceController::class, 'audit'])
+        ->middleware('lms.permission:lms.audit.view')->name('audit.index');
+    Route::get('audit/summary', [LmsGovernanceController::class, 'auditSummary'])
+        ->middleware('lms.permission:lms.audit.view')->name('audit.summary');
+    Route::get('audit/entities/{type}/{id}', [LmsGovernanceController::class, 'auditForEntity'])
+        ->middleware('lms.permission:lms.audit.view')->name('audit.entity');
+    Route::get('integrity', [LmsGovernanceController::class, 'integrityChecks'])
+        ->middleware('lms.permission:lms.integrity.run')->name('integrity.index');
+    Route::post('integrity/run', [LmsGovernanceController::class, 'runIntegrity'])
+        ->middleware('lms.permission:lms.integrity.run')->name('integrity.run');
+    Route::get('integrity/repair-suggestions', [LmsGovernanceController::class, 'repairSuggestions'])
+        ->middleware('lms.permission:lms.integrity.run')->name('integrity.suggestions');
+
+    /* Antrean sinkronisasi nilai (§6). */
+    Route::get('gradebooks/{gradebook}/sync', [LmsGradeSyncQueueController::class, 'status'])
+        ->middleware('lms.permission:lms.grade.sync')->name('grade-sync.status');
+    Route::post('gradebooks/{gradebook}/sync', [LmsGradeSyncQueueController::class, 'enqueue'])
+        ->middleware(['lms.permission:lms.grade.sync', 'throttle:lms-grade-sync'])->name('grade-sync.enqueue');
+    Route::post('gradebooks/{gradebook}/sync/retry', [LmsGradeSyncQueueController::class, 'retry'])
+        ->middleware(['lms.permission:lms.grade.sync', 'throttle:lms-grade-sync'])->name('grade-sync.retry');
+    Route::get('gradebooks/{gradebook}/sync/compare/{userId}', [LmsGradeSyncQueueController::class, 'compare'])
+        ->middleware('lms.permission:lms.grade.sync')->name('grade-sync.compare');
+    Route::get('grade-syncs/{sync}/history', [LmsGradeSyncQueueController::class, 'history'])
+        ->middleware('lms.permission:lms.grade.sync')->name('grade-sync.history');
+    Route::post('grade-syncs/{sync}/cancel', [LmsGradeSyncQueueController::class, 'cancel'])
+        ->middleware('lms.permission:lms.grade.sync')->name('grade-sync.cancel');
+    Route::post('grade-syncs/{sync}/process', [LmsGradeSyncQueueController::class, 'process'])
+        ->middleware(['lms.permission:lms.grade.sync', 'throttle:lms-grade-sync'])->name('grade-sync.process');
+    });
+
 });

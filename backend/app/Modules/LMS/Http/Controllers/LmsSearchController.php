@@ -4,6 +4,8 @@ namespace App\Modules\LMS\Http\Controllers;
 
 use App\Modules\LMS\Application\Services\CourseSearchService;
 use App\Modules\LMS\Application\Services\LmsCategoryService;
+use App\Modules\LMS\Domain\Enums\CourseLevel;
+use App\Modules\LMS\Domain\Enums\CourseType;
 use App\Modules\LMS\Http\LmsController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,8 +37,8 @@ class LmsSearchController extends LmsController
             ),
             'filters' => [
                 'categories' => $this->categories->options(true),
-                'levels' => \App\Modules\LMS\Domain\Enums\CourseLevel::values(),
-                'course_types' => \App\Modules\LMS\Domain\Enums\CourseType::values(),
+                'levels' => CourseLevel::values(),
+                'course_types' => CourseType::values(),
             ],
         ], 'Hasil pencarian LMS berhasil diambil');
     }

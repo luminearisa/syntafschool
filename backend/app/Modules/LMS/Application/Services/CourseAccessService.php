@@ -30,6 +30,7 @@ class CourseAccessService
         private readonly StudentProviderInterface $students,
         private readonly DripContentService $drip,
         private readonly LearningPathService $learningPaths,
+        private readonly CoursePrerequisiteService $prerequisites,
     ) {}
 
     public function decide(LmsCourse $course, ?LmsActor $actor, ?LmsLearningItem $item = null, ?LmsCourseSection $section = null): AccessDecision
@@ -77,6 +78,23 @@ class CourseAccessService
         // 5) Status terbit course tetap berlaku bagi peserta baru.
         if (! $course->isPublished()) {
             return AccessDecision::deny('not_published', 'Course ini belum diterbitkan.');
+        }
+
+        // 6) Prasyarat antar-course (§18). Guru/admin sudah dilewatkan di atas,
+        //    dan prasyarat yang belum tuntas tidak menghapus data belajar apa pun —
+        //    siswa tetap dapat melihat ringkasannya, hanya belum bisa masuk.
+        if (! $this->prerequisites->statusFor($course, $actor)['satisfied']) {
+            $status = $this->prerequisites->statusFor($course, $actor);
+            $first = $status['missing'][0] ?? null;
+
+            return AccessDecision::deny(
+                'course_prerequisite',
+                $first === null
+                    ? 'Course prasyarat belum tuntas.'
+                    : 'Selesaikan dulu course "'.$first['name'].'" sebelum mengikuti course ini.',
+                null,
+                $first['course_id'] ?? null,
+            );
         }
 
         return $this->decideAvailability($course, $section, $item, AccessDecision::allow(), readOnly: false, enrollment: $enrollment);

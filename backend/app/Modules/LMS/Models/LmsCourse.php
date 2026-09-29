@@ -259,4 +259,22 @@ class LmsCourse extends BaseModel
     {
         return 'LMS_COURSE';
     }
+
+    /** Prasyarat course ini (§18) — rantai kurikulum A → B → C. */
+    public function prerequisites(): HasMany
+    {
+        return $this->hasMany(LmsCoursePrerequisite::class, 'course_id');
+    }
+
+    /** Course yang menjadikan course ini prasyarat (untuk pemeriksaan siklus). */
+    public function dependents(): HasMany
+    {
+        return $this->hasMany(LmsCoursePrerequisite::class, 'prerequisite_course_id');
+    }
+
+    /** Apakah rantai prasyarat course ini dienforce? */
+    public function hasEnforcedPrerequisites(): bool
+    {
+        return $this->prerequisites()->where('is_enforced', true)->exists();
+    }
 }

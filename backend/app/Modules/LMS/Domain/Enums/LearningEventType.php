@@ -27,6 +27,8 @@ enum LearningEventType: string
     case CERTIFICATE_ISSUED = 'certificate_issued';
     case BADGE_AWARDED = 'badge_awarded';
     case COURSE_COMPLETED = 'course_completed';
+    case SCORM_STARTED = 'scorm_started';
+    case SCORM_COMPLETED = 'scorm_completed';
 
     public function label(): string
     {
@@ -48,6 +50,8 @@ enum LearningEventType: string
             self::CERTIFICATE_ISSUED => 'Sertifikat terbit',
             self::BADGE_AWARDED => 'Badge diperoleh',
             self::COURSE_COMPLETED => 'Course selesai',
+            self::SCORM_STARTED => 'Memulai paket SCORM',
+            self::SCORM_COMPLETED => 'Menyelesaikan paket SCORM',
         };
     }
 

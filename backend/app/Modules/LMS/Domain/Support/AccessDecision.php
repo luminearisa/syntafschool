@@ -15,6 +15,8 @@ final readonly class AccessDecision
         public ?string $message = null,
         /** Item prasyarat yang belum tuntas, bila ada. */
         public ?int $blockedByItemId = null,
+        /** Course prasyarat yang belum tuntas (§18), bila ada. */
+        public ?int $blockedByCourseId = null,
     ) {}
 
     public static function allow(): self
@@ -22,9 +24,13 @@ final readonly class AccessDecision
         return new self(true);
     }
 
-    public static function deny(string $reason, ?string $message = null, ?int $blockedByItemId = null): self
-    {
-        return new self(false, $reason, $message, $blockedByItemId);
+    public static function deny(
+        string $reason,
+        ?string $message = null,
+        ?int $blockedByItemId = null,
+        ?int $blockedByCourseId = null,
+    ): self {
+        return new self(false, $reason, $message, $blockedByItemId, $blockedByCourseId);
     }
 
     /** @return array<string, mixed> */
@@ -35,6 +41,7 @@ final readonly class AccessDecision
             'reason' => $this->reason,
             'message' => $this->message,
             'blocked_by_item_id' => $this->blockedByItemId,
+            'blocked_by_course_id' => $this->blockedByCourseId,
         ];
     }
 }

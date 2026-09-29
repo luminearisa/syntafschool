@@ -896,3 +896,72 @@ UI menyusul.
 - [ ] Pekerjaan terjadwal: penutupan status sesi, penerbitan sertifikat otomatis,
       evaluasi badge berkala, penyegaran cache kesehatan belajar
 - [ ] PDF sertifikat mengikuti template (kolom `file_path` sudah disiapkan)
+
+---
+
+## Fase LMS Phase 5 — Finalization, Integration, Interoperability & Production Hardening
+
+Audit total Phase 1–4, penyelesaian temuan CRITICAL/HIGH, dan pengerasan
+produksi. Tidak ada mesin kedua untuk progress, completion, grading,
+enrollment, notification, atau authorization.
+Dokumentasi: [`docs/14-MODUL-LMS-PHASE-5.md`](14-MODUL-LMS-PHASE-5.md) ·
+[audit](11-LMS-AUDIT-PHASE-5.md) · [API](12-MODUL-LMS-API.md) ·
+[deployment](13-MODUL-LMS-DEPLOYMENT.md).
+
+### Audit & temuan yang ditutup
+- [x] Audit 376 berkas LMS (70 service, 96 model, 70 enum, 36 controller,
+      259 rute) + tabel ERP yang dipakai integrasi
+- [x] CRITICAL: 9 service Phase 4 tanpa muara → 10 controller + 94 rute baru
+- [x] HIGH: 8 kontrak integrasi yang belum ada → lengkap menjadi 18 kontrak
+- [x] HIGH: sinkronisasi nilai sinkron → antrean + riwayat + retry + compare
+- [x] HIGH: audit tanpa jejak asal → `lms_audit_logs` (ip, user agent,
+      correlation id, immutable)
+- [x] HIGH: publikasi tanpa gerbang → 9 validator + deteksi siklus prasyarat
+- [x] HIGH: frontend Phase 4–5 belum ada → dicatat sebagai sisa pekerjaan
+- [x] MEDIUM: impor/ekspor, SCORM, report center, integritas, health check,
+      penjadwal, rate limit, dokumentasi API — semuanya ditambahkan
+
+### Integrasi (§4–§9)
+- [x] `LmsGateway` sebagai satu gerbang; tidak ada `if (standalone)` di service
+- [x] Kontrak baru: Parent, Enrollment, Notification, Calendar, FileStorage,
+      Attendance, FinancialEligibility, InteractiveContentProvider
+- [x] Implementasi ERP + mandiri untuk setiap kontrak, dapat ditimpa lewat
+      `lms.providers.*`
+- [x] KRS → enrollment: `aktif`→ACTIVE, `pindah/keluar`→SUSPENDED tanpa
+      menghapus progress, submission, nilai, atau riwayat
+- [x] Kebijakan keuangan opsional; kemampuan inti belajar tidak pernah ditahan
+- [x] Kehadiran akademik / LMS / kelas langsung dipisah jelas (`AttendanceScope`)
+
+### Nilai, sertifikat, interoperabilitas
+- [x] Antrean sinkronisasi nilai: PENDING→PROCESSING→SYNCED/FAILED→RETRYING/
+      CANCELLED, riwayat percobaan, retry, cancel, compare LMS vs SIAKAD
+- [x] Idempotensi menyeluruh (`idempotency_key` unik pada tabel antrean)
+- [x] SCORM 1.2 & 2004: impor → validasi → ekstrak → pasang aktivitas → lacak
+      (attempt unik, commit idempotent, resume) → nilai & ketuntasan lewat
+      service Phase 2–3 yang sama
+- [x] Ekspor/impor course: UPLOAD→VALIDATE→PREVIEW→RESOLVE→IMPORT→VERIFY,
+      strategi SKIP/REPLACE/DUPLICATE/MERGE, tanpa menyalin data siswa
+- [x] Backup & pemulihan course (backup sah hanya setelah `verify()`)
+
+### Validasi, laporan, tata kelola
+- [x] 9 validator konten + `ContentValidationService`; penerbitan menolak
+      temuan ERROR dan siklus prasyarat (item maupun antar-course)
+- [x] Report center 15 laporan + ekspor CSV; laporan berat di antrean
+- [x] Audit trail immutable dengan korelasi permintaan
+- [x] Pemeriksa integritas 13 pemeriksaan + saran perbaikan (tanpa perbaikan
+      destruktif otomatis)
+- [x] Health check `/lms/health` (publik aman) & `lms:health` (admin)
+- [x] 7 perintah artisan + 6 job, seluruhnya terjadwal dengan `withoutOverlapping`
+- [x] 15 rate limiter bernama, dapat diubah lewat `lms.rate_limits.*`
+- [x] Dokumentasi API + OpenAPI 3.0 (307 path) & panduan deployment/rollback/retensi
+
+### Tes
+- [x] `LmsPhase5GovernanceTest`: 18 tes / 118 assertion — hijau
+- [x] Dua bug nyata ditemukan tes dan diperbaiki: kebijakan keuangan yang tidak
+      pernah berlaku (`LmsGateway`) & cast tanggal antrean nilai
+- [x] Frontend Phase 4–5 (sebagian): klien API `phase4Api.ts` + halaman Kelas
+      Langsung, Sertifikat & Verifikasi Publik, Capaian/Badge, Laporan LMS, Tata
+      Kelola (audit/integritas/kesehatan); `npm run build` hijau
+- [ ] Sisa UI: pemutar konten interaktif, rekap kehadiran kelas langsung,
+      moderasi ulasan, impor/ekspor & SCORM, dasbor engagement guru
+- [ ] PDF/XLSX laporan & sertifikat; uji restore basis data pada lingkungan nyata

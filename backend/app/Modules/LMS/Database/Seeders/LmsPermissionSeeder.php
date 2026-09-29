@@ -64,7 +64,10 @@ class LmsPermissionSeeder extends Seeder
         'review.view', 'review.create', 'review.moderate',
         'feedback.submit', 'feedback.view',
         'template.view', 'template.manage',
-        'course.copy', 'course.archive',
+        'course.copy', 'course.archive', 'course.prerequisite.manage', 'course.validate',
+        'course.export', 'course.import', 'course.backup',
+        'scorm.view', 'scorm.manage', 'scorm.track',
+        'report.view', 'report.export', 'audit.view', 'integrity.run', 'health.view',
         'engagement.view', 'engagement.view_own', 'engagement.view_child',
         'message.send', 'message.view',
     ];
@@ -96,7 +99,9 @@ class LmsPermissionSeeder extends Seeder
             'lms.badge.view', 'lms.gamification.view', 'lms.leaderboard.view',
             'lms.review.view', 'lms.review.moderate', 'lms.feedback.view',
             'lms.template.view', 'lms.engagement.view', 'lms.message.view', 'lms.message.send',
-        ],
+            // Phase 5 — pemantauan & tata kelola (kepala sekolah memang mengawasi).
+            'lms.integrity.run', 'lms.health.view', 'lms.report.export', 'lms.engagement.view', 'lms.message.view',
+                ],
         'guru' => [
             'lms.view', 'lms.category.view',
             'lms.course.view', 'lms.course.create', 'lms.course.update', 'lms.course.publish',
@@ -104,7 +109,7 @@ class LmsPermissionSeeder extends Seeder
             'lms.enrollment.view', 'lms.enrollment.create', 'lms.enrollment.update',
             'lms.group.view', 'lms.group.manage',
             'lms.announcement.view', 'lms.announcement.manage',
-            'lms.student.view', 'lms.report.view',
+            'lms.student.view', 'lms.report.view', 'lms.grade.sync',
             'lms.activity.view', 'lms.activity.create', 'lms.activity.update', 'lms.activity.delete',
             'lms.activity.publish', 'lms.activity.preview',
             'lms.assignment.view', 'lms.assignment.create', 'lms.assignment.update', 'lms.assignment.delete', 'lms.assignment.grade',
@@ -134,6 +139,11 @@ class LmsPermissionSeeder extends Seeder
             'lms.gamification.view', 'lms.gamification.manage', 'lms.leaderboard.view',
             'lms.review.view', 'lms.review.moderate', 'lms.feedback.view',
             'lms.template.view', 'lms.template.manage', 'lms.course.copy', 'lms.course.archive',
+            'lms.course.prerequisite.manage', 'lms.course.validate',
+            'lms.course.export', 'lms.course.import', 'lms.course.backup',
+            'lms.scorm.view', 'lms.scorm.manage',
+            // Catatan penting: `lms.audit.view` **tidak** diberikan kepada guru
+            // biasa — izin itu membuka pemantauan nilai lintas course (§53).
             'lms.engagement.view', 'lms.message.view', 'lms.message.send',
         ],
         'wali-kelas' => [

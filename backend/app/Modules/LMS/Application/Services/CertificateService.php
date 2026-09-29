@@ -458,6 +458,28 @@ class CertificateService
     // ------------------------------------------------------------------ daftar & payload
 
     /** @return list<array<string, mixed>> */
+    /**
+     * Riwayat verifikasi publik sebuah sertifikat (§25, §23).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function verifications(LmsCertificate $certificate, int $limit = 50): array
+    {
+        return LmsCertificateVerification::query()
+            ->where('certificate_id', $certificate->id)
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->map(fn (LmsCertificateVerification $verification) => [
+                'id' => (int) $verification->id,
+                'status' => $verification->status,
+                'result' => $verification->result ?? null,
+                'ip_address' => $verification->ip_address,
+                'created_at' => $verification->created_at?->toIso8601String(),
+            ])
+            ->all();
+    }
+
     public function forUser(int $userId, ?int $courseId = null): array
     {
         return LmsCertificate::query()

@@ -13,6 +13,7 @@ use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Http\Resources\LmsCourseResource;
 use App\Modules\LMS\Models\LmsCategory;
 use App\Modules\LMS\Models\LmsCourse;
+use App\Modules\LMS\Models\LmsLearningItem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,7 +52,7 @@ class LmsPublicController extends LmsController
                 'stats' => [
                     'courses' => (int) LmsCourse::query()->publiclyVisible()->count(),
                     'categories' => (int) LmsCategory::query()->active()->count(),
-                    'lessons' => (int) \App\Modules\LMS\Models\LmsLearningItem::query()
+                    'lessons' => (int) LmsLearningItem::query()
                         ->whereHas('course', fn (Builder $q) => $q->where('visibility', CourseVisibility::PUBLIC->value))
                         ->count(),
                 ],

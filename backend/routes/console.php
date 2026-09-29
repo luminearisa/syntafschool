@@ -75,3 +75,17 @@ Schedule::command('finance:expire-payments')->everyThirtyMinutes();
 Schedule::call(fn () => app(FinanceOperationService::class)->dispatch(FinanceOperation::JOB_SPP_GENERATE))
     ->dailyAt('06:00')
     ->name('finance:generate-spp (antrian)');
+
+/*
+ * Penjadwalan modul LMS (§11).
+ *
+ * Seluruh pekerjaan berat dijalankan di antrean — penjadwal hanya memicu, tidak
+ * menghitung. Setiap perintah idempotent sehingga aman bila penjadwal berjalan
+ * dua kali (mis. setelah pemulihan restart).
+ */
+Schedule::command('lms:automation')->dailyAt('21:00')->withoutOverlapping();
+Schedule::command('lms:reminders')->dailyAt('07:00')->withoutOverlapping();
+Schedule::command('lms:reminders --overdue')->dailyAt('07:15')->withoutOverlapping();
+Schedule::command('lms:grade-sync --retry-failed')->everyTenMinutes()->withoutOverlapping();
+Schedule::command('lms:prune')->dailyAt('02:30')->withoutOverlapping();
+Schedule::command('lms:integrity')->weeklyOn(1, '03:00')->withoutOverlapping();

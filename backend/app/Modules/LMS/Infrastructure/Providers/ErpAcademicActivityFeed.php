@@ -4,6 +4,7 @@ namespace App\Modules\LMS\Infrastructure\Providers;
 
 use App\Models\Assignment;
 use App\Models\AssignmentSubmission;
+use App\Models\ClassStudent;
 use App\Models\Score;
 use App\Modules\LMS\Domain\Contracts\AcademicActivityFeedInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,7 @@ class ErpAcademicActivityFeed implements AcademicActivityFeedInterface
 {
     public function upcomingForStudent(int $studentId, int $limit = 5): array
     {
-        $classIds = \App\Models\ClassStudent::query()
+        $classIds = ClassStudent::query()
             ->where('student_id', $studentId)
             ->pluck('school_class_id');
 

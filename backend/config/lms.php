@@ -138,6 +138,111 @@ return [
     | Pemberitahuan
     |--------------------------------------------------------------------------
     */
+    /*
+    |----------------------------------------------------------------------
+    | Provider integrasi (§4) — kosong berarti mengikuti mode yang aktif.
+    |----------------------------------------------------------------------
+    |
+    | Isi hanya bila sekolah memakai implementasi lain (mis. penyimpanan S3,
+    | wali dari sistem eksternal). Business logic tidak pernah memeriksa mode:
+    | pemilihan provider terjadi sekali di `LmsServiceProvider`.
+    |
+    */
+    'providers' => [
+        'parent' => env('LMS_PARENT_PROVIDER'),
+        'enrollment' => env('LMS_ENROLLMENT_PROVIDER'),
+        'notification' => env('LMS_NOTIFICATION_PROVIDER'),
+        'calendar' => env('LMS_CALENDAR_PROVIDER'),
+        'files' => env('LMS_FILE_PROVIDER'),
+        'attendance' => env('LMS_ATTENDANCE_PROVIDER'),
+        'finance' => env('LMS_FINANCE_PROVIDER'),
+        'interactive_content' => env('LMS_INTERACTIVE_PROVIDER'),
+    ],
+
+    /*
+    |----------------------------------------------------------------------
+    | Kelayakan keuangan (§8) — LMS tidak memuat aturan Finance.
+    |----------------------------------------------------------------------
+    |
+    | `enabled=false` (bawaan) berarti LMS tidak pernah menanyakan status
+    | keuangan. Bila sekolah mengaktifkannya, belajar tetap berjalan
+    | (`allow_learning_when_restricted=true`) kecuali sekolah memilih untuk
+    | menahan kemampuan tertentu. Kemampuan pada `always_allowed` tidak pernah
+    | ditahan, dan tidak ada data belajar yang pernah dihapus.
+    |
+    */
+    'finance' => [
+        'enabled' => env('LMS_FINANCE_GATE', false),
+        'allow_learning_when_restricted' => env('LMS_ALLOW_LEARNING_WHEN_RESTRICTED', true),
+        'grace_days' => (int) env('LMS_FINANCE_GRACE_DAYS', 0),
+        'restricted_capabilities' => ['enroll_new_course', 'start_new_attempt'],
+        'always_allowed' => ['view', 'continue', 'submit', 'grade', 'certificate', 'history'],
+    ],
+
+    /* Audit trail (§23) — immutable, dengan ip & correlation id. */
+    'audit' => [
+        'enabled' => env('LMS_AUDIT_ENABLED', true),
+        'mirror_to_table' => env('LMS_AUDIT_MIRROR', true),
+        'retention_days' => (int) env('LMS_AUDIT_RETENTION_DAYS', 1095),
+    ],
+
+    /* Report center (§22). */
+    'reports' => [
+        'allow_rich_formats' => env('LMS_REPORT_RICH_FORMATS', false),
+        'sync_row_limit' => (int) env('LMS_REPORT_SYNC_LIMIT', 500),
+        'export_retention_days' => (int) env('LMS_REPORT_RETENTION_DAYS', 7),
+        'disk' => env('LMS_REPORT_DISK', 'local'),
+    ],
+
+    /* Retensi data (§39). Penghapusan hanya berjalan dengan konfirmasi eksplisit. */
+    'retention' => [
+        'archive_after_days' => (int) env('LMS_ARCHIVE_AFTER_DAYS', 365),
+        'submission_keep_days' => (int) env('LMS_SUBMISSION_KEEP_DAYS', 1095),
+        'quiz_attempt_keep_days' => (int) env('LMS_QUIZ_ATTEMPT_KEEP_DAYS', 1095),
+        'notification_keep_days' => (int) env('LMS_NOTIFICATION_KEEP_DAYS', 180),
+        'temporary_file_hours' => (int) env('LMS_TEMP_FILE_HOURS', 24),
+    ],
+
+    /* Antrean & otomatisasi (§11). */
+    'automation' => [
+        'health_refresh_minutes' => (int) env('LMS_HEALTH_REFRESH_MINUTES', 30),
+        'due_reminder_days' => (int) env('LMS_DUE_REMINDER_DAYS', 2),
+        'overdue_reminder_days' => (int) env('LMS_OVERDUE_REMINDER_DAYS', 3),
+        'grade_sync_max_attempts' => (int) env('LMS_GRADE_SYNC_MAX_ATTEMPTS', 5),
+        'grade_sync_backoff_minutes' => (int) env('LMS_GRADE_SYNC_BACKOFF_MINUTES', 10),
+        'certificate_auto_issue' => env('LMS_CERTIFICATE_AUTO_ISSUE', true),
+        'badge_evaluation' => env('LMS_BADGE_AUTO_EVALUATE', true),
+    ],
+
+    /* Penyimpanan berkas LMS (§28): visibilitas diatur per berkas. */
+    'files' => [
+        'disk' => env('LMS_FILES_DISK', 'local'),
+        'temporary_lifetime_hours' => (int) env('LMS_TEMP_FILE_HOURS', 24),
+        'max_upload_mb' => (int) env('LMS_MAX_UPLOAD_MB', 25),
+        'allowed_mimes' => explode(',', (string) env(
+            'LMS_ALLOWED_MIMES',
+            'pdf,doc,docx,xls,xlsx,ppt,pptx,txt,csv,zip,mp4,mp3,webm,png,jpg,jpeg,webp',
+        )),
+    ],
+
+    /* Rate limit (§30) — dapat diubah sekolah tanpa deploy. */
+    'rate_limits' => [
+        'quiz_attempt' => (int) env('LMS_RL_QUIZ_ATTEMPT', 10),
+        'quiz_answer' => (int) env('LMS_RL_QUIZ_ANSWER', 120),
+        'submission' => (int) env('LMS_RL_SUBMISSION', 20),
+        'forum_post' => (int) env('LMS_RL_FORUM_POST', 30),
+        'file_upload' => (int) env('LMS_RL_FILE_UPLOAD', 30),
+        'certificate_verify' => (int) env('LMS_RL_CERT_VERIFY', 30),
+        'search' => (int) env('LMS_RL_SEARCH', 60),
+        'public_api' => (int) env('LMS_RL_PUBLIC', 120),
+        'scorm_tracking' => (int) env('LMS_RL_SCORM', 300),
+        'grade_sync' => (int) env('LMS_RL_GRADE_SYNC', 60),
+        'notification' => (int) env('LMS_RL_NOTIFICATION', 60),
+        'live_join' => (int) env('LMS_RL_LIVE_JOIN', 30),
+        'course_import' => (int) env('LMS_RL_COURSE_IMPORT', 10),
+        'report_export' => (int) env('LMS_RL_REPORT_EXPORT', 20),
+    ],
+
     'notifications' => [
         'announcement_channels' => ['database'],
         // Phase 3 — pemberitahuan nilai/banding memakai kanal yang sama (§46).
@@ -147,6 +252,33 @@ return [
         'certificate_channels' => ['database'],
         'badge_channels' => ['database'],
         'due_channels' => ['database'],
+        'certificate_expiry_channels' => ['database'],
+
+        /*
+         * Peta peristiwa → kanal (§10). Peristiwa yang tidak tercantum memakai
+         * kanal bawaan enum `NotificationEvent` (in_app). Kanal yang belum
+         * punya penyedia (mis. whatsapp) dilaporkan sebagai tidak tersedia,
+         * bukan gagal.
+         */
+        'events' => [
+            'COURSE_ENROLLED' => ['in_app'],
+            'COURSE_STARTED' => ['in_app'],
+            'ACTIVITY_AVAILABLE' => ['in_app'],
+            'ACTIVITY_DUE_SOON' => ['in_app', 'email'],
+            'ACTIVITY_OVERDUE' => ['in_app', 'email'],
+            'ASSIGNMENT_SUBMITTED' => ['in_app'],
+            'ASSIGNMENT_GRADED' => ['in_app'],
+            'QUIZ_AVAILABLE' => ['in_app'],
+            'QUIZ_COMPLETED' => ['in_app'],
+            'GRADE_RELEASED' => ['in_app', 'email'],
+            'FORUM_REPLY' => ['in_app'],
+            'LIVE_SESSION_UPCOMING' => ['in_app'],
+            'LIVE_SESSION_STARTED' => ['in_app'],
+            'COURSE_COMPLETED' => ['in_app'],
+            'CERTIFICATE_ISSUED' => ['in_app', 'email'],
+            'BADGE_EARNED' => ['in_app'],
+            'LEARNING_AT_RISK' => ['in_app', 'email'],
+        ],
     ],
 
     /*

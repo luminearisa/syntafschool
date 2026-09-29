@@ -2,12 +2,12 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
+use App\Modules\LMS\Application\Services\AcademicIntegrationService;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\GradebookService;
 use App\Modules\LMS\Application\Services\GradeReleaseService;
 use App\Modules\LMS\Application\Services\GradeStatisticsService;
 use App\Modules\LMS\Application\Services\GradeSyncService;
-use App\Modules\LMS\Application\Services\AcademicIntegrationService;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsGradeRelease;

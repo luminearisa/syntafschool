@@ -23,6 +23,11 @@ import LmsChildGradesPage from '@/features/lms/pages/LmsChildGradesPage';
 import LmsPublicHomePage from '@/features/lms/pages/LmsPublicHomePage';
 import LmsPublicCoursesPage from '@/features/lms/pages/LmsPublicCoursesPage';
 import LmsPublicCoursePage from '@/features/lms/pages/LmsPublicCoursePage';
+import LmsCertificatesPage from '@/features/lms/pages/LmsCertificatesPage';
+import LmsLiveSessionsPage from '@/features/lms/pages/LmsLiveSessionsPage';
+import LmsAchievementsPage from '@/features/lms/pages/LmsAchievementsPage';
+import LmsReportsPage from '@/features/lms/pages/LmsReportsPage';
+import LmsGovernancePage from '@/features/lms/pages/LmsGovernancePage';
 import LmsPublicTeachersPage from '@/features/lms/pages/LmsPublicTeachersPage';
 
 /**
@@ -205,6 +210,47 @@ export const domainRoutes: RouteObject[] = [
       </PermissionGuard>
     ),
   },
+  // Phase 4–5 — kelas langsung, sertifikat, capaian, laporan, tata kelola
+  {
+    path: 'lms/live-sessions',
+    element: (
+      <PermissionGuard permission="lms.view">
+        <LmsLiveSessionsPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/certificates',
+    element: (
+      <PermissionGuard permission="lms.view">
+        <LmsCertificatesPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/achievements',
+    element: (
+      <PermissionGuard permission="lms.view">
+        <LmsAchievementsPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/reports',
+    element: (
+      <PermissionGuard permission={['lms.report.view', 'lms.audit.view']}>
+        <LmsReportsPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/governance',
+    element: (
+      <PermissionGuard permission={['lms.audit.view', 'lms.integrity.run', 'lms.health.view']}>
+        <LmsGovernancePage />
+      </PermissionGuard>
+    ),
+  },
 ];
 
 /** LMS publik — di luar cangkang aplikasi, dapat diakses tanpa login (§30). */
@@ -227,6 +273,12 @@ export const lmsMenu: MenuChild[] = [
   { label: 'Nilai Saya', to: '/lms/grades', permission: ['lms.grade.view_own', 'lms.grade.view'] },
   { label: 'Performa Belajar', to: '/lms/performance', permission: ['lms.grade.view_own', 'lms.grade.view'] },
   { label: 'Kategori LMS', to: '/lms/categories', permission: 'lms.category.view' },
+  // Phase 4–5 — pengalaman belajar lanjutan & tata kelola
+  { label: 'Kelas Langsung', to: '/lms/live-sessions', permission: 'lms.view' },
+  { label: 'Sertifikat Saya', to: '/lms/certificates', permission: 'lms.view' },
+  { label: 'Capaian & Badge', to: '/lms/achievements', permission: 'lms.view' },
+  { label: 'Laporan LMS', to: '/lms/reports', permission: ['lms.report.view', 'lms.audit.view'] },
+  { label: 'Tata Kelola LMS', to: '/lms/governance', permission: ['lms.audit.view', 'lms.integrity.run', 'lms.health.view'] },
   { label: 'Pengaturan LMS', to: '/lms/settings', permission: 'lms.settings.manage' },
   { label: 'LMS Publik (/learn)', to: '/learn' },
 ];

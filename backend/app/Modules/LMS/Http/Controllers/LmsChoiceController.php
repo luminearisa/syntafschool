@@ -2,12 +2,12 @@
 
 namespace App\Modules\LMS\Http\Controllers;
 
-use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Application\Services\ActivityAvailabilityService;
 use App\Modules\LMS\Application\Services\ChoiceService;
-use App\Modules\LMS\Models\LmsChoice;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Http\Controllers\Concerns\ResolvesActivities;
+use App\Modules\LMS\Http\LmsController;
+use App\Modules\LMS\Models\LmsChoice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

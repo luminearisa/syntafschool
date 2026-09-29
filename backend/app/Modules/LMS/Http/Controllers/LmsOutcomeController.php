@@ -5,6 +5,7 @@ namespace App\Modules\LMS\Http\Controllers;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\LearningOutcomeService;
 use App\Modules\LMS\Application\Services\OutcomeAssessmentService;
+use App\Modules\LMS\Domain\Support\LmsActor;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsLearningOutcome;
@@ -150,7 +151,7 @@ class LmsOutcomeController extends LmsController
         );
     }
 
-    private function authorizeOutcome(LmsLearningOutcome $outcome, \App\Modules\LMS\Domain\Support\LmsActor $actor): void
+    private function authorizeOutcome(LmsLearningOutcome $outcome, LmsActor $actor): void
     {
         $course = $outcome->course()->firstOrFail();
 

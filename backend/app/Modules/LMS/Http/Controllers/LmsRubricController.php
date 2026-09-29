@@ -5,6 +5,7 @@ namespace App\Modules\LMS\Http\Controllers;
 use App\Modules\LMS\Application\Services\CourseAccessService;
 use App\Modules\LMS\Application\Services\RubricAssessmentService;
 use App\Modules\LMS\Application\Services\RubricService;
+use App\Modules\LMS\Domain\Support\LmsActor;
 use App\Modules\LMS\Http\LmsController;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsGradeItem;
@@ -211,7 +212,7 @@ class LmsRubricController extends LmsController
         ];
     }
 
-    private function authorizeRubric(LmsRubric $rubric, \App\Modules\LMS\Domain\Support\LmsActor $actor): void
+    private function authorizeRubric(LmsRubric $rubric, LmsActor $actor): void
     {
         $isOwner = (int) $rubric->owner_id === $actor->id || (int) $rubric->created_by === $actor->id;
         $canManage = $actor->can('lms.rubric.manage') || $actor->can('lms.rubric.create');

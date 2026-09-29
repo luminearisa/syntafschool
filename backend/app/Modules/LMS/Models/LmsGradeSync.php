@@ -24,6 +24,12 @@ class LmsGradeSync extends BaseModel
         'last_attempt_at' => 'datetime',
         'synced_at' => 'datetime',
         'locked_at' => 'datetime',
+        // Phase 5 — kolom antrean (§6): tanpa cast, nilai tanggal keluar sebagai
+        // string mentah dan pembandingan/penjadwalan jadi tidak konsisten.
+        'queued_at' => 'datetime',
+        'next_attempt_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'compare_snapshot' => 'array',
     ];
 
     public function gradebook(): BelongsTo

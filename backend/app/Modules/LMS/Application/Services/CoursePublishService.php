@@ -3,6 +3,7 @@
 namespace App\Modules\LMS\Application\Services;
 
 use App\Modules\LMS\Application\Concerns\LogsLmsAudit;
+use App\Modules\LMS\Application\Validation\ContentValidationService;
 use App\Modules\LMS\Domain\Enums\CompletionType;
 use App\Modules\LMS\Domain\Enums\CourseStatus;
 use App\Modules\LMS\Domain\Enums\CourseVisibility;
@@ -20,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 class CoursePublishService
 {
     use LogsLmsAudit;
+
+    public function __construct(private readonly ContentValidationService $validation) {}
 
     /**
      * Daftar periksa kelayakan terbit.
@@ -51,9 +54,15 @@ class CoursePublishService
 
         $blocking = array_filter($checks, fn (array $check) => ! $check['ok'] && $check['required']);
 
+        // Validasi mendalam (§17): siklus prasyarat, materi rusak, kuis tanpa
+        // soal, aturan penyelesaian mustahil. Hanya temuan ERROR yang menahan.
+        $validation = $this->validation->validateCourse($course);
+
         return [
-            'ready' => $blocking === [],
+            'ready' => $blocking === [] && $validation['publishable'],
             'checks' => $checks,
+            'validation' => $validation['report'],
+            'validation_scopes' => $validation['scopes'],
             'stats' => [
                 'sections' => $sections,
                 'items' => $items,
@@ -69,11 +78,20 @@ class CoursePublishService
         $readiness = $this->readiness($course);
 
         if (! $readiness['ready'] && ! $force) {
+            $problems = array_map(
+                fn (array $check) => $check['label'],
+                array_filter($readiness['checks'], fn (array $check) => ! $check['ok'] && $check['required']),
+            );
+
+            foreach ($readiness['validation']['issues'] ?? [] as $issue) {
+                if (($issue['blocks_publication'] ?? false) === true) {
+                    $problems[] = $issue['message'].($issue['fix'] !== null ? ' ('.$issue['fix'].')' : '');
+                }
+            }
+
             throw ValidationException::withMessages([
-                'course' => 'Course belum siap diterbitkan: '.implode('; ', array_map(
-                    fn (array $check) => $check['label'],
-                    array_filter($readiness['checks'], fn (array $check) => ! $check['ok'] && $check['required']),
-                )),
+                'course' => 'Course belum siap diterbitkan: '.implode('; ', array_unique($problems)),
+                'validation' => $problems,
             ]);
         }
 
@@ -86,6 +104,11 @@ class CoursePublishService
         $this->audit('LMS_COURSE_PUBLISHED', $course, [
             'forced' => $force,
             'checks' => $readiness['checks'],
+            'validation_counts' => $readiness['validation']['counts'] ?? null,
+            'validation_issues' => array_map(
+                fn (array $issue) => $issue['code'],
+                $readiness['validation']['issues'] ?? [],
+            ),
         ]);
 
         return $course->fresh();

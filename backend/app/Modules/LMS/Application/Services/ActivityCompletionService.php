@@ -40,6 +40,7 @@ class ActivityCompletionService
             ActivityType::LESSON => 'completed',
             ActivityType::CHOICE => 'responded',
             ActivityType::SURVEY => 'submitted',
+            ActivityType::SCORM => 'completed',
             default => 'submitted',
         };
     }
