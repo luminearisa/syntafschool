@@ -83,6 +83,56 @@ return [
         'preview_items' => env('LMS_GUEST_PREVIEW', true),
     ],
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | Gradebook & penilaian (Phase 3)
+    |--------------------------------------------------------------------------
+    |
+    | Default gradebook baru. Semua nilai dapat diubah per course, jadi tidak ada
+    | kebijakan sekolah yang dipaksa dari kode.
+    |
+    */
+    'gradebook' => [
+        'grading_method' => env('LMS_GRADING_METHOD', 'PERCENTAGE'),
+        'aggregation_method' => env('LMS_GRADE_AGGREGATION', 'WEIGHTED_MEAN'),
+        // PENDING = nilai kosong TIDAK dianggap 0 (§9).
+        'missing_grade_policy' => env('LMS_MISSING_GRADE_POLICY', 'PENDING'),
+        // STRICT mewajibkan total bobot 100%; NORMALIZE membagi dengan totalnya.
+        'weight_policy' => env('LMS_WEIGHT_POLICY', 'NORMALIZE'),
+        'extra_credit_policy' => env('LMS_EXTRA_CREDIT_POLICY', 'CAP'),
+        'maximum_grade' => (float) env('LMS_MAXIMUM_GRADE', 100),
+        'passing_grade' => (float) env('LMS_PASSING_GRADE', 70),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Learning outcome (Phase 3)
+    |--------------------------------------------------------------------------
+    |
+    | Ambang batas capaian default; tiap outcome dapat menimpanya sendiri (§28).
+    |
+    */
+    'outcome' => [
+        'thresholds' => [
+            'developing' => (float) env('LMS_OUTCOME_DEVELOPING', 60),
+            'achieved' => (float) env('LMS_OUTCOME_ACHIEVED', 75),
+            'mastered' => (float) env('LMS_OUTCOME_MASTERED', 90),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ekspor nilai (§38)
+    |--------------------------------------------------------------------------
+    |
+    | CSV selalu tersedia. Tambahkan 'xlsx'/'pdf' hanya bila exporter terpasang.
+    |
+    */
+    'export' => [
+        'formats' => ['csv'],
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Pemberitahuan
@@ -90,5 +140,21 @@ return [
     */
     'notifications' => [
         'announcement_channels' => ['database'],
+        // Phase 3 — pemberitahuan nilai/banding memakai kanal yang sama (§46).
+        'grade_channels' => ['database'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Integrasi nilai ke SIAKAD (§40–§42)
+    |--------------------------------------------------------------------------
+    |
+    | `push_grades` sengaja default NONAKTIF: nilai rapor tidak pernah berubah
+    | tanpa keputusan eksplisit sekolah. Saat aktif, LMS mengirim nilai akhir ke
+    | modul akademik sebagai satu penilaian (bukan laporan hasil belajar baru).
+    |
+    */
+    'integration' => [
+        'push_grades' => env('LMS_INTEGRATION_PUSH_GRADES', false),
     ],
 ];

@@ -12,6 +12,14 @@ use App\Modules\LMS\Http\Controllers\LmsDashboardController;
 use App\Modules\LMS\Http\Controllers\LmsEnrollmentController;
 use App\Modules\LMS\Http\Controllers\LmsForumController;
 use App\Modules\LMS\Http\Controllers\LmsGradeController;
+use App\Modules\LMS\Http\Controllers\LmsAssessmentResultController;
+use App\Modules\LMS\Http\Controllers\LmsCompetencyController;
+use App\Modules\LMS\Http\Controllers\LmsGradeReleaseController;
+use App\Modules\LMS\Http\Controllers\LmsGradeReviewController;
+use App\Modules\LMS\Http\Controllers\LmsGradeViewController;
+use App\Modules\LMS\Http\Controllers\LmsGradebookController;
+use App\Modules\LMS\Http\Controllers\LmsOutcomeController;
+use App\Modules\LMS\Http\Controllers\LmsRubricController;
 use App\Modules\LMS\Http\Controllers\LmsGroupController;
 use App\Modules\LMS\Http\Controllers\LmsLearningController;
 use App\Modules\LMS\Http\Controllers\LmsLessonController;
@@ -497,5 +505,175 @@ Route::prefix('lms')->name('lms.')->group(function (): void {
             ->middleware('lms.permission:lms.settings.manage')->name('settings.show');
         Route::match(['put', 'patch'], 'settings', [LmsSettingsController::class, 'update'])
             ->middleware('lms.permission:lms.settings.manage')->name('settings.update');
+
+        /*
+        |------------------------------------------------------------------
+        | Phase 3 — Gradebook, Assessment, Rubric, Outcome & Competency
+        |------------------------------------------------------------------
+        |
+        | Aktivitas Phase 2 tetap menjadi sumber evidence; nilai akhir
+        | dihitung gradebook. SIAKAD tidak pernah ditulis langsung dari sini —
+        | hanya lewat `grades/sync` yang berizin.
+        |
+        */
+
+        // Gradebook: konfigurasi, kategori, komponen, tabel nilai, ekspor.
+        Route::get('courses/{course}/gradebook', [LmsGradebookController::class, 'show'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.grade.view')->name('gradebook.show');
+        Route::put('courses/{course}/gradebook', [LmsGradebookController::class, 'update'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('gradebook.update');
+        Route::post('courses/{course}/gradebook/freeze', [LmsGradebookController::class, 'freeze'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('gradebook.freeze');
+        Route::post('courses/{course}/gradebook/unfreeze', [LmsGradebookController::class, 'unfreeze'])
+            ->middleware('lms.permission:lms.grade.lock,lms.gradebook.manage')->name('gradebook.unfreeze');
+        Route::get('courses/{course}/gradebook/sheet', [LmsGradebookController::class, 'sheet'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.grade.view')->name('gradebook.sheet');
+        Route::post('courses/{course}/gradebook/calculate', [LmsGradebookController::class, 'calculate'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.grade.view')->name('gradebook.calculate');
+        Route::get('courses/{course}/gradebook/statistics', [LmsGradebookController::class, 'statistics'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.report.view')->name('gradebook.statistics');
+        Route::get('courses/{course}/gradebook/export', [LmsGradebookController::class, 'export'])
+            ->middleware('lms.permission:lms.report.view,lms.gradebook.view')->name('gradebook.export');
+        Route::post('courses/{course}/gradebook/sync-items', [LmsGradebookController::class, 'syncItems'])
+            ->middleware('lms.permission:lms.gradebook.manage,lms.grade.edit')->name('gradebook.sync-items');
+        Route::get('courses/{course}/gradebook/items', [LmsGradebookController::class, 'items'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.grade.view')->name('gradebook.items');
+        Route::post('courses/{course}/gradebook/items', [LmsGradebookController::class, 'storeItem'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('gradebook.items.store');
+        Route::post('courses/{course}/gradebook/categories', [LmsGradebookController::class, 'storeCategory'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('gradebook.categories.store');
+        Route::put('grade-categories/{category}', [LmsGradebookController::class, 'updateCategory'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('grade-categories.update');
+        Route::delete('grade-categories/{category}', [LmsGradebookController::class, 'deleteCategory'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('grade-categories.delete');
+        Route::put('grade-items/{item}', [LmsGradebookController::class, 'updateItem'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('grade-items.update');
+        Route::delete('grade-items/{item}', [LmsGradebookController::class, 'deleteItem'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('grade-items.delete');
+        Route::get('courses/{course}/grade-scales', [LmsGradebookController::class, 'scales'])
+            ->middleware('lms.permission:lms.grade.view,lms.gradebook.view')->name('grade-scales.index');
+        Route::post('grade-scales', [LmsGradebookController::class, 'storeScale'])
+            ->middleware('lms.permission:lms.gradebook.manage')->name('grade-scales.store');
+
+        // Nilai per komponen (§34) — daftar, simpan, koreksi, bebas, kembalikan.
+        Route::get('grade-items/{item}/grades', [LmsAssessmentResultController::class, 'index'])
+            ->middleware('lms.permission:lms.grade.view,lms.gradebook.view')->name('grade-items.grades.index');
+        Route::put('grade-items/{item}/grades/{student}', [LmsAssessmentResultController::class, 'update'])
+            ->middleware('lms.permission:lms.grade.edit')->name('grade-items.grades.update');
+        Route::post('grade-items/{item}/grades/bulk', [LmsAssessmentResultController::class, 'bulk'])
+            ->middleware('lms.permission:lms.grade.edit')->name('grade-items.grades.bulk');
+        Route::post('grade-items/{item}/grades/{student}/exempt', [LmsAssessmentResultController::class, 'exempt'])
+            ->middleware('lms.permission:lms.grade.edit')->name('grade-items.grades.exempt');
+        Route::delete('grade-items/{item}/grades/{student}/exempt', [LmsAssessmentResultController::class, 'unexempt'])
+            ->middleware('lms.permission:lms.grade.edit')->name('grade-items.grades.unexempt');
+        Route::post('grade-items/{item}/grades/return', [LmsAssessmentResultController::class, 'return'])
+            ->middleware('lms.permission:lms.grade.release')->name('grade-items.grades.return');
+        Route::post('assessment-results/{result}/correct', [LmsAssessmentResultController::class, 'correct'])
+            ->middleware('lms.permission:lms.grade.correct')->name('assessment-results.correct');
+        Route::get('assessment-results/{result}/history', [LmsAssessmentResultController::class, 'history'])
+            ->middleware('lms.permission:lms.grade.view,lms.gradebook.view')->name('assessment-results.history');
+
+        // Rilis & kunci nilai (§16–§18) + sinkronisasi akademik (§41).
+        Route::post('courses/{course}/gradebook/release', [LmsGradeReleaseController::class, 'release'])
+            ->middleware('lms.permission:lms.grade.release')->name('gradebook.release');
+        Route::get('courses/{course}/gradebook/releases', [LmsGradeReleaseController::class, 'index'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.grade.view')->name('gradebook.releases');
+        Route::post('grade-releases/{release}/revoke', [LmsGradeReleaseController::class, 'revoke'])
+            ->middleware('lms.permission:lms.grade.release')->name('grade-releases.revoke');
+        Route::post('grade-releases/{release}/lock', [LmsGradeReleaseController::class, 'lock'])
+            ->middleware('lms.permission:lms.grade.lock')->name('grade-releases.lock');
+        Route::post('grade-releases/{release}/unlock', [LmsGradeReleaseController::class, 'unlock'])
+            ->middleware('lms.permission:lms.grade.correct')->name('grade-releases.unlock');
+        Route::post('courses/{course}/grades/sync', [LmsGradeReleaseController::class, 'sync'])
+            ->middleware('lms.permission:lms.grade.sync')->name('grades.sync');
+        Route::get('integration/academic', [LmsGradeReleaseController::class, 'integration'])
+            ->name('integration.academic');
+        Route::get('courses/{course}/grades/payload/{student}', [LmsGradeReleaseController::class, 'payload'])
+            ->middleware('lms.permission:lms.gradebook.view,lms.grade.view')->name('grades.payload');
+
+        // Tampilan nilai: siswa (§32), wali (§33), performa belajar (§47).
+        Route::get('my/grades', [LmsGradeViewController::class, 'myGrades'])->name('my.grades');
+        Route::get('my/performance', [LmsGradeViewController::class, 'myPerformance'])->name('my.performance');
+        Route::get('my/outcomes', [LmsGradeViewController::class, 'myOutcomes'])->name('my.outcomes');
+        Route::get('my/competencies', [LmsGradeViewController::class, 'myCompetencies'])->name('my.competencies');
+        Route::get('courses/{course}/grades', [LmsGradeViewController::class, 'courseGrades'])
+            ->middleware('lms.permission:lms.grade.view')->name('courses.grades');
+        Route::get('children/{child}/grades', [LmsGradeViewController::class, 'childGrades'])
+            ->middleware('lms.permission:lms.grade.view_child,lms.grade.view_child')->name('children.grades');
+
+        // Rubric (§22–§25, §58).
+        Route::get('courses/{course}/rubrics', [LmsRubricController::class, 'index'])
+            ->middleware('lms.permission:lms.rubric.create,lms.course.view,lms.content.view')->name('rubrics.index');
+        Route::get('rubric-templates', [LmsRubricController::class, 'templates'])
+            ->middleware('lms.permission:lms.rubric.create,lms.course.view')->name('rubrics.templates');
+        Route::post('rubrics', [LmsRubricController::class, 'store'])
+            ->middleware('lms.permission:lms.rubric.create')->name('rubrics.store');
+        Route::put('rubrics/{rubric}', [LmsRubricController::class, 'update'])
+            ->middleware('lms.permission:lms.rubric.manage')->name('rubrics.update');
+        Route::post('rubrics/{rubric}/archive', [LmsRubricController::class, 'archive'])
+            ->middleware('lms.permission:lms.rubric.manage')->name('rubrics.archive');
+        Route::post('rubrics/{rubric}/duplicate', [LmsRubricController::class, 'duplicate'])
+            ->middleware('lms.permission:lms.rubric.create')->name('rubrics.duplicate');
+        Route::delete('rubrics/{rubric}', [LmsRubricController::class, 'destroy'])
+            ->middleware('lms.permission:lms.rubric.manage')->name('rubrics.destroy');
+        Route::put('grade-items/{item}/rubric', [LmsRubricController::class, 'attach'])
+            ->middleware('lms.permission:lms.gradebook.manage,lms.rubric.manage')->name('grade-items.rubric.attach');
+        Route::get('grade-items/{item}/rubric/{student}', [LmsRubricController::class, 'studentAssessment'])
+            ->middleware('lms.permission:lms.grade.view,lms.rubric.assess')->name('grade-items.rubric.show');
+        Route::post('grade-items/{item}/rubric/{student}', [LmsRubricController::class, 'assess'])
+            ->middleware('lms.permission:lms.rubric.assess,lms.grade.edit')->name('grade-items.rubric.assess');
+
+        // Learning outcome (§26–§28).
+        Route::get('courses/{course}/outcomes', [LmsOutcomeController::class, 'index'])
+            ->middleware('lms.permission:lms.outcome.manage,lms.course.view,lms.content.view')->name('outcomes.index');
+        Route::post('courses/{course}/outcomes', [LmsOutcomeController::class, 'store'])
+            ->middleware('lms.permission:lms.outcome.manage')->name('outcomes.store');
+        Route::put('outcomes/{outcome}', [LmsOutcomeController::class, 'update'])
+            ->middleware('lms.permission:lms.outcome.manage')->name('outcomes.update');
+        Route::delete('outcomes/{outcome}', [LmsOutcomeController::class, 'destroy'])
+            ->middleware('lms.permission:lms.outcome.manage')->name('outcomes.destroy');
+        Route::post('outcomes/{outcome}/map', [LmsOutcomeController::class, 'map'])
+            ->middleware('lms.permission:lms.outcome.manage')->name('outcomes.map');
+        Route::post('courses/{course}/outcomes/recalculate', [LmsOutcomeController::class, 'recalculate'])
+            ->middleware('lms.permission:lms.outcome.assess,lms.outcome.manage')->name('outcomes.recalculate');
+        Route::get('courses/{course}/outcomes/students/{student}', [LmsOutcomeController::class, 'studentOutcomes'])
+            ->middleware('lms.permission:lms.outcome.manage,lms.grade.view')->name('outcomes.student');
+
+        // Competency (§29–§31).
+        Route::get('competency-frameworks', [LmsCompetencyController::class, 'frameworks'])
+            ->middleware('lms.permission:lms.competency.manage,lms.course.view')->name('competencies.frameworks');
+        Route::post('competency-frameworks', [LmsCompetencyController::class, 'storeFramework'])
+            ->middleware('lms.permission:lms.competency.manage')->name('competencies.frameworks.store');
+        Route::post('competency-frameworks/{framework}/competencies', [LmsCompetencyController::class, 'storeCompetency'])
+            ->middleware('lms.permission:lms.competency.manage')->name('competencies.store');
+        Route::put('competencies/{competency}', [LmsCompetencyController::class, 'updateCompetency'])
+            ->middleware('lms.permission:lms.competency.manage')->name('competencies.update');
+        Route::get('courses/{course}/competencies', [LmsCompetencyController::class, 'courseCompetencies'])
+            ->middleware('lms.permission:lms.competency.manage,lms.course.view,lms.content.view')->name('competencies.course');
+        Route::post('courses/{course}/competencies/map', [LmsCompetencyController::class, 'mapCourse'])
+            ->middleware('lms.permission:lms.competency.manage')->name('competencies.course.map');
+        Route::post('activities/{activity}/competencies/map', [LmsCompetencyController::class, 'mapActivity'])
+            ->middleware('lms.permission:lms.competency.manage')->name('competencies.activity.map');
+        Route::post('competencies/{competency}/students/{student}', [LmsCompetencyController::class, 'assess'])
+            ->middleware('lms.permission:lms.competency.assess')->name('competencies.assess');
+        Route::post('competencies/{competency}/students/{student}/evidence', [LmsCompetencyController::class, 'evidence'])
+            ->middleware('lms.permission:lms.competency.assess')->name('competencies.evidence');
+        Route::get('courses/{course}/competencies/students/{student}', [LmsCompetencyController::class, 'studentCompetencies'])
+            ->middleware('lms.permission:lms.competency.manage,lms.grade.view')->name('competencies.student');
+
+        // Banding nilai (§20, §59).
+        Route::get('grade-reviews', [LmsGradeReviewController::class, 'index'])->name('grade-reviews.index');
+        Route::post('grade-items/{item}/grade-reviews', [LmsGradeReviewController::class, 'store'])->name('grade-reviews.store');
+        Route::get('grade-reviews/{review}', [LmsGradeReviewController::class, 'show'])->name('grade-reviews.show');
+        Route::post('grade-reviews/{review}/start', [LmsGradeReviewController::class, 'start'])
+            ->middleware('lms.permission:lms.grade.review')->name('grade-reviews.start');
+        Route::post('grade-reviews/{review}/approve', [LmsGradeReviewController::class, 'approve'])
+            ->middleware('lms.permission:lms.grade.approve')->name('grade-reviews.approve');
+        Route::post('grade-reviews/{review}/reject', [LmsGradeReviewController::class, 'reject'])
+            ->middleware('lms.permission:lms.grade.approve')->name('grade-reviews.reject');
+        Route::post('grade-reviews/{review}/close', [LmsGradeReviewController::class, 'close'])
+            ->middleware('lms.permission:lms.grade.review')->name('grade-reviews.close');
+        Route::post('grade-reviews/{review}/comments', [LmsGradeReviewController::class, 'comment'])->name('grade-reviews.comment');
+
     });
 });

@@ -764,3 +764,64 @@ Dokumentasi: [`docs/08-MODUL-LMS-PHASE-2.md`](docs/08-MODUL-LMS-PHASE-2.md).
 - [ ] Gradebook LMS penuh (bobot kategori, ekspor, sinkronisasi terkendali)
 - [ ] Workshop, bank soal institusi dengan workflow persetujuan
 - [ ] Analytics pembelajaran & laporan per siswa/course
+
+---
+
+## Fase LMS Phase 3 — Gradebook, Assessment, Rubric, Competency & Learning Outcomes
+
+Melanjutkan Phase 1–2 **tanpa membuat ulang** course, aktivitas, submission,
+percobaan kuis, penyelesaian, progress, atau identitas pengguna. Dokumentasi:
+[`docs/09-MODUL-LMS-PHASE-3.md`](09-MODUL-LMS-PHASE-3.md).
+
+Prinsip yang ditegakkan: satu penulis hasil penilaian
+(`AssessmentResultService`), satu mesin perhitungan
+(`GradeCalculationService`/`FinalGradeService`), satu lapisan evidence
+(`lms_activity_grades` → `lms_assessment_results.activity_grade_id`), dan SIAKAD
+tetap sumber resmi nilai akademik.
+
+### Gradebook
+- [x] `lms_gradebooks` (satu per course) + status DRAFT/ACTIVE/LOCKED/FROZEN/ARCHIVED
+- [x] `lms_grade_categories` bersarang dengan bobot, agregasi, drop lowest, extra credit
+- [x] `lms_grade_items` dari ASSIGNMENT/QUIZ/FORUM/LESSON/MANUAL/EXTERNAL
+- [x] `lms_grade_scales` + entries; resolusi course → tahun ajaran → sekolah
+- [x] Bobot: STRICT (wajib 100%) & NORMALIZE, dengan ringkasan validasi
+- [x] 6 metode agregasi: WEIGHTED_MEAN, SIMPLE_MEAN, SUM, HIGHEST, LOWEST, MEDIAN
+- [x] Kebijakan nilai kosong PENDING/EXCLUDE/MISSING_AS_ZERO (bukan otomatis nol)
+- [x] Pembebasan (EXEMPT) beserta alasan, guru, dan waktu
+- [x] Extra credit CAP/UNCAPPED/IGNORE
+- [x] Pembekuan gradebook (§44)
+
+### Nilai, rilis, koreksi
+- [x] `lms_assessment_results` sebagai entitas terpusat + jejak ke nilai aktivitas
+- [x] Mesin perhitungan dengan rincian kontribusi per komponen
+- [x] Skala nilai diterapkan pada hasil perhitungan (huruf, predikat, GPA)
+- [x] Snapshot perhitungan saat rilis + `config_hash` untuk deteksi konfigurasi usang
+- [x] Rilis individu/sebagian/semua, pembatalan rilis, penguncian, buka kunci berizin
+- [x] Koreksi nilai berjejak; riwayat nilai immutable (menolak update/delete)
+- [x] Statistik course & per komponen, distribusi 5 bucket, tanpa ranking default
+- [x] Ekspor CSV mengikuti filter aktif (§38)
+- [x] Observer otomatis: nilai aktivitas Phase 2 langsung tercermin di gradebook
+
+### Rubric, outcome, competency
+- [x] Rubric + kriteria + level, template institusi, salin & arsip
+- [x] Penilaian rubric: pilih level → total → normalisasi → gradebook
+- [x] Learning outcome per course + pemetaan aktivitas (banyak-ke-banyak)
+- [x] Capaian outcome dengan ambang batas configurable + rekap kelas
+- [x] Competency framework → competency → course → activity
+- [x] Status kompetensi ditetapkan guru (bukan turunan angka) + bukti aktivitas/rubric
+
+### Tampilan, integrasi, keamanan
+- [x] Tampilan siswa (`/lms/grades`, `/lms/performance`) & wali (`/lms/children/:id/grades`)
+- [x] Tabel nilai guru (kolom siswa melekat, sunting langsung, simpan otomatis, filter)
+- [x] Banding nilai: pengajuan siswa → keputusan guru → koreksi berjejak
+- [x] `AcademicGradeProviderInterface` + provider SIAKAD & mandiri, sinkronisasi idempotent
+- [x] Penguncian otomatis setelah sinkronisasi + alur unlock → koreksi → re-sync
+- [x] Permission Phase 3 (89 izin `lms.*`) dan pemeriksaan kepemilikan course
+- [x] Notifikasi nilai (rilis, perubahan, banding) lewat kanal database yang ada
+- [x] 8 berkas tes Phase 3 (gradebook, rilis, rubric, outcome/competency, banding, integrasi, keamanan, alur menyeluruh)
+
+### Lanjutan (phase berikutnya)
+- [ ] Gradebook penuh: ekspor Excel/PDF, bobot per kelas lintas course
+- [ ] Workshop & penilaian sebaya
+- [ ] Bank soal institusi dengan workflow persetujuan
+- [ ] Analitik pembelajaran lanjutan & laporan multi-tahun

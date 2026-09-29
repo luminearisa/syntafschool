@@ -13,7 +13,9 @@ use App\Modules\LMS\Domain\Enums\EnrollmentStatus;
 use App\Modules\LMS\Models\Concerns\LogsLmsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /** Course adalah inti LMS (§5). */
@@ -141,6 +143,29 @@ class LmsCourse extends BaseModel
                 EnrollmentStatus::COMPLETED->value,
             ])
             ->first();
+    }
+
+    /** Gradebook course (§2). Phase 3 memakai satu gradebook per course. */
+    public function gradebook(): HasOne
+    {
+        return $this->hasOne(LmsGradebook::class, 'course_id');
+    }
+
+    /** Learning outcome course (§26). */
+    public function learningOutcomes(): HasMany
+    {
+        return $this->hasMany(LmsLearningOutcome::class, 'course_id')->orderBy('sort_order');
+    }
+
+    /** Kompetensi yang dipetakan ke course ini (§29). */
+    public function competencies(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            LmsCompetency::class,
+            'lms_course_competencies',
+            'course_id',
+            'competency_id',
+        )->withPivot(['is_required', 'weight'])->withTimestamps();
     }
 
     public function activityEventPrefix(): string

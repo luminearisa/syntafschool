@@ -4,6 +4,7 @@ namespace App\Modules\LMS\Providers;
 
 use App\Models\Setting;
 use App\Modules\LMS\Domain\Contracts\AcademicActivityFeedInterface;
+use App\Modules\LMS\Domain\Contracts\AcademicGradeProviderInterface;
 use App\Modules\LMS\Domain\Contracts\AcademicCourseProviderInterface;
 use App\Modules\LMS\Application\Support\QuestionTypeRegistry;
 use App\Modules\LMS\Domain\Contracts\ClassProviderInterface;
@@ -13,6 +14,8 @@ use App\Modules\LMS\Domain\Contracts\TeacherProviderInterface;
 use App\Modules\LMS\Domain\Contracts\UserProviderInterface;
 use App\Modules\LMS\Http\Controllers\LmsSettingsController;
 use App\Modules\LMS\Http\Middleware\EnsureLmsPermission;
+use App\Modules\LMS\Observers\LmsActivityGradeObserver;
+use App\Modules\LMS\Observers\LmsActivityObserver;
 use App\Modules\LMS\Http\Middleware\ResolveLmsActor;
 use App\Modules\LMS\Infrastructure\Providers\ErpAcademicActivityFeed;
 use App\Modules\LMS\Infrastructure\Providers\ErpAcademicCourseProvider;
@@ -21,12 +24,16 @@ use App\Modules\LMS\Infrastructure\Providers\ErpStudentProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\ErpUserProvider;
 use App\Modules\LMS\Infrastructure\Providers\LmsGradeProvider;
+use App\Modules\LMS\Infrastructure\Providers\SiakadAcademicGradeProvider;
+use App\Modules\LMS\Infrastructure\Providers\StandaloneAcademicGradeProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneAcademicActivityFeed;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneAcademicCourseProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneClassProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneStudentProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneTeacherProvider;
 use App\Modules\LMS\Infrastructure\Providers\Standalone\StandaloneUserProvider;
+use App\Modules\LMS\Models\LmsActivity;
+use App\Modules\LMS\Models\LmsActivityGrade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -87,6 +94,13 @@ class LmsServiceProvider extends ServiceProvider
 
         // Sumber nilai aktivitas untuk Gradebook Phase 3 (§46).
         $this->app->singleton(GradeProviderInterface::class, LmsGradeProvider::class);
+
+        // Phase 3 — integrasi nilai ke modul akademik (§40, §63).
+        // Integrated  → provider SIAKAD (menulis ke `assessments`/`scores`).
+        // Standalone  → provider kosong; gradebook LMS menjadi sumber resmi.
+        $this->app->singleton(AcademicGradeProviderInterface::class, fn () => config('lms.standalone', false)
+            ? new StandaloneAcademicGradeProvider
+            : new SiakadAcademicGradeProvider);
     }
 
     public function boot(): void
@@ -98,6 +112,7 @@ class LmsServiceProvider extends ServiceProvider
 
         $this->registerMiddleware();
         $this->registerRoutes();
+        $this->registerGradebookObservers();
     }
 
     public function provides(): array
@@ -110,6 +125,7 @@ class LmsServiceProvider extends ServiceProvider
             AcademicCourseProviderInterface::class,
             AcademicActivityFeedInterface::class,
             GradeProviderInterface::class,
+            AcademicGradeProviderInterface::class,
             QuestionTypeRegistry::class,
         ];
     }
@@ -126,6 +142,20 @@ class LmsServiceProvider extends ServiceProvider
         $class = config('lms.standalone', false) ? $standalone : $integrated;
 
         return new $class(...$dependencies);
+    }
+
+    /**
+     * Hubungkan aktivitas & nilai aktivitas ke Gradebook secara otomatis (§64).
+     *
+     * Tujuannya satu: tidak ada aktivitas bernilai yang luput dari gradebook.
+     * Observer sengaja "lembut" — bila gradebook sedang dibekukan, penilaian
+     * aktivitas tetap berhasil dan sinkronisasinya ditunda (dapat dijalankan
+     * manual dari halaman gradebook).
+     */
+    protected function registerGradebookObservers(): void
+    {
+        LmsActivity::observe(LmsActivityObserver::class);
+        LmsActivityGrade::observe(LmsActivityGradeObserver::class);
     }
 
     protected function registerMiddleware(): void

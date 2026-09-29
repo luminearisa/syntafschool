@@ -192,6 +192,11 @@ export default function LmsCourseDetailPage() {
             ) : null}
             {capabilities.manage && (
               <>
+                <Link to={`/lms/courses/${course.id}/gradebook`}>
+                  <Button size="sm" variant="outline">
+                    Gradebook
+                  </Button>
+                </Link>
                 <Link to={`/lms/courses/${course.id}/edit`}>
                   <Button size="sm" variant="outline">
                     Sunting

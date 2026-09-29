@@ -11,6 +11,7 @@ use App\Modules\LMS\Models\Concerns\LogsLmsActivity;
 use App\Modules\LMS\Models\Concerns\ResolvesIdentity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -101,6 +102,44 @@ class LmsActivity extends BaseModel
     }
 
     /** Sub-type configuration sesuai `activity_type`. */
+    /** Grade item pada gradebook course (§3): jembatan aktivitas → nilai akhir. */
+    public function gradeItem(): HasOne
+    {
+        return $this->hasOne(LmsGradeItem::class, 'activity_id');
+    }
+
+    /** Pemetaan learning outcome aktivitas ini (§27). */
+    public function outcomeMappings(): HasMany
+    {
+        return $this->hasMany(LmsActivityOutcome::class, 'activity_id');
+    }
+
+    public function outcomes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            LmsLearningOutcome::class,
+            'lms_activity_outcomes',
+            'activity_id',
+            'learning_outcome_id',
+        )->withPivot(['weight', 'mapped_by'])->withTimestamps();
+    }
+
+    /** Kompetensi yang dilatih aktivitas ini (§29). */
+    public function competencyMappings(): HasMany
+    {
+        return $this->hasMany(LmsActivityCompetency::class, 'activity_id');
+    }
+
+    public function competencies(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            LmsCompetency::class,
+            'lms_activity_competencies',
+            'activity_id',
+            'competency_id',
+        )->withPivot(['weight'])->withTimestamps();
+    }
+
     public function detail(): ?BaseModel
     {
         return match ($this->activity_type) {

@@ -38,6 +38,16 @@ class LmsPermissionSeeder extends Seeder
         'choice.view', 'choice.create', 'choice.respond',
         'survey.view', 'survey.create', 'survey.respond',
         'grade.view', 'grade.manage', 'submission.view', 'submission.grade', 'submission.upload',
+
+        // Phase 3 — gradebook, rubric, learning outcome, competency, banding nilai.
+        'gradebook.view', 'gradebook.manage',
+        'grade.edit', 'grade.release', 'grade.lock', 'grade.correct',
+        'grade.review', 'grade.approve', 'grade.sync',
+        'grade.view_own', 'grade.request_review',
+        'grade.view_child', 'grade.view_child_feedback',
+        'rubric.create', 'rubric.manage', 'rubric.assess',
+        'outcome.manage', 'outcome.assess',
+        'competency.manage', 'competency.assess',
     ];
 
     /**
@@ -59,6 +69,8 @@ class LmsPermissionSeeder extends Seeder
             'lms.activity.view', 'lms.assignment.view', 'lms.quiz.view', 'lms.question.view',
             'lms.forum.view', 'lms.lesson.view', 'lms.choice.view', 'lms.survey.view',
             'lms.submission.view', 'lms.grade.view',
+            'lms.gradebook.view', 'lms.grade.view_own',
+            'lms.rubric.create', 'lms.outcome.manage', 'lms.competency.manage',
         ],
         'guru' => [
             'lms.view', 'lms.category.view',
@@ -78,6 +90,12 @@ class LmsPermissionSeeder extends Seeder
             'lms.choice.view', 'lms.choice.create',
             'lms.survey.view', 'lms.survey.create',
             'lms.grade.view', 'lms.grade.manage', 'lms.submission.view', 'lms.submission.grade',
+            // Phase 3 — guru pemilik course mengelola gradebook & menilai.
+            'lms.gradebook.view', 'lms.gradebook.manage',
+            'lms.grade.edit', 'lms.grade.release', 'lms.grade.review', 'lms.grade.approve',
+            'lms.rubric.create', 'lms.rubric.manage', 'lms.rubric.assess',
+            'lms.outcome.manage', 'lms.outcome.assess',
+            'lms.competency.manage', 'lms.competency.assess',
         ],
         'wali-kelas' => [
             'lms.view', 'lms.course.view', 'lms.content.view',
@@ -85,6 +103,8 @@ class LmsPermissionSeeder extends Seeder
             'lms.activity.view', 'lms.assignment.view', 'lms.quiz.view', 'lms.forum.view',
             'lms.lesson.view', 'lms.choice.view', 'lms.survey.view',
             'lms.submission.view', 'lms.grade.view',
+            'lms.gradebook.view', 'lms.grade.review', 'lms.grade.approve',
+            'lms.outcome.manage', 'lms.competency.manage',
         ],
         'siswa' => [
             'lms.view', 'lms.course.view', 'lms.content.view', 'lms.bookmark.manage',
@@ -95,12 +115,16 @@ class LmsPermissionSeeder extends Seeder
             'lms.lesson.view', 'lms.choice.view', 'lms.choice.respond',
             'lms.survey.view', 'lms.survey.respond',
             'lms.grade.view', 'lms.submission.view', 'lms.submission.upload',
+            // Phase 3 — siswa melihat nilainya sendiri & dapat mengajukan banding.
+            'lms.grade.view_own', 'lms.grade.request_review',
         ],
         'wali-murid' => [
             'lms.view', 'lms.course.view', 'lms.parent.view', 'lms.student.view',
             // Wali hanya membaca — tidak pernah submit, menjawab, atau menilai (§48).
             'lms.activity.view', 'lms.assignment.view', 'lms.quiz.view', 'lms.forum.view',
             'lms.lesson.view', 'lms.choice.view', 'lms.survey.view', 'lms.grade.view',
+            // Phase 3 — wali hanya membaca nilai & umpan balik anak yang sah.
+            'lms.grade.view_child', 'lms.grade.view_child_feedback',
         ],
     ];
 

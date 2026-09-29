@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Modules\LMS\Database\Seeders\LmsActivityDemoSeeder;
+use App\Modules\LMS\Database\Seeders\LmsGradebookDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsPermissionSeeder;
 use Illuminate\Database\Seeder;
@@ -91,6 +92,7 @@ class DatabaseSeeder extends Seeder
             //     akademik yang pesertanya tersinkron dari rombel SIAKAD) ---
             LmsDemoSeeder::class,
             LmsActivityDemoSeeder::class,
+            LmsGradebookDemoSeeder::class,
         ]);
     }
 }

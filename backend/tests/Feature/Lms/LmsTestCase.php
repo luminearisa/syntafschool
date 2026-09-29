@@ -22,6 +22,8 @@ use App\Modules\LMS\Models\LmsCategory;
 use App\Modules\LMS\Models\LmsCourse;
 use App\Modules\LMS\Models\LmsCourseSection;
 use App\Modules\LMS\Models\LmsEnrollment;
+use App\Modules\LMS\Models\LmsGradebook;
+use App\Modules\LMS\Models\LmsGradeItem;
 use App\Modules\LMS\Models\LmsLearningItem;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -340,5 +342,110 @@ abstract class LmsTestCase extends TestCase
         ])->save();
 
         return $course->fresh();
+    }
+
+    // ==================================================================
+    // Phase 3 — gradebook, rubrik, outcome, kompetensi
+    // ==================================================================
+
+    /** Gradebook sebuah course, dibuat bila belum ada (§2). */
+    protected function gradebookFor(LmsCourse $course, ?int $actorId = null): LmsGradebook
+    {
+        return app(\App\Modules\LMS\Application\Services\GradebookService::class)
+            ->ensureForCourse($course, $actorId);
+    }
+
+    /**
+     * Daftarkan seluruh siswa dunia uji ke sebuah course dan kembalikan
+     * gradebook-nya — setup yang dipakai hampir semua tes Phase 3.
+     *
+     * @return array{gradebook: LmsGradebook, user_ids: list<int>}
+     */
+    protected function gradebookScenario(array $world, LmsCourse $course, ?int $actorId = null): array
+    {
+        $userIds = [];
+
+        foreach ($world['studentUsers'] as $user) {
+            $enrollment = $this->enroll($course, $user);
+
+            // Alur nyata mengisi tautan SIAKAD saat enrollment dibuat
+            // (CourseEnrollmentService); helper ini menyamakannya.
+            if ($enrollment->student_id === null && $user->userable_type === \App\Models\Student::class) {
+                $enrollment->forceFill(['student_id' => (int) $user->userable_id])->save();
+            }
+
+            $userIds[] = (int) $user->id;
+        }
+
+        return [
+            'gradebook' => $this->gradebookFor($course, $actorId),
+            'user_ids' => $userIds,
+        ];
+    }
+
+    /** Grade item manual untuk penilaian di luar aktivitas LMS (§3). */
+    protected function makeManualItem(LmsGradebook $gradebook, array $attributes = []): LmsGradeItem
+    {
+        $user = $attributes['actor_user'] ?? User::factory()->create(['is_active' => true]);
+        $user->syncRoles(['guru']);
+
+        unset($attributes['actor_user']);
+
+        return app(\App\Modules\LMS\Application\Services\GradeItemService::class)
+            ->create($gradebook, array_merge([
+                'name' => 'Ujian Tulis',
+                'source' => 'MANUAL',
+                'maximum_grade' => 100,
+                'weight' => 100,
+            ], $attributes), $this->actorFor($user));
+    }
+
+    /**
+     * Kategori nilai pada gradebook Phase 3 (§4).
+     *
+     * Dinamai `makeGradeCategory` agar tidak bertabrakan dengan
+     * `makeCategory()` Phase 1 (kategori course).
+     */
+    protected function makeGradeCategory(LmsGradebook $gradebook, string $name, float $weight = 0, array $attributes = []): \App\Modules\LMS\Models\LmsGradeCategory
+    {
+        $user = User::factory()->create(['is_active' => true]);
+        $user->syncRoles(['guru']);
+
+        return app(\App\Modules\LMS\Application\Services\GradebookService::class)
+            ->createCategory($gradebook, array_merge([
+                'name' => $name,
+                'weight' => $weight,
+            ], $attributes), $this->actorFor($user));
+    }
+
+    /** Simpan nilai ke gradebook lewat satu-satunya penulis resmi (§13). */
+    protected function recordGrade(LmsGradeItem $item, int $userId, ?float $score, array $data = []): \App\Modules\LMS\Models\LmsAssessmentResult
+    {
+        $user = User::factory()->create(['is_active' => true]);
+        $user->syncRoles(['guru']);
+
+        return app(\App\Modules\LMS\Application\Services\AssessmentResultService::class)
+            ->saveManual($item, $userId, array_merge([
+                'final_score' => $score,
+                'maximum_score' => (float) $item->maximum_grade,
+            ], $data), $this->actorFor($user));
+    }
+
+    /** Delegasikan kategori name→weight untuk contoh §15. */
+    protected function categoryItems(LmsGradebook $gradebook, string $categoryName, float $weight, array $scores): array
+    {
+        $category = $this->makeGradeCategory($gradebook, $categoryName, $weight);
+        $items = [];
+
+        foreach ($scores as $index => $score) {
+            $item = $this->makeManualItem($gradebook, [
+                'name' => $categoryName.' '.($index + 1),
+                'category_id' => $category->id,
+                'weight' => 0,
+            ]);
+            $items[] = ['item' => $item, 'score' => $score];
+        }
+
+        return $items;
     }
 }

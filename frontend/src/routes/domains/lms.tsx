@@ -16,6 +16,10 @@ import LmsParentChildPage from '@/features/lms/pages/LmsParentChildPage';
 import { LmsActivityPlayerPage } from '@/features/lms/pages/LmsActivityPlayerPage';
 import { LmsActivityManagePage } from '@/features/lms/pages/LmsActivityManagePage';
 import { LmsQuestionBankPage } from '@/features/lms/pages/LmsQuestionBankPage';
+import LmsGradebookPage from '@/features/lms/pages/LmsGradebookPage';
+import LmsMyGradesPage from '@/features/lms/pages/LmsMyGradesPage';
+import LmsMyPerformancePage from '@/features/lms/pages/LmsMyPerformancePage';
+import LmsChildGradesPage from '@/features/lms/pages/LmsChildGradesPage';
 import LmsPublicHomePage from '@/features/lms/pages/LmsPublicHomePage';
 import LmsPublicCoursesPage from '@/features/lms/pages/LmsPublicCoursesPage';
 import LmsPublicCoursePage from '@/features/lms/pages/LmsPublicCoursePage';
@@ -169,6 +173,38 @@ export const domainRoutes: RouteObject[] = [
       </PermissionGuard>
     ),
   },
+  {
+    path: 'lms/courses/:courseId/gradebook',
+    element: (
+      <PermissionGuard permission={['lms.gradebook.view', 'lms.grade.view', 'lms.manage']}>
+        <LmsGradebookPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/grades',
+    element: (
+      <PermissionGuard permission={['lms.grade.view', 'lms.grade.view_own', 'lms.manage']}>
+        <LmsMyGradesPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/performance',
+    element: (
+      <PermissionGuard permission={['lms.grade.view', 'lms.grade.view_own', 'lms.manage']}>
+        <LmsMyPerformancePage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'lms/children/:childId/grades',
+    element: (
+      <PermissionGuard permission={['lms.grade.view_child', 'lms.parent.view', 'lms.manage']}>
+        <LmsChildGradesPage />
+      </PermissionGuard>
+    ),
+  },
 ];
 
 /** LMS publik — di luar cangkang aplikasi, dapat diakses tanpa login (§30). */
@@ -187,6 +223,9 @@ export const lmsMenu: MenuChild[] = [
   { label: 'Pencarian LMS', to: '/lms/search', permission: 'lms.view' },
   { label: 'Bookmark', to: '/lms/bookmarks', permission: ['lms.bookmark.manage', 'lms.view'] },
   { label: 'Bank Soal', to: '/lms/question-banks', permission: ['lms.question.view', 'lms.questionbank.manage'] },
+  // Phase 3 — nilai & capaian
+  { label: 'Nilai Saya', to: '/lms/grades', permission: ['lms.grade.view_own', 'lms.grade.view'] },
+  { label: 'Performa Belajar', to: '/lms/performance', permission: ['lms.grade.view_own', 'lms.grade.view'] },
   { label: 'Kategori LMS', to: '/lms/categories', permission: 'lms.category.view' },
   { label: 'Pengaturan LMS', to: '/lms/settings', permission: 'lms.settings.manage' },
   { label: 'LMS Publik (/learn)', to: '/learn' },
