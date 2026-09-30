@@ -7,6 +7,8 @@ use App\Modules\LMS\Database\Seeders\LmsGradebookDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsPermissionSeeder;
 use App\Modules\CBT\Database\Seeders\CbtPermissionSeeder;
+use App\Modules\Clinic\Database\Seeders\ClinicMasterSeeder;
+use App\Modules\Clinic\Database\Seeders\ClinicPermissionSeeder;
 use App\Modules\Supervisi\Database\Seeders\SupInstrumentSeeder;
 use App\Modules\Supervisi\Database\Seeders\SupPermissionSeeder;
 use App\Modules\UKS\Database\Seeders\UksPermissionSeeder;
@@ -27,6 +29,8 @@ class DatabaseSeeder extends Seeder
             UksPermissionSeeder::class,
             SupInstrumentSeeder::class,
             CbtPermissionSeeder::class,
+        ClinicPermissionSeeder::class,
+        ClinicMasterSeeder::class,
             ReferenceSeeder::class,
             AcademicSeeder::class,
             ReferenceFinanceLibrarySeeder::class,

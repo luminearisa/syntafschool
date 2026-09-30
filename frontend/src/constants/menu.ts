@@ -13,6 +13,7 @@ import {
   MonitorCheck,
   Home,
   Settings,
+  Stethoscope,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -24,6 +25,7 @@ import { financeMenu } from '@/routes/domains/finance';
 import { assessmentsMenu } from '@/routes/domains/assessments';
 import { lmsMenu } from '@/routes/domains/lms';
 import { cbtMenu } from '@/routes/domains/cbt';
+import { clinicMenu } from '@/routes/domains/clinic';
 
 export interface MenuChild {
   label: string;
@@ -103,6 +105,15 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: MonitorCheck,
     permission: 'cbt.view',
     children: cbtMenu,
+  },
+  {
+    // Modul Clinic / UKS: ruang kerja klinis (antrean, triase, resep, pemulangan)
+    // dengan Inventaris sebagai satu-satunya sumber stok obat. Entri portal
+    // dipakai orang tua/siswa; cakupan barisnya dibatasi di server.
+    label: 'Clinic / UKS',
+    icon: Stethoscope,
+    permission: 'clinic.view',
+    children: clinicMenu,
   },
   {
     // LMS punya permukaan publik (/learn) dan ruang belajar terautentikasi.

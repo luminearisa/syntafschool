@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\CBT\Providers\CbtServiceProvider;
+use App\Modules\Clinic\Providers\ClinicServiceProvider;
 use App\Modules\LMS\Providers\LmsServiceProvider;
 use App\Modules\Supervisi\Providers\SupServiceProvider;
 use App\Modules\UKS\Providers\UksServiceProvider;
@@ -17,4 +18,10 @@ return [
     CbtServiceProvider::class,
     // Modul UKS mendaftarkan migrasi `uks_*` dan route /api/v1/uks/*.
     UksServiceProvider::class,
+    // Modul Clinic/UKS mendaftarkan migrasi `clinic_*`, binding kontrak
+    // integrasi (Student/Inventory/Finance/Notifikasi), dan route
+    // /api/v1/clinic/*. Berdiri di samping modul UKS: UKS tetap untuk
+    // alur ringan, Clinic untuk alur klinis penuh (triase → resep →
+    // dispensing → pemulangan) dengan Inventory sebagai sumber stok.
+    ClinicServiceProvider::class,
 ];

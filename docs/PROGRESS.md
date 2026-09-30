@@ -1169,3 +1169,57 @@ Dokumen: [`docs/supervisi/06-IMPLEMENTASI-FASE-4.md`](supervisi/06-IMPLEMENTASI-
 - [x] **10 tes / 128 asersi hijau**; `tsc --noEmit` bersih
 
 Dokumen: [`docs/uks/01-MODUL-UKS.md`](uks/01-MODUL-UKS.md)
+
+---
+
+## Modul Clinic / UKS — ruang kerja klinis (2026-09-30)
+
+Modul kesehatan kedua, sengaja dipisah dari UKS ringan: `App\Modules\Clinic`
+(tabel `clinic_*`, API `/api/v1/clinic/*`) untuk sekolah/pesantren yang punya
+tenaga medis dan butuh alur klinis penuh.
+
+- [x] **40 tabel `clinic_*`** dalam 3 migrasi, **40 model**, **53 enum** domain, **17 layanan**, **11 controller**, **96 rute**
+- [x] **10 kontrak integrasi** (`StudentProvider`, `ParentProvider`,
+      `InventoryProvider`, `FinanceProvider`, `NotificationProvider`,
+      `DocumentProvider`, `AssetProvider`, `AttendanceProvider`,
+      `BoardingProvider`, `DiagnosisCodeProvider`) — semuanya dapat diganti satu
+      binding di `ClinicServiceProvider`
+- [x] **Tanpa duplikasi sumber kebenaran**: identitas siswa dari master ERP,
+      saldo obat di `inventory_items` (klinik tidak punya buku stok — diuji),
+      dokumen di disk privat, tanpa jurnal akuntansi
+- [x] **Nomor rekam medis imun** (`MR-2026-000001`) — tidak berubah saat pindah
+      kelas atau ganti tahun ajaran
+- [x] Alur lengkap: registrasi → antrean → triase → tanda vital (IMT otomatis +
+      peringatan ambang konfigurasi) → asesmen SOAP ber-versi → diagnosis
+      berkode → tindakan → resep (periksa alergi) → penyerahan obat (FEFO,
+      blokir kedaluwarsa, stok berkurang lewat Inventory) → pemberian obat (MAR)
+      → observasi → rujukan → pemulangan → notifikasi → tindak lanjut
+- [x] Gawat darurat **melewati antrean**, cedera dengan mekanisme kejadian,
+      rujukan wajib tujuan + alasan + pelacakan status
+- [x] Skrining massal per kelas (idempotent per siswa+tanggal+jenis), imunisasi,
+      surat keterangan ber-alur (diminta → ditinjau → terbit) + verifikasi publik
+      tanpa membuka isi klinis
+- [x] **Privasi dua lapis**: 41 izin `clinic.*` (layar) + `ClinicAccessService`
+      (baris). Guru **tidak** otomatis mendapat rekam medis; orang tua hanya
+      anaknya; siswa hanya dirinya lewat portal baca-saja
+- [x] **Jejak audit** semua akses/perubahan + amendment non-destruktif (nilai
+      lama, nilai baru, alasan, pelaku); tidak ada endpoint hapus catatan klinis
+- [x] Notifikasi ber-kebijakan privasi: pesan menyebut layanan, bukan diagnosis;
+      yang ditahan dicatat beserta alasannya
+- [x] Operasional: `clinic:expire-batches` (05:30) & `clinic:expire-follow-ups`
+      (06:00) terjadwal; `GET /clinic/health` memeriksa 8 integrasi tanpa data pasien
+- [x] Frontend: **11 halaman** (dasbor + papan antrean, pasien & rekam medis,
+      daftar kunjungan, workspace klinis, farmasi, gawat darurat & cedera,
+      rujukan & tindak lanjut, skrining & imunisasi, surat & dokumen, laporan,
+      portal orang tua) di grup menu **Clinic / UKS**
+- [x] **52 tes / 342 asersi hijau**; `tsc -b && vite build` bersih (2298 modul);
+      diverifikasi di browser: dasbor, daftar pasien, workspace dengan data nyata
+      (banner alergi berat, SOAP, diagnosis J06, IMT), portal wali
+
+Perbaikan yang ikut terbawa:
+- [x] `Badge` menerima alias semantik (`danger`/`warning`/`success`/`info`/`neutral`)
+- [x] `vite.config.ts`: `server.allowedHosts` agar dev server dapat dibuka lewat
+      URL tunnel
+- [x] Impor `Label` tak terpakai di halaman UKS (menghambat build `tsc`)
+
+Dokumen: [`docs/16-MODUL-CLINIC.md`](16-MODUL-CLINIC.md)

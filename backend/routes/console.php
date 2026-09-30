@@ -114,3 +114,8 @@ Schedule::command('supervisi:prune')->monthlyOn(1, '07:15')->withoutOverlapping(
  */
 Schedule::command('uks:remind')->dailyAt('06:45')->withoutOverlapping();
 Schedule::command('uks:health')->weeklyOn(1, '07:05')->withoutOverlapping();
+
+// Modul Clinic / UKS: batch obat kedaluwarsa ditandai tiap hari, tindak lanjut
+// yang lewat tenggat ditandai + orang tua diingatkan sekali sehari.
+Schedule::command('clinic:expire-batches')->dailyAt('05:30');
+Schedule::command('clinic:expire-follow-ups')->dailyAt('06:00');

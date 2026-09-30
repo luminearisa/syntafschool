@@ -60,6 +60,20 @@ return [
             'report' => false,
         ],
 
+        /*
+         * Dokumen kesehatan (surat keterangan, surat rujukan, hasil skrining)
+         * TIDAK boleh dapat diakses langsung lewat URL publik. Disk ini privat
+         * dan hanya dilayani oleh endpoint ber-otorisasi di Modul Clinic.
+         */
+        'clinic' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/clinic'),
+            'serve' => false,
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
     ],
 
     /*
