@@ -14,6 +14,11 @@ class SupCalibrationScore extends BaseModel
         'score' => 'float',
     ];
 
+    public function indicator(): BelongsTo
+    {
+        return $this->belongsTo(SupIndicator::class, 'indicator_id');
+    }
+
     public function session(): BelongsTo
     {
         return $this->belongsTo(SupCalibrationSession::class, 'calibration_session_id');

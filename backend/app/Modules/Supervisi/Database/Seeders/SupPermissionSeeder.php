@@ -51,6 +51,11 @@ class SupPermissionSeeder extends Seeder
         'supervisi.dispute.create', 'supervisi.dispute.resolve',
         'supervisi.report.view', 'supervisi.report.export',
         'supervisi.analytics.view', 'supervisi.audit.view',
+
+        // Analitik, laporan, kalibrasi penilai & evaluasi program (Fase 4)
+        'supervisi.calibration.view', 'supervisi.calibration.manage', 'supervisi.calibration.finalize',
+        'supervisi.evaluation.view', 'supervisi.evaluation.manage', 'supervisi.evaluation.finalize',
+        'supervisi.reminder.manage',
         'supervisi.settings.manage',
     ];
 
@@ -75,6 +80,7 @@ class SupPermissionSeeder extends Seeder
             'supervisi.appraisal.view',
             'supervisi.report.view', 'supervisi.report.export',
             'supervisi.analytics.view', 'supervisi.audit.view',
+            'supervisi.calibration.view', 'supervisi.evaluation.view',
         ]);
 
         // Kepala sekolah: seluruh kewenangan supervisi & penilaian, termasuk

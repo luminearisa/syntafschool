@@ -6,7 +6,10 @@ use App\Modules\Supervisi\Http\Controllers\SupAssignmentController;
 use App\Modules\Supervisi\Http\Controllers\SupGradeScaleController;
 use App\Modules\Supervisi\Http\Controllers\SupGrowthController;
 use App\Modules\Supervisi\Http\Controllers\SupInstrumentController;
+use App\Modules\Supervisi\Http\Controllers\SupCalibrationController;
+use App\Modules\Supervisi\Http\Controllers\SupCippController;
 use App\Modules\Supervisi\Http\Controllers\SupProgramController;
+use App\Modules\Supervisi\Http\Controllers\SupReportController;
 use App\Modules\Supervisi\Http\Controllers\SupScheduleController;
 use App\Modules\Supervisi\Http\Controllers\SupSettingController;
 use App\Modules\Supervisi\Http\Controllers\SupSupervisorController;
@@ -278,4 +281,47 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
         ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.conclude');
     Route::post('pips/{pipPlan}/acknowledge', [SupGrowthController::class, 'acknowledgePip'])
         ->middleware('permission:supervisi.report.view')->name('supervisi.pips.acknowledge');
+
+    // ---------------- Analitik, laporan & kalibrasi (Fase 4) ----------------
+    Route::get('analytics', [SupReportController::class, 'analytics'])
+        ->middleware('permission:supervisi.report.view|supervisi.analytics.view')->name('supervisi.analytics');
+
+    Route::get('reports/catalog', [SupReportController::class, 'catalog'])
+        ->middleware('permission:supervisi.report.view')->name('supervisi.reports.catalog');
+    Route::get('reports/history', [SupReportController::class, 'history'])
+        ->middleware('permission:supervisi.report.view')->name('supervisi.reports.history');
+    Route::post('reports/preview', [SupReportController::class, 'preview'])
+        ->middleware('permission:supervisi.report.view')->name('supervisi.reports.preview');
+    Route::post('reports', [SupReportController::class, 'generate'])
+        ->middleware('permission:supervisi.report.export')->name('supervisi.reports.generate');
+    Route::get('reports/{report}/download', [SupReportController::class, 'download'])
+        ->middleware('permission:supervisi.report.export')->name('supervisi.reports.download');
+
+    // Kalibrasi penilai ------------------------------------------------------
+    Route::get('calibrations', [SupCalibrationController::class, 'index'])
+        ->middleware('permission:supervisi.calibration.view|supervisi.report.view')->name('supervisi.calibrations.index');
+    Route::post('calibrations', [SupCalibrationController::class, 'store'])
+        ->middleware('permission:supervisi.calibration.manage')->name('supervisi.calibrations.store');
+    Route::get('calibrations/divergence', [SupCalibrationController::class, 'divergence'])
+        ->middleware('permission:supervisi.calibration.view|supervisi.report.view')->name('supervisi.calibrations.divergence');
+    Route::get('calibrations/{session}', [SupCalibrationController::class, 'show'])
+        ->middleware('permission:supervisi.calibration.view|supervisi.report.view')->name('supervisi.calibrations.show');
+    Route::patch('calibrations/{session}', [SupCalibrationController::class, 'update'])
+        ->middleware('permission:supervisi.calibration.manage')->name('supervisi.calibrations.update');
+    Route::put('calibrations/{session}/scores', [SupCalibrationController::class, 'saveScores'])
+        ->middleware('permission:supervisi.calibration.manage')->name('supervisi.calibrations.scores');
+    Route::post('calibrations/{session}/finalize', [SupCalibrationController::class, 'finalize'])
+        ->middleware('permission:supervisi.calibration.finalize')->name('supervisi.calibrations.finalize');
+
+    // Evaluasi program (CIPP) ------------------------------------------------
+    Route::get('evaluations', [SupCippController::class, 'index'])
+        ->middleware('permission:supervisi.evaluation.view|supervisi.report.view')->name('supervisi.evaluations.index');
+    Route::post('programs/{program}/evaluations', [SupCippController::class, 'store'])
+        ->middleware('permission:supervisi.evaluation.manage')->name('supervisi.evaluations.store');
+    Route::get('evaluations/{evaluation}', [SupCippController::class, 'show'])
+        ->middleware('permission:supervisi.evaluation.view|supervisi.report.view')->name('supervisi.evaluations.show');
+    Route::patch('evaluations/{evaluation}', [SupCippController::class, 'update'])
+        ->middleware('permission:supervisi.evaluation.manage')->name('supervisi.evaluations.update');
+    Route::post('evaluations/{evaluation}/finalize', [SupCippController::class, 'finalize'])
+        ->middleware('permission:supervisi.evaluation.finalize')->name('supervisi.evaluations.finalize');
 });

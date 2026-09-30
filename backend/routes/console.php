@@ -89,3 +89,13 @@ Schedule::command('lms:reminders --overdue')->dailyAt('07:15')->withoutOverlappi
 Schedule::command('lms:grade-sync --retry-failed')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('lms:prune')->dailyAt('02:30')->withoutOverlapping();
 Schedule::command('lms:integrity')->weeklyOn(1, '03:00')->withoutOverlapping();
+
+/*
+ * Penjadwalan modul Supervisi (Fase 4).
+ *
+ * Pengingat harian: kegiatan yang dijadwalkan H-3, kegiatan selesai yang belum
+ * difinalkan, butir RTL jatuh tempo/terlambat, tindak lanjut coaching, dan
+ * tinjauan PIP yang mendekati tenggat. Perintahnya idempoten — satu pengingat
+ * per (penerima, jenis, kunci) per hari — sehingga aman dijalankan berulang.
+ */
+Schedule::command('supervisi:remind')->dailyAt('06:30')->withoutOverlapping();

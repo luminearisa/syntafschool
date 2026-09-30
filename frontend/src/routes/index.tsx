@@ -17,6 +17,7 @@ import NotFoundPage from '@/features/common/pages/NotFoundPage';
 import { TahfizPublicRegistrationPage } from '@/features/tahfiz/pages/TahfizPublicRegistrationPage';
 import { LibraryOpacPage } from '@/features/library/pages/LibraryOpacPage';
 import { LibraryOpacDetailPage } from '@/features/library/pages/LibraryOpacDetailPage';
+import DocumentVerificationPage from '@/features/supervisi/pages/DocumentVerificationPage';
 import { MASTER_RESOURCES } from '@/constants/masterData';
 import { domainPublicRoutes, domainRoutes } from './domains';
 
@@ -34,6 +35,8 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   // Pendaftaran mandiri Tahfiz — publik, di luar cangkang aplikasi.
   { path: '/tahfiz/daftar', element: <TahfizPublicRegistrationPage /> },
+  // Verifikasi dokumen supervisi — publik, target QR pada berkas PDF.
+  { path: '/verifikasi-dokumen/:code', element: <DocumentVerificationPage /> },
   // OPAC (katalog publik perpustakaan) — dapat diakses tanpa login.
   { path: '/library/opac', element: <LibraryOpacPage /> },
   { path: '/library/opac/:slug', element: <LibraryOpacDetailPage /> },

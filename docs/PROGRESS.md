@@ -1072,3 +1072,43 @@ Dokumen: [`docs/supervisi/04-IMPLEMENTASI-FASE-2.md`](supervisi/04-IMPLEMENTASI-
       audit menyeluruh, mode luring, OpenAPI)
 
 Dokumen: [`docs/supervisi/05-IMPLEMENTASI-FASE-3.md`](supervisi/05-IMPLEMENTASI-FASE-3.md)
+
+
+### Modul Supervisi — Fase 4 (selesai)
+
+- [x] **Analitik**: cakupan supervisi (guru/tendik, daftar yang belum
+      disupervisi), statistik kegiatan & realisasi program, rata-rata/median
+      nilai per bulan, sebaran predikat, rata-rata per bagian instrumen, dan
+      **indikator terlemah** dengan ambang 75% skor maksimum
+- [x] **Disiplin tindak lanjut**: RTL tepat waktu, butir terlambat, rata-rata
+      hari penyelesaian, persentase terverifikasi
+- [x] **Rekap penilaian & pembinaan**: predikat PKG/NKKS/SKP, angka kredit,
+      daftar nilai di bawah ambang yang belum punya PIP, hasil PIP, jam
+      pengembangan, dan tindak lanjut coaching yang jatuh tempo
+- [x] **Kinerja penilai**: jumlah kegiatan, nilai rata-rata, dan **indeks
+      kelonggaran** (selisih dari rata-rata sekolah) dengan penanda *perlu
+      kalibrasi*
+- [x] **Laporan wajib Permendikbud 15/2018**: 6 laporan (program, hasil per
+      pegawai, tindak lanjut, analitik indikator, rekap penilaian, kalibrasi)
+      dengan pratinjau, riwayat, dan ekspor **CSV/XLSX/PDF/JSON**
+      (XLSX ditulis sendiri tanpa dependensi; CSV ber-BOM & pemisah titik koma)
+- [x] **Tanda tangan & verifikasi dokumen**: kode acak + checksum SHA-256 tiap
+      dokumen, QR pada PDF, halaman verifikasi publik yang menolak berkas yang
+      diubah
+- [x] **Kalibrasi penilai**: sesi moderasi + ambang selisih yang disepakati,
+      ringkasan selisih maks−min per indikator, kesepakatan wajib sebelum
+      finalisasi, sesi terkunci, dan bahan moderasi dari kegiatan nyata
+- [x] **Evaluasi program CIPP**: skor context/input/process/product 0–100,
+      narasi bukti, pemangku kepentingan, bukti otomatis dari data supervisi,
+      rekomendasi wajib saat finalisasi
+- [x] **Pengingat terjadwal** `supervisi:remind` (kegiatan mendatang/belum
+      final, RTL jatuh tempo, coaching, tinjauan PIP) — idempoten, ada
+      `--dry-run`, terjadwal harian 06.30
+- [x] UI: Analitik & Laporan, Kalibrasi Penilai, Evaluasi Program (CIPP), dan
+      halaman verifikasi dokumen publik
+- [x] 9 tes Fase 4 (total **84 tes / 728 asersi hijau**); build produksi &
+      uji browser hijau
+- [ ] Fase 5 (pengerasan): audit IDOR/kebocoran antar sekolah, uji beban
+      agregasi, mode luring, OpenAPI, panduan pengguna & deployment
+
+Dokumen: [`docs/supervisi/06-IMPLEMENTASI-FASE-4.md`](supervisi/06-IMPLEMENTASI-FASE-4.md)

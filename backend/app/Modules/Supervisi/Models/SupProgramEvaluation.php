@@ -19,7 +19,22 @@ class SupProgramEvaluation extends BaseModel
         'input_score' => 'float',
         'process_score' => 'float',
         'product_score' => 'float',
+        'stakeholders' => 'array',
+        'finalized_at' => 'datetime',
     ];
+
+    /** Rata-rata empat dimensi CIPP, atau null bila belum lengkap. */
+    public function averageScore(): ?float
+    {
+        $values = array_filter([
+            $this->context_score,
+            $this->input_score,
+            $this->process_score,
+            $this->product_score,
+        ], fn ($value) => $value !== null);
+
+        return $values === [] ? null : round(array_sum($values) / count($values), 2);
+    }
 
     public function program(): BelongsTo
     {

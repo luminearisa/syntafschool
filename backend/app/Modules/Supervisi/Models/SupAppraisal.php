@@ -41,6 +41,12 @@ class SupAppraisal extends BaseModel
         'published_at' => 'datetime',
     ];
 
+    /** Rencana perbaikan kinerja yang lahir dari dokumen ini. */
+    public function pipPlans(): HasMany
+    {
+        return $this->hasMany(SupPipPlan::class, 'appraisal_id');
+    }
+
     public function supervisee(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'supervisee_employee_id');

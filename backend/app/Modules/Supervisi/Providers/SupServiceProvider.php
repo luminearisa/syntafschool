@@ -22,6 +22,12 @@ class SupServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerRoutes();
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \App\Modules\Supervisi\Console\SupervisiRemindCommand::class,
+            ]);
+        }
     }
 
     protected function registerRoutes(): void
@@ -30,5 +36,10 @@ class SupServiceProvider extends ServiceProvider
         Route::middleware('api')
             ->prefix('api/v1')
             ->group(__DIR__.'/../Routes/api.php');
+
+        // Verifikasi dokumen: satu-satunya endpoint tanpa autentikasi.
+        Route::middleware('api')
+            ->prefix('api/v1')
+            ->group(__DIR__.'/../Routes/public.php');
     }
 }
