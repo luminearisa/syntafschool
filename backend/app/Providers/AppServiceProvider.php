@@ -40,7 +40,7 @@ class AppServiceProvider extends ServiceProvider
         // penamaannya disesuaikan di satu tempat ini.
         Activity::saving(function (Activity $activity): void {
             // Modul yang memakai penamaan aksi bergaya spesifikasi.
-            if (! in_array($activity->log_name, ['library', 'ppdb', 'wallet', 'boarding', 'finance', 'lms'], true)) {
+            if (! in_array($activity->log_name, ['library', 'ppdb', 'wallet', 'boarding', 'finance', 'lms', 'cbt'], true)) {
                 return;
             }
 

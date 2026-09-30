@@ -29,7 +29,10 @@ return [
      * Di produksi daftar pola tetap kosong.
      */
     'allowed_origins_patterns' => in_array(env('APP_ENV', 'production'), ['local', 'testing'], true)
-        ? ['#^http://(localhost|127\.0\.0\.1)(:\d+)?$#']
+        ? [
+            '#^http://(localhost|127\.0\.0\.1)(:\d+)?$#',
+            '#^https://[a-z0-9-]+\.w\.modal\.host$#',
+        ]
         : [],
 
     'allowed_headers' => ['*'],

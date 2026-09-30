@@ -18,6 +18,7 @@ Artisan::command('inspire', function () {
  * operasional agar data hari itu sudah final.
  */
 Schedule::command('library:daily-maintenance')->dailyAt('20:00');
+Schedule::command('cbt:expire-attempts')->everyMinute();
 
 /*
  * Penjadwalan modul PPDB (siklus tagihan).
@@ -104,3 +105,12 @@ Schedule::command('supervisi:health')->weeklyOn(1, '07:00')->withoutOverlapping(
 // Penyapu berkas dokumen: **tanpa** --force oleh penjadwal, jadi hanya melapor.
 // Penghapusan sengaja menuntut tindakan manual admin.
 Schedule::command('supervisi:prune')->monthlyOn(1, '07:15')->withoutOverlapping();
+
+/*
+ * Penjadwalan modul UKS.
+ * Pengingat pagi: stok menipis, obat menjelang kedaluwarsa, imunisasi susulan
+ * jatuh tempo, dan kunjungan yang masih terbuka lebih dari dua hari.
+ * Perintahnya idempoten (satu pengingat per penerima per jenis per hari).
+ */
+Schedule::command('uks:remind')->dailyAt('06:45')->withoutOverlapping();
+Schedule::command('uks:health')->weeklyOn(1, '07:05')->withoutOverlapping();

@@ -6,8 +6,10 @@ use App\Modules\LMS\Database\Seeders\LmsActivityDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsGradebookDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsDemoSeeder;
 use App\Modules\LMS\Database\Seeders\LmsPermissionSeeder;
+use App\Modules\CBT\Database\Seeders\CbtPermissionSeeder;
 use App\Modules\Supervisi\Database\Seeders\SupInstrumentSeeder;
 use App\Modules\Supervisi\Database\Seeders\SupPermissionSeeder;
+use App\Modules\UKS\Database\Seeders\UksPermissionSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -21,7 +23,10 @@ class DatabaseSeeder extends Seeder
             LmsPermissionSeeder::class,
             // Modul Supervisi: permission granular supervisi.* + instrumen bawaan.
             SupPermissionSeeder::class,
+            // Modul UKS: permission granular uks.*.
+            UksPermissionSeeder::class,
             SupInstrumentSeeder::class,
+            CbtPermissionSeeder::class,
             ReferenceSeeder::class,
             AcademicSeeder::class,
             ReferenceFinanceLibrarySeeder::class,

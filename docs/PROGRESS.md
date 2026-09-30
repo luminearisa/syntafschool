@@ -636,6 +636,14 @@ Seeder berikut dibuat agar modul di atasnya bisa diuji:
 - [x] **Verifikasi FINAL**: `vendor/bin/phpunit` penuh hijau, PPDB 88 tes / 2298 assertion, `npx tsc -p tsconfig.app.json --noEmit` 0 error, `npm run build` sukses
 - [ ] Sisa keputusan pemilik (bukan bug): daftar ulang hanya dapat dibuka/diselesaikan petugas (orang tua belum bisa swastatus), `buildComposite()` mengekstrapolasi dari bobot yang *sudah* dinilai untuk calon yang belum lengkap dinilai, portal tidak punya endpoint pengumuman (dashboard membaca kotak masuk notifikasi), `eslint` belum terkonfigurasi di repo ini
 
+## Modul CBT — Ujian Berbasis Komputer (selesai, 2026-09-30)
+
+- [x] Bank soal 8 tipe + revisi, kisi acak, sesi ber-token, ruang ujian siswa, timer server
+- [x] Insiden integritas, penilaian esai, analisis butir, ekspor CSV, dorong nilai ke penilaian
+- [x] UI: dasbor, bank soal, kisi, sesi, monitor, ujian saya, pemain, antrean esai
+- [x] Feature test `CbtTest` (7 tes) hijau
+- [ ] Belum: penguncian OS lab dan proktor video (butuh klien terpisah)
+
 ## Fase 6 — Hardening & Deploy
 - [ ] Testing menyeluruh
 - [ ] Optimasi performa
@@ -1134,3 +1142,30 @@ Dokumen: [`docs/supervisi/05-IMPLEMENTASI-FASE-3.md`](supervisi/05-IMPLEMENTASI-
     struktural yang mewajibkan setiap rute berizin & berbatas laju)
 
 Dokumen: [`docs/supervisi/06-IMPLEMENTASI-FASE-4.md`](supervisi/06-IMPLEMENTASI-FASE-4.md)
+
+## Modul UKS — Usaha Kesehatan Sekolah (selesai)
+
+- [x] 12 tabel `uks_*` (tambahan, tidak mengubah tabel inti): petugas, profil
+      kesehatan, obat & mutasi stok, kunjungan, obat kunjungan, persetujuan
+      orang tua, rujukan, pemeriksaan berkala, imunisasi, insiden, surat
+- [x] **5 pihak terhubung** dengan cakupan baris di `UksAccessService`:
+      petugas/admin = seluruh sekolah, kepala sekolah = lihat semua, guru &
+      wali kelas = siswa kelas yang diampu (wali kelas atau pengajar mapel),
+      orang tua = anaknya saja, siswa = dirinya sendiri
+- [x] Alur kunjungan: catat → tangani → obat (stok berkurang dalam transaksi
+      berkunci; obat kedaluwarsa ditolak; stok tidak bisa minus) → rujuk →
+      tutup (terkunci). Kasus berat/darurat otomatis mengabari akun orang tua
+- [x] Persetujuan orang tua lewat aplikasi (atau dicatat petugas via telepon)
+- [x] Rekam kesehatan: profil, pemeriksaan berkala (IMT dihitung server),
+      imunisasi + jadwal susulan
+- [x] Surat keterangan PDF + kode verifikasi 8 karakter, endpoint publik
+      `GET /uks/letters/verify/{code}` (30/menit/IP)
+- [x] Operasional: `uks:health` (8 pemeriksaan) & `uks:remind` (idempoten),
+      keduanya terjadwal; batas laju di `config/uks.php`
+- [x] Izin `uks.*` untuk peran yang sudah ada (termasuk `wali-murid` dan
+      `petugas-kesehatan`); 37 rute, semuanya berizin & berbatas laju
+- [x] Frontend: 7 halaman (beranda, kunjungan + detail, obat, rekam kesehatan,
+      insiden, surat, petugas) di menu Akademik
+- [x] **10 tes / 128 asersi hijau**; `tsc --noEmit` bersih
+
+Dokumen: [`docs/uks/01-MODUL-UKS.md`](uks/01-MODUL-UKS.md)

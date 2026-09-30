@@ -10,6 +10,7 @@ import {
   FileBarChart,
   ClipboardList,
   BookOpenCheck,
+  MonitorCheck,
   Home,
   Settings,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import { boardingMenu } from '@/routes/domains/boarding';
 import { financeMenu } from '@/routes/domains/finance';
 import { assessmentsMenu } from '@/routes/domains/assessments';
 import { lmsMenu } from '@/routes/domains/lms';
+import { cbtMenu } from '@/routes/domains/cbt';
 
 export interface MenuChild {
   label: string;
@@ -95,6 +97,12 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: FileBarChart,
     permission: 'assessment.view',
     children: assessmentsMenu,
+  },
+  {
+    label: 'CBT / Ujian',
+    icon: MonitorCheck,
+    permission: 'cbt.view',
+    children: cbtMenu,
   },
   {
     // LMS punya permukaan publik (/learn) dan ruang belajar terautentikasi.
