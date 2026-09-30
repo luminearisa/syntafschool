@@ -6,8 +6,10 @@ use App\Models\BaseModel;
 use App\Modules\Supervisi\Domain\Enums\AppraisalPeriodType;
 use App\Modules\Supervisi\Domain\Enums\AppraisalStatus;
 use App\Modules\Supervisi\Domain\Enums\AppraisalType;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Employee;
 
 /**
  * Dokumen penilaian kinerja: PKG, PKG BK, NKKS, tinjauan pegawai, SKP periodik.
@@ -38,6 +40,26 @@ class SupAppraisal extends BaseModel
         'snapshot' => 'array',
         'published_at' => 'datetime',
     ];
+
+    public function supervisee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'supervisee_employee_id');
+    }
+
+    public function assessor(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'assessor_employee_id');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'reviewer_employee_id');
+    }
+
+    public function instrumentVersion(): BelongsTo
+    {
+        return $this->belongsTo(SupInstrumentVersion::class, 'instrument_version_id');
+    }
 
     public function scores(): HasMany
     {

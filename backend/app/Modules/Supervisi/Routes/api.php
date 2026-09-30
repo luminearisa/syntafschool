@@ -1,7 +1,10 @@
 <?php
 
+use App\Modules\Supervisi\Http\Controllers\SupActionPlanController;
+use App\Modules\Supervisi\Http\Controllers\SupAppraisalController;
 use App\Modules\Supervisi\Http\Controllers\SupAssignmentController;
 use App\Modules\Supervisi\Http\Controllers\SupGradeScaleController;
+use App\Modules\Supervisi\Http\Controllers\SupGrowthController;
 use App\Modules\Supervisi\Http\Controllers\SupInstrumentController;
 use App\Modules\Supervisi\Http\Controllers\SupProgramController;
 use App\Modules\Supervisi\Http\Controllers\SupScheduleController;
@@ -188,4 +191,91 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
         ->middleware('permission:supervisi.dispute.create')->name('supervisi.visits.dispute');
     Route::post('disputes/{dispute}/resolve', [SupVisitAcknowledgmentController::class, 'resolve'])
         ->middleware('permission:supervisi.dispute.resolve')->name('supervisi.disputes.resolve');
+
+    // -----------------------------------------------------------------
+    // Fase 3 — tindak lanjut, penilaian kinerja, dan pengembangan
+    // -----------------------------------------------------------------
+
+    // Rencana Tindak Lanjut (RTL) & papan pemantauan
+    Route::get('action-plans', [SupActionPlanController::class, 'index'])
+        ->middleware('permission:supervisi.action_plan.view')->name('supervisi.action_plans.index');
+    Route::post('action-plans', [SupActionPlanController::class, 'store'])
+        ->middleware('permission:supervisi.action_plan.create')->name('supervisi.action_plans.store');
+    Route::get('action-plans/{actionPlan}', [SupActionPlanController::class, 'show'])
+        ->middleware('permission:supervisi.action_plan.view')->name('supervisi.action_plans.show');
+    Route::patch('action-plans/{actionPlan}', [SupActionPlanController::class, 'update'])
+        ->middleware('permission:supervisi.action_plan.update')->name('supervisi.action_plans.update');
+    Route::post('action-plans/{actionPlan}/items', [SupActionPlanController::class, 'storeItem'])
+        ->middleware('permission:supervisi.action_plan.update')->name('supervisi.action_plans.items.store');
+    Route::patch('action-plans/items/{actionItem}', [SupActionPlanController::class, 'updateItem'])
+        ->middleware('permission:supervisi.action_plan.update')->name('supervisi.action_plans.items.update');
+    Route::post('action-plans/items/{actionItem}/progress', [SupActionPlanController::class, 'reportProgress'])
+        ->middleware('permission:supervisi.action_plan.update')->name('supervisi.action_plans.items.progress');
+    Route::post('action-plans/{actionPlan}/verify', [SupActionPlanController::class, 'verify'])
+        ->middleware('permission:supervisi.action_plan.verify')->name('supervisi.action_plans.verify');
+    Route::post('action-plans/{actionPlan}/drop', [SupActionPlanController::class, 'drop'])
+        ->middleware('permission:supervisi.action_plan.verify')->name('supervisi.action_plans.drop');
+    Route::post('visits/{visit}/action-plan', [SupActionPlanController::class, 'storeFromVisit'])
+        ->middleware('permission:supervisi.action_plan.create')->name('supervisi.visits.action_plan.store');
+
+    // Penilaian kinerja (PKG, PKG BK, NKKS, tinjauan pegawai, SKP)
+    Route::get('appraisals', [SupAppraisalController::class, 'index'])
+        ->middleware('permission:supervisi.appraisal.view|supervisi.report.view')->name('supervisi.appraisals.index');
+    Route::get('appraisals/reference', [SupAppraisalController::class, 'reference'])
+        ->middleware('permission:supervisi.appraisal.view')->name('supervisi.appraisals.reference');
+    Route::post('appraisals', [SupAppraisalController::class, 'store'])
+        ->middleware('permission:supervisi.appraisal.create')->name('supervisi.appraisals.store');
+    Route::get('appraisals/{appraisal}', [SupAppraisalController::class, 'show'])
+        ->middleware('permission:supervisi.appraisal.view|supervisi.report.view')->name('supervisi.appraisals.show');
+    Route::patch('appraisals/{appraisal}', [SupAppraisalController::class, 'update'])
+        ->middleware('permission:supervisi.appraisal.create')->name('supervisi.appraisals.update');
+    Route::put('appraisals/{appraisal}/scores', [SupAppraisalController::class, 'saveScores'])
+        ->middleware('permission:supervisi.appraisal.calculate')->name('supervisi.appraisals.scores');
+    Route::post('appraisals/{appraisal}/calculate', [SupAppraisalController::class, 'calculate'])
+        ->middleware('permission:supervisi.appraisal.calculate')->name('supervisi.appraisals.calculate');
+    Route::put('appraisals/{appraisal}/sources', [SupAppraisalController::class, 'saveSources'])
+        ->middleware('permission:supervisi.appraisal.calculate')->name('supervisi.appraisals.sources');
+    Route::post('appraisals/{appraisal}/publish', [SupAppraisalController::class, 'publish'])
+        ->middleware('permission:supervisi.appraisal.publish')->name('supervisi.appraisals.publish');
+    Route::post('appraisals/{appraisal}/reopen', [SupAppraisalController::class, 'reopen'])
+        ->middleware('permission:supervisi.appraisal.publish')->name('supervisi.appraisals.reopen');
+
+    // Pengembangan kompetensi & coaching
+    Route::get('developments', [SupGrowthController::class, 'developments'])
+        ->middleware('permission:supervisi.development.manage|supervisi.report.view')->name('supervisi.developments.index');
+    Route::post('developments', [SupGrowthController::class, 'storeDevelopment'])
+        ->middleware('permission:supervisi.development.manage')->name('supervisi.developments.store');
+    Route::patch('developments/{development}', [SupGrowthController::class, 'updateDevelopment'])
+        ->middleware('permission:supervisi.development.manage')->name('supervisi.developments.update');
+    Route::delete('developments/{development}', [SupGrowthController::class, 'destroyDevelopment'])
+        ->middleware('permission:supervisi.development.manage')->name('supervisi.developments.destroy');
+
+    Route::get('coachings', [SupGrowthController::class, 'coachings'])
+        ->middleware('permission:supervisi.coaching.manage|supervisi.report.view')->name('supervisi.coachings.index');
+    Route::post('coachings', [SupGrowthController::class, 'storeCoaching'])
+        ->middleware('permission:supervisi.coaching.manage')->name('supervisi.coachings.store');
+    Route::patch('coachings/{coaching}', [SupGrowthController::class, 'updateCoaching'])
+        ->middleware('permission:supervisi.coaching.manage')->name('supervisi.coachings.update');
+    Route::post('coachings/{coaching}/close', [SupGrowthController::class, 'closeCoaching'])
+        ->middleware('permission:supervisi.coaching.manage')->name('supervisi.coachings.close');
+
+    // Rencana Perbaikan Kinerja (PIP)
+    Route::get('pips', [SupGrowthController::class, 'pips'])
+        ->middleware('permission:supervisi.pip.manage|supervisi.report.view')->name('supervisi.pips.index');
+    Route::post('pips', [SupGrowthController::class, 'storePip'])
+        ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.store');
+    Route::get('pips/{pipPlan}', [SupGrowthController::class, 'showPip'])
+        ->middleware('permission:supervisi.pip.manage|supervisi.report.view')->name('supervisi.pips.show');
+    Route::patch('pips/{pipPlan}', [SupGrowthController::class, 'updatePip'])
+        ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.update');
+    Route::post('pips/{pipPlan}/items', [SupGrowthController::class, 'storePipItem'])
+        ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.items.store');
+    Route::patch('pips/items/{pipItem}', [SupGrowthController::class, 'updatePipItem'])
+        ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.items.update');
+    Route::post('pips/{pipPlan}/reviews', [SupGrowthController::class, 'reviewPip'])
+        ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.reviews.store');
+    Route::post('pips/{pipPlan}/conclude', [SupGrowthController::class, 'concludePip'])
+        ->middleware('permission:supervisi.pip.manage')->name('supervisi.pips.conclude');
+    Route::post('pips/{pipPlan}/acknowledge', [SupGrowthController::class, 'acknowledgePip'])
+        ->middleware('permission:supervisi.report.view')->name('supervisi.pips.acknowledge');
 });

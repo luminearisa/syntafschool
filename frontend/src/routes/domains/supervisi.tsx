@@ -6,6 +6,10 @@ import SupervisiInstrumentsPage from '@/features/supervisi/pages/SupervisiInstru
 import SupervisiInstrumentBuilderPage from '@/features/supervisi/pages/SupervisiInstrumentBuilderPage';
 import SupervisiVisitsPage from '@/features/supervisi/pages/SupervisiVisitsPage';
 import SupervisiVisitDetailPage from '@/features/supervisi/pages/SupervisiVisitDetailPage';
+import SupervisiActionPlansPage from '@/features/supervisi/pages/SupervisiActionPlansPage';
+import SupervisiAppraisalsPage from '@/features/supervisi/pages/SupervisiAppraisalsPage';
+import SupervisiAppraisalDetailPage from '@/features/supervisi/pages/SupervisiAppraisalDetailPage';
+import SupervisiGrowthPage from '@/features/supervisi/pages/SupervisiGrowthPage';
 
 /**
  * Modul Supervisi.
@@ -14,6 +18,8 @@ import SupervisiVisitDetailPage from '@/features/supervisi/pages/SupervisiVisitD
  * penyusunan instrumen (skala rubrik maupun entri angka).
  * Fase 2 — pelaksanaan: daftar kegiatan, pengisian instrumen di kelas,
  * wawancara, temuan, finalisasi, tanda tangan, dan keberatan.
+ * Fase 3 — tindak lanjut: papan RTL, penilaian kinerja (PKG/NKKS/SKP/360°),
+ * pengembangan kompetensi, coaching, dan PIP.
  *
  * Otorisasi tetap ditegakkan backend (`supervisi.*`); guard di sini hanya
  * menyembunyikan halaman yang pasti ditolak.
@@ -52,6 +58,38 @@ export const domainRoutes: RouteObject[] = [
     ),
   },
   {
+    path: 'supervisi/action-plans',
+    element: (
+      <PermissionGuard permission="supervisi.action_plan.view">
+        <SupervisiActionPlansPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'supervisi/appraisals',
+    element: (
+      <PermissionGuard permission="supervisi.report.view">
+        <SupervisiAppraisalsPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'supervisi/appraisals/:appraisalId',
+    element: (
+      <PermissionGuard permission="supervisi.report.view">
+        <SupervisiAppraisalDetailPage />
+      </PermissionGuard>
+    ),
+  },
+  {
+    path: 'supervisi/growth',
+    element: (
+      <PermissionGuard permission="supervisi.report.view">
+        <SupervisiGrowthPage />
+      </PermissionGuard>
+    ),
+  },
+  {
     path: 'supervisi/visits/:visitId',
     element: (
       <PermissionGuard permission="supervisi.visit.view">
@@ -63,6 +101,9 @@ export const domainRoutes: RouteObject[] = [
 
 export const domainMenu: MenuChild[] = [
   { label: 'Kegiatan Supervisi', to: '/supervisi/visits', permission: 'supervisi.visit.view' },
+  { label: 'Rencana Tindak Lanjut', to: '/supervisi/action-plans', permission: 'supervisi.action_plan.view' },
+  { label: 'Penilaian Kinerja', to: '/supervisi/appraisals', permission: 'supervisi.report.view' },
+  { label: 'Pengembangan & Pembinaan', to: '/supervisi/growth', permission: 'supervisi.report.view' },
   { label: 'Pengaturan Supervisor', to: '/supervisi', permission: 'supervisi.view' },
   { label: 'Instrumen Supervisi', to: '/supervisi/instruments', permission: 'supervisi.instrument.view' },
 ];

@@ -28,6 +28,20 @@ class SupSetting extends BaseModel
         'finding_required_below_percent' => 80,
         'require_action_plan_before_finalize' => false, // diaktifkan pada Fase 3 (RTL)
         'dispute_window_days' => 7,
+
+        // Fase 3 — tindak lanjut, penilaian kinerja, dan pengembangan.
+        'attendance_working_days' => 46,                 // pembagi koreksi kehadiran (Permendikbud 35/2010)
+        'pkg_credit_scale_code' => 'pkg_sebutan',        // skala sebutan & angka kredit PKG/NKKS
+        'appraisal_source_weights' => [                  // bobot bawaan penilaian multi-sumber (360°)
+            'SUPERVISOR' => 60, 'PEER' => 20, 'SELF' => 10, 'STUDENT' => 10,
+        ],
+        'appraisal_normalize_weights' => true,           // false = bobot sumber wajib tepat 100%
+        'skp_rating_thresholds' => ['above' => 100, 'below' => 90],
+        'skp_quadrant_matrix' => [],                     // kosong = matriks bawaan PermenPANRB 6/2022
+        'skp_predicate_credit' => [],                    // kosong = persentase angka kredit bawaan
+        'action_plan_default_due_days' => 30,            // tenggat bawaan butir RTL
+        'action_plan_auto_from_findings' => true,        // RTL dibuat otomatis dari temuan
+        'coaching_follow_up_days' => 14,                 // tenggat tindak lanjut sesi coaching
     ];
 
     public function typedValue(): mixed

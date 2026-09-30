@@ -4,6 +4,7 @@ namespace App\Modules\Supervisi\Models;
 
 use App\Models\BaseModel;
 use App\Modules\Supervisi\Domain\Enums\ActionItemStatus;
+use App\Models\Employee;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -19,6 +20,11 @@ class SupActionItem extends BaseModel
         'completed_at' => 'datetime',
         'sort_order' => 'integer',
     ];
+
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'owner_employee_id');
+    }
 
     public function plan(): BelongsTo
     {

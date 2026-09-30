@@ -16,15 +16,24 @@ class SupervisiSettings
     /** @var array<string,mixed>|null cache per permintaan */
     protected ?array $cache = null;
 
+    /**
+     * Nomor revisi bersama: dinaikkan setiap kali pengaturan disimpan sehingga
+     * seluruh instance (termasuk yang sudah hidup lebih dulu) membaca ulang.
+     */
+    protected static int $revision = 0;
+
+    protected int $cachedRevision = -1;
+
     /** @return array<string,mixed> */
     public function all(): array
     {
-        if ($this->cache === null) {
+        if ($this->cache === null || $this->cachedRevision !== self::$revision) {
             $stored = SupSetting::query()->get()->mapWithKeys(fn (SupSetting $setting) => [
                 $setting->key => $setting->typedValue(),
             ])->all();
 
             $this->cache = array_merge(SupSetting::DEFAULTS, $stored);
+            $this->cachedRevision = self::$revision;
         }
 
         return $this->cache;
@@ -57,7 +66,10 @@ class SupervisiSettings
             );
         }
 
+        // Seluruh instance (termasuk yang sudah hidup lebih dulu) membaca ulang.
+        self::$revision++;
         $this->cache = null;
+        $this->cachedRevision = self::$revision;
 
         return $this->all();
     }

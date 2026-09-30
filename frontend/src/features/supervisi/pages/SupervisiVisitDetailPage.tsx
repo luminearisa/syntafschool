@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, CheckCircle2, RefreshCw, Save, Send, Trash2, Upload } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Camera, CheckCircle2, ClipboardList, RefreshCw, Save, Send, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { isAxiosError } from 'axios';
 import { supervisiVisitApi } from '../api/supervisiVisitApi';
+import { supervisiGrowthApi } from '../api/supervisiGrowthApi';
 import type {
   DraftAnswer,
   VisitConferenceRow,
@@ -23,6 +24,7 @@ import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { Textarea } from '@/components/ui/Textarea';
 import { getErrorMessage } from '@/lib/axios';
+import { Can } from '@/components/common/Can';
 
 const TONE_CLASS: Record<string, string> = {
   GREEN: 'border-green-300 bg-green-50 text-green-800',
@@ -69,6 +71,7 @@ export default function SupervisiVisitDetailPage() {
   const { visitId } = useParams<{ visitId: string }>();
   const id = Number(visitId);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [tab, setTab] = useState<'OBSERVE' | 'ANALYZE' | 'RESULT'>('OBSERVE');
   const [drafts, setDrafts] = useState<Record<number, DraftAnswer>>({});
@@ -248,6 +251,15 @@ export default function SupervisiVisitDetailPage() {
     onSuccess: () => {
       toast.success('Hasil dibuka ulang untuk koreksi');
       invalidate();
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const actionPlanMutation = useMutation({
+    mutationFn: () => supervisiGrowthApi.createActionPlanFromVisit(id),
+    onSuccess: () => {
+      toast.success('RTL disusun dari temuan kegiatan');
+      navigate('/supervisi/action-plans');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -435,6 +447,14 @@ export default function SupervisiVisitDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {detail.visit.is_finalized && (
+            <Can perm="supervisi.action_plan.create">
+              <Button variant="outline" onClick={() => actionPlanMutation.mutate()} disabled={actionPlanMutation.isPending}>
+                {actionPlanMutation.isPending ? <Spinner className="mr-2 h-4 w-4" /> : <ClipboardList className="mr-2 h-4 w-4" />}
+                Susun RTL dari temuan
+              </Button>
+            </Can>
+          )}
           <Button variant="ghost" size="icon" title="Muat ulang" onClick={() => detailQuery.refetch()}>
             <RefreshCw className={detailQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </Button>

@@ -3,6 +3,8 @@
 namespace App\Modules\Supervisi\Models;
 
 use App\Models\BaseModel;
+use App\Models\Employee;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -18,6 +20,16 @@ class SupPipPlan extends BaseModel
         'final_review_date' => 'date',
         'acknowledged_at' => 'datetime',
     ];
+
+    public function supervisee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'supervisee_employee_id');
+    }
+
+    public function appraisal(): BelongsTo
+    {
+        return $this->belongsTo(SupAppraisal::class, 'appraisal_id');
+    }
 
     public function items(): HasMany
     {

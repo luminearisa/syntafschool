@@ -21,6 +21,12 @@ use App\Modules\Supervisi\Models\SupVisit;
  */
 class ScoringEngine
 {
+    /** Hasil netral saat instrumen belum ditentukan. */
+    public const EMPTY_RESULT = [
+        'raw' => null, 'max' => null, 'final' => null, 'sections' => [],
+        'answered' => 0, 'scored_total' => 0, 'excluded' => 0, 'missing_required' => [],
+    ];
+
     /**
      * Skor efektif satu jawaban atas satu indikator.
      *
@@ -74,17 +80,46 @@ class ScoringEngine
     public function scoreVisit(SupVisit $visit, ?SupInstrumentVersion $version = null): array
     {
         $version ??= $visit->instrumentVersion;
-        $answers = $visit->relationLoaded('answers')
-            ? $visit->answers->keyBy('indicator_id')
-            : $visit->answers()->get()->keyBy('indicator_id');
+        $answers = $visit->relationLoaded('answers') ? $visit->answers : $visit->answers()->get();
 
         if ($version === null) {
-            return [
-                'raw' => null, 'max' => null, 'final' => null, 'sections' => [],
-                'answered' => 0, 'scored_total' => 0, 'excluded' => 0, 'missing_required' => [],
+            return self::EMPTY_RESULT;
+        }
+
+        $mapped = [];
+
+        foreach ($answers as $answerModel) {
+            $mapped[(int) $answerModel->indicator_id] = [
+                'option_id' => $answerModel->option_id,
+                'score' => $answerModel->score,
+                'value_number' => $answerModel->value_number,
+                'value_text' => $answerModel->value_text,
+                'value_long_text' => $answerModel->value_long_text,
+                'value_date' => $answerModel->value_date,
+                'value_json' => $answerModel->value_json,
+                'is_na' => (bool) $answerModel->is_na,
             ];
         }
 
+        return $this->scoreAnswers($version, $mapped);
+    }
+
+    /**
+     * Hitung skor dari jawaban berbentuk array (tanpa model Eloquent).
+     *
+     * Dipakai bersama kegiatan supervisi (`sup_visit_answers`) dan penilaian
+     * kinerja (`sup_appraisal_scores`) supaya rumus konversi 100, pembobotan
+     * bagian, dan perlakuan indikator NA hanya hidup di satu tempat.
+     *
+     * @param  array<int,array<string,mixed>>  $answersByIndicator
+     * @return array{
+     *     raw: float|null, max: float|null, final: float|null,
+     *     sections: list<array{section_id:int, raw:float, max:float, percent:float|null, weight:float}>,
+     *     answered: int, scored_total: int, excluded: int, missing_required: list<int>
+     * }
+     */
+    public function scoreAnswers(SupInstrumentVersion $version, array $answersByIndicator): array
+    {
         $version->loadMissing('sections.indicators.options');
 
         $rawTotal = 0.0;
@@ -101,17 +136,7 @@ class ScoringEngine
             $sectionMax = 0.0;
 
             foreach ($section->indicators as $indicator) {
-                $answerModel = $answers->get($indicator->id);
-                $answer = $answerModel === null ? null : [
-                    'option_id' => $answerModel->option_id,
-                    'score' => $answerModel->score,
-                    'value_number' => $answerModel->value_number,
-                    'value_text' => $answerModel->value_text,
-                    'value_long_text' => $answerModel->value_long_text,
-                    'value_date' => $answerModel->value_date,
-                    'value_json' => $answerModel->value_json,
-                    'is_na' => (bool) $answerModel->is_na,
-                ];
+                $answer = $answersByIndicator[(int) $indicator->id] ?? null;
 
                 if ($indicator->is_scored) {
                     $scoredTotal++;
@@ -178,7 +203,7 @@ class ScoringEngine
             'max' => round($maxTotal, 2),
             'final' => $final,
             'sections' => $sections,
-            'answered' => (int) $answers->count(),
+            'answered' => count($answersByIndicator),
             'scored_total' => $scoredTotal,
             'excluded' => $excluded,
             'missing_required' => array_values(array_unique($missing)),

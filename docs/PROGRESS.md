@@ -1043,3 +1043,32 @@ Dokumen: [`docs/supervisi/03-IMPLEMENTASI-FASE-1.md`](supervisi/03-IMPLEMENTASI-
 - [ ] Fase 3–5 (RTL & PKG/NKKS, analitik & laporan wajib, mode luring, OpenAPI)
 
 Dokumen: [`docs/supervisi/04-IMPLEMENTASI-FASE-2.md`](supervisi/04-IMPLEMENTASI-FASE-2.md)
+
+
+### Modul Supervisi — Fase 3 (selesai)
+
+- [x] **RTL**: susun otomatis dari temuan kegiatan, butir + tenggat (prioritas
+      mendesak/tinggi lebih cepat), laporan kemajuan, verifikasi atasan yang
+      mengunci, dan papan pemantauan (terlambat / jatuh tempo / menunggu
+      verifikasi / terverifikasi)
+- [x] **Penilaian kinerja**: PKG guru (56), PKG guru BK (68), NKKS (24),
+      tinjauan pegawai berbobot 1–5, kuadran SKP periodik — seluruh rumus ada
+      di `AppraisalCalculator` yang teruji dengan angka pedoman
+- [x] **Koreksi kehadiran** Permendikbud 35/2010 (hari alfa ÷ 46) dan
+      **kontribusi supervisi** ke penilaian kinerja bila sekolah mengaktifkan
+      bobotnya
+- [x] **Multi-sumber (360°)** dengan bobot 60/20/10/10, validasi total 100%
+      bila normalisasi dimatikan, dan penolakan isian tak sahih
+- [x] **Sebutan & angka kredit** (125/100/75/50/25%) serta penguncian hasil
+      terbit + buka ulang beralasan yang tercatat di snapshot
+- [x] **Pengembangan kompetensi** (jam, sertifikat, biaya), **coaching**
+      (komitmen + tenggat tindak lanjut), dan **PIP** (sasaran terukur, tinjauan
+      berkala, keputusan hasil, tanda tangan pemahaman)
+- [x] API `/api/v1/supervisi/{action-plans,appraisals,developments,coachings,pips}`
+      + UI papan RTL, lembar PKG, dan halaman pengembangan/pembinaan
+- [x] 27 tes Fase 3 (total 75 tes/546 asersi hijau); build produksi & uji
+      browser hijau
+- [ ] Fase 4–5 (laporan wajib & analitik, CIPP, kalibrasi, ekspor/cetak;
+      audit menyeluruh, mode luring, OpenAPI)
+
+Dokumen: [`docs/supervisi/05-IMPLEMENTASI-FASE-3.md`](supervisi/05-IMPLEMENTASI-FASE-3.md)
