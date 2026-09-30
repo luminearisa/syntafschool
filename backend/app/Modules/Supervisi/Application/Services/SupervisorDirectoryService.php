@@ -9,6 +9,7 @@ use App\Modules\Supervisi\Domain\Enums\InstrumentCategory;
 use App\Modules\Supervisi\Domain\Enums\SupervisorKind;
 use App\Modules\Supervisi\Models\SupAssignment;
 use App\Modules\Supervisi\Models\SupSupervisor;
+use App\Modules\Supervisi\Application\Support\SearchTerm;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -136,11 +137,12 @@ class SupervisorDirectoryService
         return Employee::query()
             ->where('is_active', true)
             ->when($registered !== [], fn ($query) => $query->whereNotIn('id', $registered))
-            ->when($search !== null && $search !== '', function ($query) use ($search): void {
-                $query->where(function ($inner) use ($search): void {
-                    $inner->where('full_name', 'like', "%{$search}%")
-                        ->orWhere('nip', 'like', "%{$search}%")
-                        ->orWhere('position', 'like', "%{$search}%");
+            ->when(SearchTerm::like($search) !== null, function ($query) use ($search): void {
+                $term = SearchTerm::like($search);
+                $query->where(function ($inner) use ($term): void {
+                    $inner->where('full_name', 'like', $term)
+                        ->orWhere('nip', 'like', $term)
+                        ->orWhere('position', 'like', $term);
                 });
             })
             ->orderBy('full_name')

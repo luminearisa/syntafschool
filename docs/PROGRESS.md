@@ -1108,7 +1108,29 @@ Dokumen: [`docs/supervisi/05-IMPLEMENTASI-FASE-3.md`](supervisi/05-IMPLEMENTASI-
       halaman verifikasi dokumen publik
 - [x] 9 tes Fase 4 (total **84 tes / 728 asersi hijau**); build produksi &
       uji browser hijau
-- [ ] Fase 5 (pengerasan): audit IDOR/kebocoran antar sekolah, uji beban
-      agregasi, mode luring, OpenAPI, panduan pengguna & deployment
+- [x] **Fase 5 — pengerasan & dokumentasi (selesai)**:
+  * **Audit 13 temuan berbukti** ([`supervisi/07-AUDIT-FASE-5.md`](supervisi/07-AUDIT-FASE-5.md))
+  * **Privasi**: cakupan data (`DataScope`) — guru/staf hanya melihat hasil
+    sendiri; identitas rekan tidak pernah terbuka; ringkasan agregat opsional
+    lewat `peer_summary_enabled` (blueprint §1.2 & §11.6)
+  * **N+1 papan RTL**: 324 kueri/25 baris → di bawah 40 kueri (eager load +
+    penulisan status berkelompok), stabil di halaman ke-5
+  * **Konkurensi**: `lockForUpdate` + periksa ulang di dalam transaksi pada
+    finalisasi & pembukaan ulang (dua tab tidak dapat memfinalkan dua kali)
+  * **Sumber daya**: `per_page` dibatasi 100; wildcard `LIKE` dibersihkan
+    (`SearchTerm`); **seluruh 125 rute** berbatas laju (modul 300/menit + 7
+    batas khusus: verifikasi publik 30, ekspor 20, analitik 60, jawaban 240,
+    unggah bukti 30, finalisasi 20, pencarian 90)
+  * **Mode luring** (blueprint §12): formulir PDF huruf pilihan, sinkronisasi
+    idempoten tahan-sebagian dengan laporan konflik, antrean `localStorage`,
+    panel Mode Luring di UI
+  * **Operasional**: `GET /supervisi/health` + `supervisi:health` (9 pemeriksaan
+    integritas, terjadwal Senin), `supervisi:prune` (retensi berkas; riwayat &
+    kode verifikasi dipertahankan), `config/supervisi.php`
+  * **Dokumentasi**: OpenAPI 97 path/125 operasi, panduan API, panduan pengguna,
+    dokumen deployment + **latihan pencadangan/pemulihan nyata**
+    (cadangan 73 ms, pemulihan 28 ms, integritas ok, dokumen tetap sah)
+  * **Uji**: 105 tes / 1.024 asersi hijau (Fase 5: 20 tes, termasuk uji
+    struktural yang mewajibkan setiap rute berizin & berbatas laju)
 
 Dokumen: [`docs/supervisi/06-IMPLEMENTASI-FASE-4.md`](supervisi/06-IMPLEMENTASI-FASE-4.md)

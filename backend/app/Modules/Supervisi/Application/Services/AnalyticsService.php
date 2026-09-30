@@ -14,6 +14,9 @@ use App\Modules\Supervisi\Domain\Enums\IndicatorInputType;
 use App\Modules\Supervisi\Models\SupVisit;
 use App\Modules\Supervisi\Models\SupVisitAnswer;
 use App\Modules\Supervisi\Models\SupVisitScore;
+use App\Modules\Supervisi\Domain\Enums\ActionItemStatus;
+use App\Modules\Supervisi\Domain\Enums\AppraisalStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -40,12 +43,21 @@ class AnalyticsService
     public const PIP_THRESHOLD = 76.0;
 
     /** @return array<string, mixed> */
-    public function overview(CarbonInterface|string|null $from = null, CarbonInterface|string|null $to = null): array
+    public function overview(CarbonInterface|string|null $from = null, CarbonInterface|string|null $to = null, ?DataScope $scope = null): array
     {
         [$from, $to] = $this->window($from, $to);
 
+        $scope ??= DataScope::school();
+
+        // Pegawai biasa: hanya datanya sendiri. Ringkasan agregat sekolah
+        // ditambahkan bila sekolah mengizinkannya (blueprint §11.6).
+        if ($scope->isSelf()) {
+            return $this->personalOverview($from, $to, $scope);
+        }
+
         return [
             'window' => $this->windowPayload($from, $to),
+            'scope' => $scope->payload(),
             'coverage' => $this->coverage($from, $to),
             'visits' => $this->visitStats($from, $to),
             'scores' => $this->scoreStats($from, $to),
@@ -57,6 +69,261 @@ class AnalyticsService
             'growth' => $this->growthStats($from, $to),
             'supervisors' => $this->supervisorStats($from, $to),
         ];
+    }
+
+    /**
+     * Dasbor pribadi: kegiatan, nilai, RTL, penilaian, dan pengembangan **milik
+     * satu pegawai**, baik sebagai yang disupervisi maupun yang menyupervisi.
+     *
+     * Nama rekan sejawat tidak pernah muncul di sini; ringkasan agregat sekolah
+     * (sebaran nilai, indikator lemah) hanya disertakan bila sekolah
+     * mengizinkan lewat pengaturan `peer_summary_enabled`.
+     *
+     * @return array<string, mixed>
+     */
+    public function personalOverview(CarbonInterface $from, CarbonInterface $to, DataScope $scope): array
+    {
+        $employeeId = $scope->employeeId;
+
+        if ($employeeId === null) {
+            return [
+                'window' => $this->windowPayload($from, $to),
+                'scope' => $scope->payload(),
+                'coverage' => [
+                    'total_employees' => 0, 'supervised' => 0, 'not_supervised' => 0, 'percent' => null,
+                    'teacher_total' => 0, 'teacher_supervised' => 0, 'staff_total' => 0, 'staff_supervised' => 0,
+                    'unsupervised' => [],
+                ],
+                'visits' => [
+                    'total' => 0, 'finalized' => 0, 'finalized_on_time_percent' => null, 'avg_days_to_finalize' => null,
+                    'by_status' => [], 'by_kind' => [], 'planned_target' => null, 'plan_realization_percent' => null,
+                    'with_dispute' => 0, 'reopened' => 0,
+                ],
+                'scores' => ['count' => 0, 'average' => null, 'median' => null, 'lowest' => null, 'highest' => null, 'distribution' => []],
+                'sections' => [],
+                'weak_indicators' => [],
+                'trend' => [],
+                'follow_up' => [
+                    'items_total' => 0, 'items_done' => 0, 'items_verified' => 0, 'items_overdue' => 0,
+                    'completion_percent' => null, 'verified_percent' => null, 'on_time_percent' => null,
+                    'avg_days_to_finish' => null, 'plans_by_status' => [],
+                ],
+                'appraisals' => [
+                    'total' => 0, 'published' => 0, 'average' => null, 'needs_pip' => 0, 'needs_pip_rows' => [],
+                    'pip_total' => 0, 'pip_active' => 0, 'pip_closed' => 0, 'pip_outcomes' => [],
+                    'pip_acknowledged_percent' => null, 'by_predicate' => [],
+                ],
+                'growth' => [
+                    'total_hours' => 0, 'entries' => 0, 'certified' => 0, 'cost' => 0,
+                    'hours_by_kind' => [], 'hours_per_employee' => null,
+                    'coaching_sessions' => 0, 'coaching_open' => 0, 'coaching_follow_up_due' => 0,
+                ],
+                'my_supervisors' => [],
+                'message' => 'Akun ini belum tertaut ke data pegawai, sehingga tidak ada hasil supervisi yang dapat ditampilkan.',
+            ];
+        }
+
+        // Kegiatan yang melibatkan saya (sebagai pelaksana maupun yang disupervisi).
+        $mine = fn () => SupVisit::query()->where(function (Builder $query) use ($employeeId): void {
+            $query->where('supervisor_employee_id', $employeeId)->orWhere('supervisee_employee_id', $employeeId);
+        });
+
+        $all = $mine()->whereBetween('created_at', [$from, $to]);
+        $finalized = $mine()->whereNotNull('finalized_at')->whereBetween('finalized_at', [$from, $to]);
+
+        $byStatus = (clone $all)->select('status', DB::raw('count(*) as total'))->groupBy('status')->pluck('total', 'status')->all();
+        $byKind = (clone $all)->select('activity_kind', DB::raw('count(*) as total'))->groupBy('activity_kind')->pluck('total', 'activity_kind')->all();
+
+        $asSupervisee = (clone $finalized)->where('supervisee_employee_id', $employeeId)->count();
+        $finalizedCount = (clone $finalized)->count();
+        $onTime = (clone $finalized)->whereColumn('finalized_at', '<=', 'observed_at')->count();
+
+        $durations = (clone $finalized)->whereNotNull('observed_at')->get(['observed_at', 'finalized_at'])
+            ->map(fn (SupVisit $visit) => $visit->finalized_at->diffInHours($visit->observed_at) / 24)
+            ->filter(fn (float $days) => $days >= 0);
+
+        $finalScores = (clone $finalized)->whereNotNull('final_score')->pluck('final_score')
+            ->map(fn ($score) => (float) $score);
+
+        $bands = [];
+        foreach ($finalScores as $score) {
+            $band = match (true) {
+                $score >= 91 => 'SANGAT_BAIK',
+                $score >= 76 => 'BAIK',
+                $score >= 61 => 'CUKUP',
+                default => 'PERLU_PERBAIKAN',
+            };
+            $bands[$band] ??= ['count' => 0, 'total' => 0.0];
+            $bands[$band]['count']++;
+            $bands[$band]['total'] += $score;
+        }
+
+        [$visitFrom, $visitTo] = [$from, $to];
+
+        // RTL: butir yang menjadi tanggung jawab saya atau milik rencana saya.
+        $items = SupActionItem::query()
+            ->with('plan:id,title,supervisee_employee_id')
+            ->where(function (Builder $query) use ($employeeId): void {
+                $query->where('owner_employee_id', $employeeId)
+                    ->orWhereHas('plan', fn (Builder $inner) => $inner->where('supervisee_employee_id', $employeeId));
+            })
+            ->get();
+
+        $done = $items->whereIn('status', [ActionItemStatus::DONE, ActionItemStatus::VERIFIED]);
+
+        // Penilaian kinerja milik saya.
+        $appraisals = SupAppraisal::query()
+            ->where('supervisee_employee_id', $employeeId)
+            ->whereBetween('period_start', [$visitFrom->toDateString(), $visitTo->toDateString()])
+            ->get();
+
+        $published = $appraisals->where('status', AppraisalStatus::PUBLISHED);
+        $scores = $published->pluck('final_score')->filter(fn ($score) => $score !== null)->map(fn ($score) => (float) $score);
+
+        $pips = SupPipPlan::query()->where('supervisee_employee_id', $employeeId)->get();
+
+        $developments = SupDevelopment::query()
+            ->where('supervisee_employee_id', $employeeId)
+            ->whereBetween('started_at', [$visitFrom->toDateString(), $visitTo->toDateString()])
+            ->get();
+
+        $coachings = SupCoachingSession::query()
+            ->where(function (Builder $query) use ($employeeId): void {
+                $query->where('supervisee_employee_id', $employeeId)->orWhere('supervisor_employee_id', $employeeId);
+            })
+            ->get();
+
+        // Siapa yang menyupervisi saya (nama atasan sendiri bukan rahasia bagi
+        // pegawai yang bersangkutan) — bukan peringkat rekan sejawat.
+        $mySupervisors = SupVisit::query()
+            ->where('supervisee_employee_id', $employeeId)
+            ->whereNotNull('final_score')
+            ->whereBetween('finalized_at', [$from, $to])
+            ->select('supervisor_employee_id', DB::raw('count(*) as visits'), DB::raw('avg(final_score) as average_score'), DB::raw('min(final_score) as lowest_score'), DB::raw('max(final_score) as highest_score'))
+            ->groupBy('supervisor_employee_id')
+            ->get();
+
+        $supervisorNames = $this->employeeNames($mySupervisors->pluck('supervisor_employee_id')->all());
+
+        $payload = [
+            'window' => $this->windowPayload($from, $to),
+            'scope' => $scope->payload(),
+            'coverage' => [
+                'total_employees' => 1,
+                'supervised' => $asSupervisee > 0 ? 1 : 0,
+                'not_supervised' => $asSupervisee > 0 ? 0 : 1,
+                'percent' => $asSupervisee > 0 ? 100.0 : 0.0,
+                'teacher_total' => 0, 'teacher_supervised' => 0, 'staff_total' => 0, 'staff_supervised' => 0,
+                'unsupervised' => [],
+            ],
+            'visits' => [
+                'total' => array_sum($byStatus),
+                'finalized' => $finalizedCount,
+                'finalized_on_time_percent' => $finalizedCount > 0 ? round($onTime / $finalizedCount * 100, 2) : null,
+                'avg_days_to_finalize' => $durations->isEmpty() ? null : round((float) $durations->avg(), 1),
+                'by_status' => $byStatus,
+                'by_kind' => $byKind,
+                'planned_target' => null,
+                'plan_realization_percent' => null,
+                'with_dispute' => (clone $finalized)->whereHas('disputes')->count(),
+                'reopened' => (clone $finalized)->where('revision', '>', 0)->count(),
+            ],
+            'scores' => [
+                'count' => $finalScores->count(),
+                'average' => $finalScores->isEmpty() ? null : round((float) $finalScores->avg(), 2),
+                'median' => $finalScores->isEmpty() ? null : round((float) $finalScores->sort()->values()->get(intdiv($finalScores->count(), 2)), 2),
+                'lowest' => $finalScores->isEmpty() ? null : round((float) $finalScores->min(), 2),
+                'highest' => $finalScores->isEmpty() ? null : round((float) $finalScores->max(), 2),
+                'distribution' => collect($bands)->map(fn (array $band) => [
+                    'count' => $band['count'],
+                    'average' => round($band['total'] / max($band['count'], 1), 2),
+                ])->all(),
+            ],
+            'sections' => [],
+            'weak_indicators' => [],
+            'trend' => [],
+            'follow_up' => [
+                'items_total' => $items->count(),
+                'items_done' => $done->count(),
+                'items_verified' => $items->where('status', ActionItemStatus::VERIFIED)->count(),
+                'items_overdue' => $items->filter(fn (SupActionItem $item) => $item->due_date !== null
+                    && $item->due_date->isPast()
+                    && ! in_array($item->status, [ActionItemStatus::DONE, ActionItemStatus::VERIFIED, ActionItemStatus::DROPPED], true))->count(),
+                'completion_percent' => $items->count() > 0 ? round($done->count() / $items->count() * 100, 2) : null,
+                'verified_percent' => $items->count() > 0 ? round($items->where('status', ActionItemStatus::VERIFIED)->count() / $items->count() * 100, 2) : null,
+                'on_time_percent' => $done->isEmpty() ? null : round(
+                    $done->filter(fn (SupActionItem $item) => $item->completed_at !== null && $item->due_date !== null
+                        && $item->completed_at->lessThanOrEqualTo($item->due_date))->count() / $done->count() * 100,
+                    2,
+                ),
+                'avg_days_to_finish' => $done->whereNotNull('completed_at')->isEmpty() ? null : round((float) $done->whereNotNull('completed_at')
+                    ->map(fn (SupActionItem $item) => $item->completed_at->diffInHours($item->created_at) / 24)->avg(), 1),
+                'plans_by_status' => SupActionPlan::query()
+                    ->where(function (Builder $query) use ($employeeId): void {
+                        $query->where('supervisee_employee_id', $employeeId)
+                            ->orWhereHas('items', fn (Builder $inner) => $inner->where('owner_employee_id', $employeeId));
+                    })
+                    ->select('status', DB::raw('count(*) as total'))->groupBy('status')->pluck('total', 'status')->all(),
+            ],
+            'appraisals' => [
+                'total' => $appraisals->count(),
+                'published' => $published->count(),
+                'average' => $scores->isEmpty() ? null : round((float) $scores->avg(), 2),
+                'needs_pip' => $published->filter(fn (SupAppraisal $appraisal) => $appraisal->final_score !== null
+                    && (float) $appraisal->final_score < 76
+                    && ! $pips->contains(fn (SupPipPlan $plan) => (int) $plan->appraisal_id === (int) $appraisal->id))->count(),
+                'needs_pip_rows' => $published
+                    ->filter(fn (SupAppraisal $appraisal) => $appraisal->final_score !== null && (float) $appraisal->final_score < 76)
+                    ->map(fn (SupAppraisal $appraisal) => [
+                        'id' => $appraisal->id,
+                        'appraisal_type' => (string) ($appraisal->appraisal_type?->value ?? ''),
+                        'supervisee' => null, // milik pemakai sendiri
+                        'position' => null,
+                        'final_score' => $appraisal->final_score === null ? null : (float) $appraisal->final_score,
+                        'grade_label' => $appraisal->grade_label,
+                    ])->values()->all(),
+                'pip_total' => $pips->count(),
+                'pip_active' => $pips->whereIn('status', ['ACTIVE', 'ACKNOWLEDGED', 'IN_PROGRESS'])->count(),
+                'pip_closed' => $pips->where('status', 'CLOSED')->count(),
+                'pip_outcomes' => $pips->filter(fn (SupPipPlan $plan) => $plan->outcome !== null)->groupBy(fn (SupPipPlan $plan) => (string) $plan->outcome->value)->map->count()->all(),
+                'pip_acknowledged_percent' => $pips->isEmpty() ? null : round($pips->whereNotNull('acknowledged_at')->count() / $pips->count() * 100, 2),
+                'by_predicate' => [],
+            ],
+            'growth' => [
+                'total_hours' => round((float) $developments->sum('hours'), 1),
+                'entries' => $developments->count(),
+                'certified' => $developments->whereNotNull('certificate_no')->count(),
+                'cost' => round((float) $developments->sum('cost'), 2),
+                'hours_by_kind' => $developments->groupBy(fn (SupDevelopment $development) => (string) ($development->kind?->value ?? 'LAINNYA'))
+                    ->map(fn ($group) => ['count' => $group->count(), 'hours' => round((float) $group->sum('hours'), 1)])->all(),
+                'hours_per_employee' => round((float) $developments->sum('hours'), 1),
+                'coaching_sessions' => $coachings->count(),
+                'coaching_open' => $coachings->where('status', '!=', 'CLOSED')->count(),
+                'coaching_follow_up_due' => $coachings->filter(fn (SupCoachingSession $session) => $session->follow_up_at !== null
+                    && $session->follow_up_at->isPast() && $session->status !== 'CLOSED')->count(),
+            ],
+            'supervisors' => $mySupervisors->map(fn ($row) => [
+                'supervisor_employee_id' => (int) $row->supervisor_employee_id,
+                'full_name' => $supervisorNames[(int) $row->supervisor_employee_id] ?? null,
+                'visits' => (int) $row->visits,
+                'average_score' => round((float) $row->average_score, 2),
+                'lowest_score' => round((float) $row->lowest_score, 2),
+                'highest_score' => round((float) $row->highest_score, 2),
+                'deviation_from_school' => null,
+                'leniency_index' => null,
+                'needs_calibration' => false,
+            ])->values()->all(),
+        ];
+
+        // Ringkasan agregat sekolah (tanpa nama siapa pun) — hanya bila sekolah
+        // mengizinkannya.
+        if ($scope->allowsPeerSummary()) {
+            $payload['scores']['distribution'] = $this->scoreStats($from, $to)['distribution'];
+            $payload['sections'] = $this->sectionStats($from, $to);
+            $payload['weak_indicators'] = $this->indicatorStats($from, $to, 10);
+        }
+
+        return $payload;
     }
 
     /** Cakupan: berapa pegawai yang benar-benar disupervisi pada jendela waktu. */

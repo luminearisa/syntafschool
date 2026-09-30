@@ -3,7 +3,9 @@
 namespace App\Modules\Supervisi\Http\Controllers;
 
 use App\Modules\Supervisi\Application\Services\AnalyticsService;
+use App\Modules\Supervisi\Application\Services\DataScopeService;
 use App\Modules\Supervisi\Application\Services\ReportService;
+use App\Modules\Supervisi\Application\Services\SupervisiHealthService;
 use App\Modules\Supervisi\Models\SupReport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,12 +18,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Baca analitik memakai izin `supervisi.report.view`; mengunduh/menyimpan
  * dokumen memakai `supervisi.report.export` supaya rekap nilai tidak bocor ke
  * layar yang hanya boleh melihat.
+ *
+ * Izin hanya menentukan "boleh membuka layar"; **cakupan data** (seluruh
+ * sekolah atau dirinya) ditentukan `DataScopeService` mengikuti blueprint
+ * §11.6 — guru dan staf memegang `report.view` untuk membaca hasilnya sendiri,
+ * bukan nilai rekan sejawat.
  */
 class SupReportController extends SupController
 {
     public function __construct(
         protected AnalyticsService $analytics,
         protected ReportService $reports,
+        protected DataScopeService $scopes,
+        protected SupervisiHealthService $health,
     ) {
     }
 
@@ -33,20 +42,41 @@ class SupReportController extends SupController
             'to' => ['nullable', 'date'],
         ]);
 
+        $scope = $this->scopes->resolve($this->actor($request));
+
         return $this->successResponse(
-            $this->analytics->overview($data['from'] ?? null, $data['to'] ?? null),
-            'Analitik supervisi',
+            $this->analytics->overview($data['from'] ?? null, $data['to'] ?? null, $scope),
+            $scope->isSchool() ? 'Analitik supervisi sekolah' : 'Analitik supervisi Anda',
         );
     }
 
-    /** Daftar laporan yang tersedia beserta periode bawaannya. */
-    public function catalog(): JsonResponse
+    /**
+     * Kesehatan & integritas data supervisi (Fase 5).
+     *
+     * Dipakai admin/pengawas untuk memastikan angka yang dipakai rapat berasal
+     * dari data yang sehat — bukan sekadar tidak ada galat di layar.
+     */
+    public function health(): JsonResponse
     {
+        return $this->successResponse($this->health->report(), 'Kesehatan modul supervisi');
+    }
+
+    /** Daftar laporan yang tersedia beserta periode bawaannya. */
+    public function catalog(Request $request): JsonResponse
+    {
+        $scope = $this->scopes->resolve($this->actor($request));
+        $allowed = $scope->allowsPeerSummary()
+            ? array_keys(ReportService::REPORTS)
+            : array_values(array_diff(array_keys(ReportService::REPORTS), ReportService::AGGREGATE_REPORTS));
+
         return $this->successResponse([
             'reports' => collect(ReportService::REPORTS)
+                ->only($allowed)
                 ->map(fn (string $title, string $key) => ['key' => $key, 'title' => $title])
                 ->values()
                 ->all(),
+            'scope' => $scope->payload(),
+            'restricted' => array_values(array_intersect(ReportService::AGGREGATE_REPORTS, array_keys(array_diff_key(ReportService::REPORTS, array_flip($allowed))))),
             'formats' => ['CSV', 'XLSX', 'PDF', 'JSON'],
             'default_window' => [
                 'from' => now()->startOfYear()->toDateString(),
@@ -64,7 +94,7 @@ class SupReportController extends SupController
             'to' => ['nullable', 'date'],
         ]);
 
-        $table = $this->reports->build($data['report_key'], $data);
+        $table = $this->reports->build($data['report_key'], $data, $this->scopes->resolve($this->actor($request)));
 
         return $this->successResponse([
             'report' => [
@@ -79,10 +109,13 @@ class SupReportController extends SupController
     }
 
     /** Riwayat dokumen yang dihasilkan (beserta kode verifikasi). */
-    public function history(): JsonResponse
+    public function history(Request $request): JsonResponse
     {
+        $scope = $this->scopes->resolve($this->actor($request));
+
         return $this->successResponse([
-            'rows' => $this->reports->history()->map(fn (SupReport $report) => [
+            'scope' => $scope->payload(),
+            'rows' => $this->reports->history(60, $scope)->map(fn (SupReport $report) => [
                 'id' => $report->id,
                 'title' => $report->title,
                 'report_key' => $report->report_key,
@@ -108,6 +141,10 @@ class SupReportController extends SupController
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
         ]);
+
+        // Dokumen atas nama pegawai lain tidak boleh dibuat oleh akun berizik
+        // "diri" meski ia memegang izin ekspor.
+        $this->reports->build($data['report_key'], $data, $this->scopes->resolve($this->actor($request)));
 
         $report = $this->reports->generate(
             $data['report_key'],

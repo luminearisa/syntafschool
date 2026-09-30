@@ -6,15 +6,19 @@ use App\Models\User;
 use App\Modules\Supervisi\Application\Services\VisitAccessService;
 use App\Modules\Supervisi\Application\Services\VisitAnswerService;
 use App\Modules\Supervisi\Application\Services\VisitFinalizationService;
+use App\Modules\Supervisi\Application\Services\BlankFormService;
+use App\Modules\Supervisi\Application\Services\OfflineSyncService;
 use App\Modules\Supervisi\Application\Services\VisitLifecycleService;
 use App\Modules\Supervisi\Domain\Enums\ActivityKind;
 use App\Modules\Supervisi\Domain\Enums\SupervisionApproach;
 use App\Modules\Supervisi\Domain\Enums\VisitStatus;
 use App\Modules\Supervisi\Http\Resources\SupVisitPresenter;
 use App\Modules\Supervisi\Models\SupVisit;
+use App\Modules\Supervisi\Application\Support\SearchTerm;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -29,6 +33,8 @@ class SupVisitController extends SupController
         private readonly VisitFinalizationService $finalization,
         private readonly VisitAccessService $access,
         private readonly SupVisitPresenter $presenter,
+        private readonly OfflineSyncService $offline,
+        private readonly BlankFormService $blankForms,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -54,8 +60,8 @@ class SupVisitController extends SupController
             ->when($request->filled('supervisor_employee_id'), fn (Builder $query) => $query->where('supervisor_employee_id', $request->integer('supervisor_employee_id')))
             ->when($request->filled('from'), fn (Builder $query) => $query->where('observed_at', '>=', $request->date('from')))
             ->when($request->filled('to'), fn (Builder $query) => $query->where('observed_at', '<=', $request->date('to')))
-            ->when($request->filled('search'), function (Builder $query) use ($request): void {
-                $term = '%'.$request->string('search').'%';
+            ->when(SearchTerm::like($request->string('search')->toString()) !== null, function (Builder $query) use ($request): void {
+                $term = SearchTerm::like($request->string('search')->toString());
                 $query->where(fn (Builder $inner) => $inner
                     ->where('code', 'like', $term)
                     ->orWhere('lesson_topic', 'like', $term));
@@ -178,6 +184,68 @@ class SupVisitController extends SupController
             ['preview' => $preview, 'checklist' => $this->finalization->checklist($this->load($visit))],
             'Jawaban tersimpan',
         );
+    }
+
+    /**
+     * Sinkronisasi jawaban yang dikumpulkan tanpa jaringan (mode luring).
+     *
+     * Perangkat mengirim seluruh antreannya sekaligus; setiap baris dijawab
+     * tersimpan/dilewati/ditolak/konflik sehingga aplikasi dapat menandai mana
+     * yang masih perlu diperiksa supervisor.
+     */
+    public function syncOfflineAnswers(Request $request, SupVisit $visit): JsonResponse
+    {
+        $actor = $this->actor($request);
+
+        $this->access->assertCanExecute($actor, $visit);
+
+        $data = $request->validate([
+            'device' => ['nullable', 'string', 'max:120'],
+            'answers' => ['required', 'array', 'min:1', 'max:500'],
+            'answers.*.indicator_id' => ['required', 'integer'],
+            'answers.*.option_id' => ['nullable', 'integer'],
+            'answers.*.option_code' => ['nullable', 'string', 'max:30'],
+            'answers.*.value_number' => ['nullable', 'numeric'],
+            'answers.*.value_text' => ['nullable', 'string', 'max:500'],
+            'answers.*.value_long_text' => ['nullable', 'string', 'max:5000'],
+            'answers.*.is_na' => ['nullable', 'boolean'],
+            'answers.*.comment' => ['nullable', 'string', 'max:2000'],
+            'answers.*.client_uuid' => ['nullable', 'string', 'max:64'],
+            'answers.*.captured_at' => ['nullable', 'date'],
+        ]);
+
+        $result = $this->offline->sync($visit, $actor, $data['answers']);
+
+        $ringkasan = sprintf(
+            '%d jawaban luring tersimpan, %d dilewati, %d ditolak, %d perlu diperiksa',
+            $result['applied'],
+            count($result['skipped']),
+            count($result['rejected']),
+            count($result['conflicts']),
+        );
+
+        return $this->successResponse(
+            [...$result, 'device' => $data['device'] ?? null],
+            $ringkasan,
+        );
+    }
+
+    /**
+     * Formulir kosong siap cetak (mode luring).
+     *
+     * Versi instrumen yang tercetak = versi yang dipakai kegiatan ini, sehingga
+     * huruf pilihan pada kertas selalu cocok dengan opsi yang dihitung server.
+     */
+    public function blankForm(Request $request, SupVisit $visit): Response
+    {
+        $this->access->assertCanView($this->actor($request), $visit);
+
+        $pdf = $this->blankForms->pdf($visit);
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$this->blankForms->filename($visit).'"',
+        ]);
     }
 
     /** Nilai sementara tanpa mengubah data (untuk tampilan langsung di layar). */

@@ -75,6 +75,38 @@ export const supervisiVisitApi = {
     return response.data.data;
   },
 
+  /**
+   * Sinkronisasi antrean jawaban luring (Fase 5).
+   *
+   * Server menjawab per baris: tersimpan, dilewati (sudah pernah dikirim),
+   * ditolak (nilai tidak sah), atau konflik (server lebih baru). Pemanggil
+   * memakai jawaban itu untuk membersihkan antrean di perangkat.
+   */
+  async syncOfflineAnswers(
+    visitId: number,
+    payload: { device?: string; answers: Array<Record<string, unknown>> },
+  ) {
+    const response = await api.post<
+      ApiResponse<{
+        applied: number;
+        skipped: Array<{ indicator_id: number }>;
+        rejected: Array<{ indicator_id: number; reason: string }>;
+        conflicts: Array<{ indicator_id: number; statement?: string; reason: string }>;
+        visit: { id: number; code: string; status: string; answers_count: number; is_locked: boolean };
+        server_time: string;
+      }>
+    >(`/supervisi/visits/${visitId}/answers/sync`, payload);
+
+    return response.data.data;
+  },
+
+  /** Formulir kosong siap cetak (mode luring). */
+  async blankForm(visitId: number): Promise<Blob> {
+    const response = await api.get(`/supervisi/visits/${visitId}/blank-form`, { responseType: 'blob' });
+
+    return response.data as Blob;
+  },
+
   async preview(visitId: number) {
     const response = await api.get<ApiResponse<{ preview: VisitPreview }>>(`/supervisi/visits/${visitId}/preview`);
     return response.data.data.preview;

@@ -277,7 +277,14 @@ class ActionPlanService
     public function board(array $filters, User $actor): array
     {
         $plans = $this->visiblePlans($actor)
-            ->with(['items', 'supervisee:id,full_name,position', 'visit:id,code'])
+            // Eager load lengkap: papan menampilkan butir, pemilik butir, dan
+            // riwayat kemajuannya — tanpa ini setiap baris memicu kueri sendiri.
+            ->with([
+                'items.owner:id,full_name',
+                'items.progress:id,action_item_id,reported_at,progress_percent,note',
+                'supervisee:id,full_name,position',
+                'visit:id,code',
+            ])
             ->when(! empty($filters['supervisee_employee_id']), fn ($query) => $query->where('supervisee_employee_id', (int) $filters['supervisee_employee_id']))
             ->when(! empty($filters['status']), fn ($query) => $query->where('status', $filters['status']))
             ->limit((int) ($filters['limit'] ?? 200))
@@ -286,12 +293,15 @@ class ActionPlanService
         $today = Carbon::today();
         $dueSoonUntil = (clone $today)->addDays((int) ($filters['due_in_days'] ?? 7));
 
+        // Status diturunkan sekaligus untuk semua rencana, lalu ditulis dalam
+        // beberapa UPDATE berkelompok — bukan satu UPDATE per rencana.
+        $statuses = $this->refreshStatuses($plans);
+
         $rows = [];
         $buckets = ['overdue' => 0, 'due_soon' => 0, 'ongoing' => 0, 'waiting_verification' => 0, 'verified' => 0, 'draft' => 0];
 
         foreach ($plans as $plan) {
-            $status = $this->refreshStatus($plan)->status;
-            $plan->load('items');
+            $status = $statuses[(int) $plan->id] ?? $plan->status;
 
             $overdue = $plan->items->filter(
                 fn (SupActionItem $item) => $item->due_date !== null
@@ -437,32 +447,73 @@ class ActionPlanService
     /** Hitung ulang status RTL dari kondisi butirnya. */
     protected function refreshStatus(SupActionPlan $plan): SupActionPlan
     {
-        if (in_array($plan->status, [ActionPlanStatus::VERIFIED, ActionPlanStatus::DROPPED], true)) {
-            return $plan;
-        }
-
-        $plan->load('items');
-        $today = Carbon::today();
-
-        $active = $plan->items->reject(fn (SupActionItem $item) => $item->status === ActionItemStatus::DROPPED);
-        $done = $active->filter(fn (SupActionItem $item) => $item->status === ActionItemStatus::DONE);
-        $overdue = $active->contains(
-            fn (SupActionItem $item) => $item->due_date !== null && $item->due_date->lt($today)
-        );
-
-        $status = match (true) {
-            $active->isEmpty() => ActionPlanStatus::DRAFT,
-            $done->count() === $active->count() => ActionPlanStatus::DONE,
-            $overdue => ActionPlanStatus::OVERDUE,
-            $active->contains(fn (SupActionItem $item) => $item->progress_percent > 0) => ActionPlanStatus::ONGOING,
-            default => ActionPlanStatus::DRAFT,
-        };
+        $status = $this->deriveStatus($plan);
 
         if ($plan->status !== $status) {
             $plan->forceFill(['status' => $status])->save();
         }
 
         return $plan;
+    }
+
+    /**
+     * Status turunan dari isi butir — murni, tanpa menulis apa pun.
+     */
+    protected function deriveStatus(SupActionPlan $plan): ActionPlanStatus
+    {
+        if (in_array($plan->status, [ActionPlanStatus::VERIFIED, ActionPlanStatus::DROPPED], true)) {
+            return $plan->status;
+        }
+
+        if (! $plan->relationLoaded('items')) {
+            $plan->load('items');
+        }
+
+        $today = Carbon::today();
+        $active = $plan->items->reject(fn (SupActionItem $item) => $item->status === ActionItemStatus::DROPPED);
+        $done = $active->filter(fn (SupActionItem $item) => $item->status === ActionItemStatus::DONE);
+        $overdue = $active->contains(
+            fn (SupActionItem $item) => $item->due_date !== null && $item->due_date->lt($today)
+        );
+
+        return match (true) {
+            $active->isEmpty() => ActionPlanStatus::DRAFT,
+            $done->count() === $active->count() => ActionPlanStatus::DONE,
+            $overdue => ActionPlanStatus::OVERDUE,
+            $active->contains(fn (SupActionItem $item) => $item->progress_percent > 0) => ActionPlanStatus::ONGOING,
+            default => ActionPlanStatus::DRAFT,
+        };
+    }
+
+    /**
+     * Turunkan status seluruh rencana pada papan, lalu simpan perubahannya
+     * dalam beberapa kueri berkelompok.
+     *
+     * @param  Collection<int,SupActionPlan>  $plans
+     * @return array<int,ActionPlanStatus>
+     */
+    protected function refreshStatuses(Collection $plans): array
+    {
+        $derived = [];
+        $updates = [];
+
+        foreach ($plans as $plan) {
+            $status = $this->deriveStatus($plan);
+            $derived[(int) $plan->id] = $status;
+
+            if ($plan->status !== $status) {
+                // Ditampilkan dengan status baru walaupun penulisan massal di
+                // bawah belum berjalan (respons tidak menunggu disk).
+                $plan->setAttribute('status', $status);
+                $updates[$status->value][] = $plan->id;
+            }
+        }
+
+        foreach ($updates as $value => $ids) {
+            SupActionPlan::query()->whereIn('id', $ids)->update(['status' => $value, 'updated_at' => now()]);
+        }
+
+        return $derived;
     }
 
     /** @return Collection<int,SupActionPlan> */

@@ -99,3 +99,8 @@ Schedule::command('lms:integrity')->weeklyOn(1, '03:00')->withoutOverlapping();
  * per (penerima, jenis, kunci) per hari — sehingga aman dijalankan berulang.
  */
 Schedule::command('supervisi:remind')->dailyAt('06:30')->withoutOverlapping();
+// Pemeriksaan integritas mingguan (Senin pagi) — hanya melapor, tidak mengubah.
+Schedule::command('supervisi:health')->weeklyOn(1, '07:00')->withoutOverlapping();
+// Penyapu berkas dokumen: **tanpa** --force oleh penjadwal, jadi hanya melapor.
+// Penghapusan sengaja menuntut tindakan manual admin.
+Schedule::command('supervisi:prune')->monthlyOn(1, '07:15')->withoutOverlapping();

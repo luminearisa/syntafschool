@@ -37,9 +37,21 @@ class ReportService
         'kalibrasi_penilai' => 'Kalibrasi Penilai',
     ];
 
+    /**
+     * Laporan yang memuat angka agregat sekolah. Guru/staf hanya boleh
+     * membukanya bila sekolah mengaktifkan ringkasan bagi rekan sejawat
+     * (`peer_summary_enabled`).
+     */
+    public const AGGREGATE_REPORTS = [
+        'program_supervisi',
+        'analitik_indikator',
+        'kalibrasi_penilai',
+    ];
+
     public function __construct(
         protected AnalyticsService $analytics,
         protected CodeImageService $codes = new CodeImageService(),
+        protected DataScopeService $scopes = new DataScopeService(new VisitAccessService(), new SupervisiSettings()),
     ) {
     }
 
@@ -49,8 +61,10 @@ class ReportService
      * @param  array<string, mixed>  $parameters
      * @return array{key:string,title:string,window:array<string,string>,headers:list<string>,rows:list<list<mixed>>,summary:array<string,mixed>}
      */
-    public function build(string $key, array $parameters = []): array
+    public function build(string $key, array $parameters = [], ?DataScope $scope = null): array
     {
+        $scope ??= DataScope::school();
+
         if (! array_key_exists($key, self::REPORTS)) {
             throw ValidationException::withMessages([
                 'report_key' => 'Laporan '.$key.' tidak dikenal. Pilihan: '.implode(', ', array_keys(self::REPORTS)).'.',
@@ -64,12 +78,17 @@ class ReportService
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
         }
 
+        // Laporan agregat sekolah tidak dapat dibaca dengan cakupan "diri".
+        if ($scope->isSelf() && in_array($key, self::AGGREGATE_REPORTS, true)) {
+            $this->scopes->assertAllowsAggregate($scope, 'Laporan '.self::REPORTS[$key]);
+        }
+
         $built = match ($key) {
             'program_supervisi' => $this->programReport($from, $to),
-            'hasil_supervisi' => $this->resultReport($from, $to),
-            'tindak_lanjut' => $this->followUpReport($from, $to),
+            'hasil_supervisi' => $this->resultReport($from, $to, $scope),
+            'tindak_lanjut' => $this->followUpReport($from, $to, $scope),
             'analitik_indikator' => $this->indicatorReport($from, $to),
-            'rekap_penilaian' => $this->appraisalReport($from, $to),
+            'rekap_penilaian' => $this->appraisalReport($from, $to, $scope),
             'kalibrasi_penilai' => $this->calibrationReport($from, $to),
         };
 
@@ -77,9 +96,15 @@ class ReportService
             'key' => $key,
             'title' => self::REPORTS[$key],
             'window' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'scope' => $scope->payload(),
             'headers' => $built['headers'],
             'rows' => $built['rows'],
-            'summary' => $built['summary'],
+            'summary' => [
+                ...$built['summary'],
+                // Guru melihat barisnya sendiri: itu harus terbaca di dokumen,
+                // bukan disamarkan sebagai laporan sekolah.
+                'cakupan_data' => $scope->isSchool() ? 'Seluruh sekolah' : 'Data pegawai yang bersangkutan saja',
+            ],
         ];
     }
 
@@ -143,10 +168,12 @@ class ReportService
     }
 
     /** Riwayat dokumen (terbaru lebih dahulu). */
-    public function history(int $limit = 60)
+    public function history(int $limit = 60, ?DataScope $scope = null)
     {
         return SupReport::query()
             ->with('requester:id,name')
+            // Cakupan "diri": hanya dokumen yang ia sendiri hasilkan.
+            ->when($scope?->isSelf(), fn ($query) => $query->where('requested_by', $scope->userId ?? -1))
             ->orderByDesc('id')
             ->limit($limit)
             ->get();
@@ -250,7 +277,7 @@ class ReportService
     }
 
     /** @return array{headers:list<string>,rows:list<list<mixed>>,summary:array<string,mixed>} */
-    protected function resultReport(Carbon $from, Carbon $to): array
+    protected function resultReport(Carbon $from, Carbon $to, ?DataScope $scope = null): array
     {
         $visits = SupVisit::query()
             ->with([
@@ -260,6 +287,12 @@ class ReportService
             ])
             ->whereNotNull('finalized_at')
             ->whereBetween('finalized_at', [$from, $to])
+            ->when($scope?->isSelf(), fn ($query) => $query->where(function ($inner) use ($scope): void {
+                // Kegiatan yang menyangkut dirinya — sebagai yang disupervisi
+                // maupun sebagai pelaksana.
+                $inner->where('supervisee_employee_id', $scope->employeeId)
+                    ->orWhere('supervisor_employee_id', $scope->employeeId);
+            }))
             ->orderBy('finalized_at')
             ->get();
 
@@ -303,7 +336,7 @@ class ReportService
     }
 
     /** @return array{headers:list<string>,rows:list<list<mixed>>,summary:array<string,mixed>} */
-    protected function followUpReport(Carbon $from, Carbon $to): array
+    protected function followUpReport(Carbon $from, Carbon $to, ?DataScope $scope = null): array
     {
         $plans = SupActionPlan::query()
             ->with([
@@ -312,6 +345,10 @@ class ReportService
                 'items',
             ])
             ->whereBetween('created_at', [$from, $to])
+            ->when($scope?->isSelf(), fn ($query) => $query->where(function ($inner) use ($scope): void {
+                $inner->where('supervisee_employee_id', $scope->employeeId)
+                    ->orWhereHas('items', fn ($item) => $item->where('owner_employee_id', $scope->employeeId));
+            }))
             ->orderBy('created_at')
             ->get();
 
@@ -379,11 +416,16 @@ class ReportService
     }
 
     /** @return array{headers:list<string>,rows:list<list<mixed>>,summary:array<string,mixed>} */
-    protected function appraisalReport(Carbon $from, Carbon $to): array
+    protected function appraisalReport(Carbon $from, Carbon $to, ?DataScope $scope = null): array
     {
         $appraisals = SupAppraisal::query()
             ->with(['supervisee:id,full_name,position', 'pipPlans'])
             ->whereBetween('created_at', [$from, $to])
+            ->when($scope?->isSelf(), fn ($query) => $query->where(function ($inner) use ($scope): void {
+                $inner->where('supervisee_employee_id', $scope->employeeId)
+                    ->orWhere('assessor_employee_id', $scope->employeeId)
+                    ->orWhere('reviewer_employee_id', $scope->employeeId);
+            }))
             ->orderBy('supervisee_employee_id')
             ->get();
 

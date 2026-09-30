@@ -14,6 +14,8 @@ import type {
   VisitIndicatorRow,
 } from '../types';
 import { VisitResultPanel } from '../components/VisitResultPanel';
+import OfflineModePanel from '../components/OfflineModePanel';
+import { isOnline, pendingAnswers, queueAnswer } from '../offline/offlineQueue';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -75,6 +77,8 @@ export default function SupervisiVisitDetailPage() {
 
   const [tab, setTab] = useState<'OBSERVE' | 'ANALYZE' | 'RESULT'>('OBSERVE');
   const [drafts, setDrafts] = useState<Record<number, DraftAnswer>>({});
+  // Mode luring: berapa jawaban yang masih menunggu dikirim dari perangkat ini.
+  const [offlinePending, setOfflinePending] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<number, Record<string, string>>>({});
   const [findings, setFindings] = useState<VisitFindingRow[]>([]);
@@ -399,7 +403,49 @@ export default function SupervisiVisitDetailPage() {
     }
 
     payloadRef.current = payload;
+
+    // Tanpa jaringan: jawaban tidak hilang — ditahan di perangkat, lalu dapat
+    // dikirim dari panel Mode Luring begitu sinyal kembali.
+    if (!isOnline()) {
+      holdOffline(payload);
+      toast.warning('Tidak ada jaringan. Jawaban disimpan di perangkat — kirim dari panel Mode Luring saat daring.');
+      return;
+    }
+
     saveMutation.mutate(payload);
+  };
+
+  /**
+   * Titipkan jawaban ke antrean perangkat.
+   *
+   * Nilai huruf dari formulir cetak tetap dapat dimasukkan: bila pengguna
+   * memilih opsi, kita simpan `option_id`; bila ia mengetik kode huruf, kode
+   * itu yang dikirim dan diterjemahkan server.
+   */
+  const holdOffline = (payload: DraftAnswer[]) => {
+    // `id` = id kegiatan dari URL (sudah divalidasi Number).
+
+    for (const answer of payload) {
+      const indicator = indicators.find((item) => item.id === answer.indicator_id);
+      const option = indicator?.options?.find((item) => item.id === answer.option_id);
+
+      queueAnswer(id, {
+        indicator_id: answer.indicator_id,
+        option_id: answer.option_id ?? null,
+        value_number: answer.value_number ?? null,
+        value_text: answer.value_text ?? null,
+        value_long_text: answer.value_long_text ?? null,
+        is_na: answer.is_na ?? false,
+        comment: answer.comment ?? null,
+        indicator_label: indicator?.statement,
+        // Label opsi dibaca dari instrumen yang sedang tampil agar daftar
+        // tunggu di perangkat dapat dibaca manusia, bukan sekadar id.
+        value_label: option?.label ?? undefined,
+      });
+    }
+
+    setOfflinePending(pendingAnswers(id).length);
+    setDirty(false);
   };
 
   if (detailQuery.isLoading) {
@@ -797,6 +843,15 @@ export default function SupervisiVisitDetailPage() {
         />
       )}
 
+      {/* Mode luring: jawaban dari kelas tanpa sinyal + formulir siap cetak. */}
+      {!detail.visit.is_finalized && (
+        <OfflineModePanel
+          visitId={detail.visit.id}
+          visitCode={detail.visit.code}
+          onQueueChange={setOfflinePending}
+        />
+      )}
+
       {editable && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
@@ -808,6 +863,9 @@ export default function SupervisiVisitDetailPage() {
               {localTotals.percent !== null && <Badge tone="brand">{localTotals.percent}%</Badge>}
               {localTotals.missing > 0 && <Badge tone="amber">{localTotals.missing} wajib belum diisi</Badge>}
               {dirty && <Badge tone="amber">belum disimpan</Badge>}
+              {offlinePending > 0 && (
+                <Badge tone="amber">{offlinePending} jawaban menunggu dikirim (mode luring)</Badge>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={save} disabled={saveMutation.isPending || !dirty}>

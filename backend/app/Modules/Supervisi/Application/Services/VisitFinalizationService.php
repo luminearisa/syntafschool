@@ -136,6 +136,17 @@ class VisitFinalizationService
         $snapshot = $this->snapshot($visit, $version, $summary, $band, $actor, $preview['indicator_scores'] ?? []);
 
         DB::transaction(function () use ($visit, $actor, $employeeId, $data, $snapshot, $summary, $band): void {
+            // Kunci baris: dua tab yang menekan "Finalkan" hampir bersamaan
+            // tidak boleh menghasilkan dua finalisasi bernomor revisi sama.
+            // (Pada SQLite `lockForUpdate` tidak menghasilkan klausa apa pun,
+            // jadi perilaku uji tetap sama; MySQL/PostgreSQL benar-benar
+            // mengunci barisnya.)
+            $fresh = SupVisit::query()->whereKey($visit->getKey())->lockForUpdate()->first();
+
+            if ($fresh === null || $fresh->finalized_at !== null) {
+                $this->fail('visit', 'Kegiatan ini sudah difinalkan.');
+            }
+
             // Nilai per bagian + kolom total pada kegiatan.
             $this->answers->syncTotals($visit, $actor);
 
@@ -205,6 +216,13 @@ class VisitFinalizationService
         }
 
         DB::transaction(function () use ($visit, $actor, $reason): void {
+            // Kunci baris: pembukaan ulang ganda dari dua perangkat ditolak.
+            $fresh = SupVisit::query()->whereKey($visit->getKey())->lockForUpdate()->first();
+
+            if ($fresh === null || $fresh->finalized_at === null) {
+                $this->fail('visit', 'Kegiatan ini belum difinalkan.');
+            }
+
             $before = [
                 'status' => $visit->status->value,
                 'final_score' => $visit->final_score,

@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 Route::middleware('api')->group(function (): void {
+    // Dibatasi laju per alamat IP: kode dibuat acak 8 karakter, dan tanpa batas
+    // satu skrip dapat menebak ribuan kode per menit.
     Route::get('supervisi/reports/verify/{code}', [SupReportController::class, 'verify'])
+        ->middleware('throttle:supervisi-public-verify')
         ->name('supervisi.reports.verify.public');
 });

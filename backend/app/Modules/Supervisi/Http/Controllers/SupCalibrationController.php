@@ -16,7 +16,9 @@ class SupCalibrationController extends SupController
 
     public function index(Request $request): JsonResponse
     {
-        $page = $this->service->paginate($request->only(['status', 'program_id']), (int) $request->query('per_page', 25));
+        // `per_page` dibatasi: nilai bebas dari klien dapat dipakai untuk
+        // meminta ribuan baris sekaligus (memori habis).
+        $page = $this->service->paginate($request->only(['status', 'program_id']), $this->perPage($request, 25));
 
         return $this->successResponse([
             'rows' => collect($page->items())->map(fn (SupCalibrationSession $session) => [

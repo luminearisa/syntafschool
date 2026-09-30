@@ -10,7 +10,7 @@
 ```text
 Riset (selesai) → Persetujuan keputusan §16 blueprint → Fase 1 (fondasi)
 → Fase 2 (kegiatan & penskoran) → Fase 3 (RTL & penilaian kinerja)
-→ Fase 4 (analitik & laporan) → Fase 5 (pengerasan & dokumentasi)
+→ Fase 4 (analitik & laporan) → **Fase 5 (pengerasan & dokumentasi) — selesai**
 ```
 
 ## Dokumen terkait

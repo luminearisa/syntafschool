@@ -8,6 +8,7 @@ use App\Modules\Supervisi\Domain\Enums\InstrumentCategory;
 use App\Modules\Supervisi\Domain\Enums\SupervisorKind;
 use App\Modules\Supervisi\Models\SupAssignment;
 use App\Modules\Supervisi\Models\SupSupervisor;
+use App\Modules\Supervisi\Application\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,12 +30,14 @@ class SupSupervisorController extends SupController
             ->with('employee:id,full_name,nip,position,employee_type,photo_path,school_id')
             ->when($request->filled('kind'), fn ($q) => $q->where('kind', $request->string('kind')))
             ->when($request->filled('active'), fn ($q) => $q->where('is_active', $request->boolean('active')))
-            ->when($request->filled('search'), function ($q) use ($request): void {
-                $search = (string) $request->string('search');
+            ->when(SearchTerm::like($request->string('search')->toString()) !== null, function ($q) use ($request): void {
+                // Wildcard `%`/`_` dari kotak pencarian dibuang lebih dulu agar
+                // tidak berubah menjadi pemindaian tabel penuh.
+                $term = SearchTerm::like($request->string('search')->toString());
                 $q->whereHas('employee', fn ($inner) => $inner
-                    ->where('full_name', 'like', "%{$search}%")
-                    ->orWhere('nip', 'like', "%{$search}%"))
-                    ->orWhere('certification_no', 'like', "%{$search}%");
+                    ->where('full_name', 'like', $term)
+                    ->orWhere('nip', 'like', $term))
+                    ->orWhere('certification_no', 'like', $term);
             })
             ->orderBy('kind')
             ->orderByDesc('is_active');

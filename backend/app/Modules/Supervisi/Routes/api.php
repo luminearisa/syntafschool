@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Route;
 | dapat diubah) ditegakkan di service, bukan di route.
 |
 */
-Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void {
+Route::middleware(['auth:sanctum', 'throttle:supervisi-module'])->prefix('supervisi')->group(function (): void {
 
     // ---------------- Metadata & pengaturan modul ----------------
     Route::get('meta/instruments', [SupInstrumentController::class, 'metadata'])
@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
 
     // ---------------- Pengaturan supervisor (registry) ----------------
     Route::get('supervisors', [SupSupervisorController::class, 'index'])
+        ->middleware('throttle:supervisi-search')
         ->middleware('permission:supervisi.supervisor.view')->name('supervisi.supervisors.index');
     Route::post('supervisors', [SupSupervisorController::class, 'store'])
         ->middleware('permission:supervisi.supervisor.manage')->name('supervisi.supervisors.store');
@@ -77,6 +78,7 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
 
     // ---------------- Instrumen & versi ----------------
     Route::get('instruments', [SupInstrumentController::class, 'index'])
+        ->middleware('throttle:supervisi-search')
         ->middleware('permission:supervisi.instrument.view')->name('supervisi.instruments.index');
     Route::post('instruments', [SupInstrumentController::class, 'store'])
         ->middleware('permission:supervisi.instrument.create')->name('supervisi.instruments.store');
@@ -146,6 +148,7 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
 
     // ---------------- Kegiatan supervisi (pelaksanaan) ----------------
     Route::get('visits', [SupVisitController::class, 'index'])
+        ->middleware('throttle:supervisi-search')
         ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.index');
     Route::post('visits', [SupVisitController::class, 'store'])
         ->middleware('permission:supervisi.visit.create')->name('supervisi.visits.store');
@@ -157,15 +160,25 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
         ->middleware('permission:supervisi.visit.create')->name('supervisi.visits.destroy');
 
     Route::put('visits/{visit}/answers', [SupVisitController::class, 'answers'])
+        ->middleware('throttle:supervisi-answer-save')
         ->middleware('permission:supervisi.visit.execute')->name('supervisi.visits.answers');
+    // Mode luring: kirim antrean jawaban dari perangkat & unduh formulir cetak.
+    Route::post('visits/{visit}/answers/sync', [SupVisitController::class, 'syncOfflineAnswers'])
+        ->middleware(['permission:supervisi.visit.execute', 'throttle:supervisi-answer-save'])
+        ->name('supervisi.visits.answers.sync');
+    Route::get('visits/{visit}/blank-form', [SupVisitController::class, 'blankForm'])
+        ->middleware(['permission:supervisi.visit.view', 'throttle:supervisi-report-generate'])
+        ->name('supervisi.visits.blank_form');
     Route::get('visits/{visit}/preview', [SupVisitController::class, 'preview'])
         ->middleware('permission:supervisi.visit.view')->name('supervisi.visits.preview');
     Route::post('visits/{visit}/submit', [SupVisitController::class, 'submit'])
         ->middleware('permission:supervisi.visit.execute')->name('supervisi.visits.submit');
     Route::post('visits/{visit}/finalize', [SupVisitController::class, 'finalize'])
-        ->middleware('permission:supervisi.visit.finalize')->name('supervisi.visits.finalize');
+        ->middleware(['permission:supervisi.visit.finalize', 'throttle:supervisi-visit-finalize'])
+        ->name('supervisi.visits.finalize');
     Route::post('visits/{visit}/reopen', [SupVisitController::class, 'reopen'])
-        ->middleware('permission:supervisi.visit.reopen')->name('supervisi.visits.reopen');
+        ->middleware(['permission:supervisi.visit.reopen', 'throttle:supervisi-visit-finalize'])
+        ->name('supervisi.visits.reopen');
     Route::post('visits/{visit}/cancel', [SupVisitController::class, 'cancel'])
         ->middleware('permission:supervisi.visit.cancel')->name('supervisi.visits.cancel');
 
@@ -183,7 +196,8 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
 
     // Bukti kegiatan
     Route::post('visits/{visit}/evidence', [SupVisitEvidenceController::class, 'store'])
-        ->middleware('permission:supervisi.evidence.manage')->name('supervisi.visits.evidence.store');
+        ->middleware(['permission:supervisi.evidence.manage', 'throttle:supervisi-evidence-upload'])
+        ->name('supervisi.visits.evidence.store');
     Route::delete('visits/{visit}/evidence/{evidence}', [SupVisitEvidenceController::class, 'destroy'])
         ->middleware('permission:supervisi.evidence.manage')->name('supervisi.visits.evidence.destroy');
 
@@ -283,8 +297,13 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
         ->middleware('permission:supervisi.report.view')->name('supervisi.pips.acknowledge');
 
     // ---------------- Analitik, laporan & kalibrasi (Fase 4) ----------------
+    // Kesehatan & integritas data (Fase 5): pemantauan admin/pengawas.
+    Route::get('health', [SupReportController::class, 'health'])
+        ->middleware(['permission:supervisi.audit.view|supervisi.manage', 'throttle:supervisi-analytics'])
+        ->name('supervisi.health');
     Route::get('analytics', [SupReportController::class, 'analytics'])
-        ->middleware('permission:supervisi.report.view|supervisi.analytics.view')->name('supervisi.analytics');
+        ->middleware(['permission:supervisi.report.view|supervisi.analytics.view', 'throttle:supervisi-analytics'])
+        ->name('supervisi.analytics');
 
     Route::get('reports/catalog', [SupReportController::class, 'catalog'])
         ->middleware('permission:supervisi.report.view')->name('supervisi.reports.catalog');
@@ -293,9 +312,11 @@ Route::middleware('auth:sanctum')->prefix('supervisi')->group(function (): void 
     Route::post('reports/preview', [SupReportController::class, 'preview'])
         ->middleware('permission:supervisi.report.view')->name('supervisi.reports.preview');
     Route::post('reports', [SupReportController::class, 'generate'])
-        ->middleware('permission:supervisi.report.export')->name('supervisi.reports.generate');
+        ->middleware(['permission:supervisi.report.export', 'throttle:supervisi-report-generate'])
+        ->name('supervisi.reports.generate');
     Route::get('reports/{report}/download', [SupReportController::class, 'download'])
-        ->middleware('permission:supervisi.report.export')->name('supervisi.reports.download');
+        ->middleware(['permission:supervisi.report.export', 'throttle:supervisi-report-generate'])
+        ->name('supervisi.reports.download');
 
     // Kalibrasi penilai ------------------------------------------------------
     Route::get('calibrations', [SupCalibrationController::class, 'index'])

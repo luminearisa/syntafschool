@@ -13,6 +13,7 @@ use App\Modules\Supervisi\Models\SupGradeScale;
 use App\Modules\Supervisi\Models\SupInstrument;
 use App\Modules\Supervisi\Models\SupInstrumentVersion;
 use App\Modules\Supervisi\Models\SupVisit;
+use App\Modules\Supervisi\Application\Support\SearchTerm;
 use InvalidArgumentException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -84,8 +85,7 @@ class AppraisalService
             $query->whereYear('period_start', (int) $filters['year']);
         }
 
-        if (! empty($filters['search'])) {
-            $term = '%' . $filters['search'] . '%';
+        if (($term = SearchTerm::like($filters['search'] ?? null)) !== null) {
             $query->whereHas('supervisee', fn ($builder) => $builder->where('full_name', 'like', $term));
         }
 

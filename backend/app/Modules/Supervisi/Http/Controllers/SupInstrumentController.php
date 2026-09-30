@@ -15,6 +15,7 @@ use App\Modules\Supervisi\Models\SupIndicatorOption;
 use App\Modules\Supervisi\Models\SupInstrument;
 use App\Modules\Supervisi\Models\SupInstrumentVersion;
 use App\Modules\Supervisi\Models\SupSection;
+use App\Modules\Supervisi\Application\Support\SearchTerm;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -87,9 +88,10 @@ class SupInstrumentController extends SupController
             ->when($request->filled('category'), fn ($q) => $q->where('category', $request->string('category')))
             ->when($request->filled('target_type'), fn ($q) => $q->where('target_type', $request->string('target_type')))
             ->when($request->filled('active'), fn ($q) => $q->where('is_active', $request->boolean('active')))
-            ->when($request->filled('search'), fn ($q) => $q->where(fn ($inner) => $inner
-                ->where('name', 'like', '%'.$request->string('search').'%')
-                ->orWhere('code', 'like', '%'.$request->string('search').'%')))
+            ->when(SearchTerm::like($request->string('search')->toString()) !== null, function ($q) use ($request): void {
+                $term = SearchTerm::like($request->string('search')->toString());
+                $q->where(fn ($inner) => $inner->where('name', 'like', $term)->orWhere('code', 'like', $term));
+            })
             ->orderBy('category')
             ->orderBy('name')
             ->paginate($this->perPage($request))

@@ -42,6 +42,11 @@ class SupSetting extends BaseModel
         'action_plan_default_due_days' => 30,            // tenggat bawaan butir RTL
         'action_plan_auto_from_findings' => true,        // RTL dibuat otomatis dari temuan
         'coaching_follow_up_days' => 14,                 // tenggat tindak lanjut sesi coaching
+
+        // Fase 5 — privasi (blueprint §11.6). Bawaan: guru/staf hanya melihat
+        // datanya sendiri. Bila sekolah mengaktifkan, rekan sejawat boleh
+        // membaca ringkasan **agregat** (tanpa nama siapa pun).
+        'peer_summary_enabled' => false,
     ];
 
     public function typedValue(): mixed

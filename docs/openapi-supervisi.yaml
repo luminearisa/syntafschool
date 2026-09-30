@@ -1,0 +1,3165 @@
+openapi: 3.0.3
+info:
+  title: Syntaf School — API Modul Supervisi
+  version: 1.0.0
+  description: |
+    API modul Supervisi (`/api/v1/supervisi`). Seluruh respons memakai envelope standar aplikasi:
+
+    ```json
+    { "success": true, "data": {}, "message": null, "meta": {} }
+    ```
+
+    Error validasi:
+
+    ```json
+    { "success": false, "message": "Data yang diberikan tidak valid", "errors": { "field": ["..."] } }
+    ```
+
+    Autentikasi: Bearer token Sanctum (`POST /api/v1/auth/login`). Setiap operasi mencantumkan
+    izin Spatie yang dibutuhkan pada `x-permission` dan batas laju pada `x-rate-limit`.
+
+    **Cakupan data.** Izin hanya menentukan layar yang boleh dibuka; baris yang boleh dilihat
+    ditentukan cakupan (`DataScope`): pemegang `supervisi.visit.view.all`, `supervisi.manage`,
+    `supervisi.audit.view`, `supervisi.analytics.view`, atau `supervisi.report.export` melihat seluruh
+    sekolah; guru/staf hanya melihat datanya sendiri (blueprint §11.6). Sekolah dapat mengizinkan
+    ringkasan agregat bagi rekan sejawat lewat pengaturan `peer_summary_enabled`.
+
+    **Mode luring.** `GET /visits/{visit}/blank-form` mencetak formulir kertas; jawaban dari perangkat
+    tanpa jaringan dikirim lewat `POST /visits/{visit}/answers/sync` (idempoten per `client_uuid`).
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: action-plans
+  - name: analytics
+  - name: appraisals
+  - name: assignments
+  - name: calibration
+  - name: cipp
+  - name: growth
+  - name: instruments
+  - name: module
+  - name: pip
+  - name: programs
+  - name: reports
+  - name: schedules
+  - name: supervisors
+  - name: visits
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  schemas:
+    ApiEnvelope:
+      type: object
+      properties:
+        success: { type: boolean }
+        data: { type: object, nullable: true }
+        message: { type: string, nullable: true }
+        meta: { type: object, nullable: true }
+    ApiError:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        errors: { type: object, nullable: true }
+    Answer:
+      type: object
+      required: [indicator_id]
+      properties:
+        indicator_id: { type: integer }
+        option_id: { type: integer, nullable: true }
+        value_number: { type: number, nullable: true }
+        value_text: { type: string, nullable: true }
+        value_long_text: { type: string, nullable: true }
+        is_na: { type: boolean }
+        comment: { type: string, nullable: true }
+        client_uuid: { type: string, nullable: true, description: "Penanda idempoten mode luring" }
+    OfflineAnswer:
+      allOf:
+        - $ref: "#/components/schemas/Answer"
+        - type: object
+          properties:
+            option_code: { type: string, nullable: true, description: "Huruf pilihan pada formulir cetak (A/B/C/…), atau skor/label opsinya" }
+            captured_at: { type: string, format: date-time, nullable: true, description: "Waktu perangkat merekam — dasar deteksi konflik" }
+    ReportRequest:
+      type: object
+      required: [report_key]
+      properties:
+        report_key: { type: string, enum: [program_supervisi, hasil_supervisi, tindak_lanjut, analitik_indikator, rekap_penilaian, kalibrasi_penilai] }
+        format: { type: string, enum: [CSV, XLSX, PDF, JSON] }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+    CalibrationScore:
+      type: object
+      required: [supervisor_employee_id]
+      properties:
+        supervisor_employee_id: { type: integer }
+        indicator_id: { type: integer, nullable: true }
+        indicator_label: { type: string, nullable: true, description: "Dipakai untuk kasus bersama tanpa indikator" }
+        score: { type: number }
+        comment: { type: string, nullable: true }
+paths:
+  /supervisi/action-plans:
+    get:
+      tags: [action-plans]
+      summary: GET /action-plans — action_plans index
+      operationId: supervisi.action_plans.index
+      x-permission: supervisi.action_plan.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [action-plans]
+      summary: POST /action-plans — action_plans store
+      operationId: supervisi.action_plans.store
+      x-permission: supervisi.action_plan.create
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/action-plans/items/{actionItem}:
+    patch:
+      tags: [action-plans]
+      summary: PATCH /action-plans/items/{actionItem} — action_plans items update
+      operationId: supervisi.action_plans.items.update
+      x-permission: supervisi.action_plan.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: actionItem
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/action-plans/items/{actionItem}/progress:
+    post:
+      tags: [action-plans]
+      summary: POST /action-plans/items/{actionItem}/progress — action_plans items progress
+      operationId: supervisi.action_plans.items.progress
+      x-permission: supervisi.action_plan.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: actionItem
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/action-plans/{actionPlan}:
+    get:
+      tags: [action-plans]
+      summary: GET /action-plans/{actionPlan} — action_plans show
+      operationId: supervisi.action_plans.show
+      x-permission: supervisi.action_plan.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: actionPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    patch:
+      tags: [action-plans]
+      summary: PATCH /action-plans/{actionPlan} — action_plans update
+      operationId: supervisi.action_plans.update
+      x-permission: supervisi.action_plan.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: actionPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/action-plans/{actionPlan}/drop:
+    post:
+      tags: [action-plans]
+      summary: POST /action-plans/{actionPlan}/drop — action_plans drop
+      operationId: supervisi.action_plans.drop
+      x-permission: supervisi.action_plan.verify
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: actionPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/action-plans/{actionPlan}/items:
+    post:
+      tags: [action-plans]
+      summary: POST /action-plans/{actionPlan}/items — action_plans items store
+      operationId: supervisi.action_plans.items.store
+      x-permission: supervisi.action_plan.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: actionPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/action-plans/{actionPlan}/verify:
+    post:
+      tags: [action-plans]
+      summary: POST /action-plans/{actionPlan}/verify — action_plans verify
+      operationId: supervisi.action_plans.verify
+      x-permission: supervisi.action_plan.verify
+      x-rate-limit: supervisi-module
+      security: []  # publik: hanya keterangan dokumen yang diungkap
+      parameters:
+        - name: actionPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/analytics:
+    get:
+      tags: [analytics]
+      summary: GET /analytics — analytics
+      operationId: supervisi.analytics
+      x-permission: supervisi.report.view|supervisi.analytics.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/appraisals:
+    get:
+      tags: [appraisals]
+      summary: GET /appraisals — appraisals index
+      operationId: supervisi.appraisals.index
+      x-permission: supervisi.appraisal.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [appraisals]
+      summary: POST /appraisals — appraisals store
+      operationId: supervisi.appraisals.store
+      x-permission: supervisi.appraisal.create
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/appraisals/reference:
+    get:
+      tags: [appraisals]
+      summary: GET /appraisals/reference — appraisals reference
+      operationId: supervisi.appraisals.reference
+      x-permission: supervisi.appraisal.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/appraisals/{appraisal}:
+    get:
+      tags: [appraisals]
+      summary: GET /appraisals/{appraisal} — appraisals show
+      operationId: supervisi.appraisals.show
+      x-permission: supervisi.appraisal.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    patch:
+      tags: [appraisals]
+      summary: PATCH /appraisals/{appraisal} — appraisals update
+      operationId: supervisi.appraisals.update
+      x-permission: supervisi.appraisal.create
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/appraisals/{appraisal}/calculate:
+    post:
+      tags: [appraisals]
+      summary: POST /appraisals/{appraisal}/calculate — appraisals calculate
+      operationId: supervisi.appraisals.calculate
+      x-permission: supervisi.appraisal.calculate
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/appraisals/{appraisal}/publish:
+    post:
+      tags: [appraisals]
+      summary: POST /appraisals/{appraisal}/publish — appraisals publish
+      operationId: supervisi.appraisals.publish
+      x-permission: supervisi.appraisal.publish
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/appraisals/{appraisal}/reopen:
+    post:
+      tags: [appraisals]
+      summary: POST /appraisals/{appraisal}/reopen — appraisals reopen
+      operationId: supervisi.appraisals.reopen
+      x-permission: supervisi.appraisal.publish
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/appraisals/{appraisal}/scores:
+    put:
+      tags: [appraisals]
+      summary: PUT /appraisals/{appraisal}/scores — appraisals scores
+      operationId: supervisi.appraisals.scores
+      x-permission: supervisi.appraisal.calculate
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/appraisals/{appraisal}/sources:
+    put:
+      tags: [appraisals]
+      summary: PUT /appraisals/{appraisal}/sources — appraisals sources
+      operationId: supervisi.appraisals.sources
+      x-permission: supervisi.appraisal.calculate
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: appraisal
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/assignments:
+    get:
+      tags: [assignments]
+      summary: GET /assignments — assignments index
+      operationId: supervisi.assignments.index
+      x-permission: supervisi.assignment.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisor_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisee_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/assignments/workload:
+    get:
+      tags: [assignments]
+      summary: GET /assignments/workload — assignments workload
+      operationId: supervisi.assignments.workload
+      x-permission: supervisi.assignment.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/assignments/{assignment}:
+    delete:
+      tags: [assignments]
+      summary: DELETE /assignments/{assignment} — assignments destroy
+      operationId: supervisi.assignments.destroy
+      x-permission: supervisi.assignment.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: assignment
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [assignments]
+      summary: PUT /assignments/{assignment} — assignments update
+      operationId: supervisi.assignments.update
+      x-permission: supervisi.assignment.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: assignment
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/calibrations:
+    get:
+      tags: [calibration]
+      summary: GET /calibrations — calibrations index
+      operationId: supervisi.calibrations.index
+      x-permission: supervisi.calibration.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: program_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [calibration]
+      summary: POST /calibrations — calibrations store
+      operationId: supervisi.calibrations.store
+      x-permission: supervisi.calibration.manage
+      x-rate-limit: supervisi-module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalibrationCreate"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/calibrations/divergence:
+    get:
+      tags: [calibration]
+      summary: GET /calibrations/divergence — calibrations divergence
+      operationId: supervisi.calibrations.divergence
+      x-permission: supervisi.calibration.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/calibrations/{session}:
+    get:
+      tags: [calibration]
+      summary: GET /calibrations/{session} — calibrations show
+      operationId: supervisi.calibrations.show
+      x-permission: supervisi.calibration.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: session
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    patch:
+      tags: [calibration]
+      summary: PATCH /calibrations/{session} — calibrations update
+      operationId: supervisi.calibrations.update
+      x-permission: supervisi.calibration.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: session
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/calibrations/{session}/finalize:
+    post:
+      tags: [calibration]
+      summary: POST /calibrations/{session}/finalize — calibrations finalize
+      operationId: supervisi.calibrations.finalize
+      x-permission: supervisi.calibration.finalize
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: session
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalibrationFinalize"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/calibrations/{session}/scores:
+    put:
+      tags: [calibration]
+      summary: PUT /calibrations/{session}/scores — calibrations scores
+      operationId: supervisi.calibrations.scores
+      x-permission: supervisi.calibration.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: session
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalibrationScores"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/coachings:
+    get:
+      tags: [growth]
+      summary: GET /coachings — coachings index
+      operationId: supervisi.coachings.index
+      x-permission: supervisi.coaching.manage|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisor_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisee_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [growth]
+      summary: POST /coachings — coachings store
+      operationId: supervisi.coachings.store
+      x-permission: supervisi.coaching.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/coachings/{coaching}:
+    patch:
+      tags: [growth]
+      summary: PATCH /coachings/{coaching} — coachings update
+      operationId: supervisi.coachings.update
+      x-permission: supervisi.coaching.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: coaching
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/coachings/{coaching}/close:
+    post:
+      tags: [growth]
+      summary: POST /coachings/{coaching}/close — coachings close
+      operationId: supervisi.coachings.close
+      x-permission: supervisi.coaching.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: coaching
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/developments:
+    get:
+      tags: [growth]
+      summary: GET /developments — developments index
+      operationId: supervisi.developments.index
+      x-permission: supervisi.development.manage|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: supervisee_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string }
+        - name: from
+          in: query
+          required: false
+          schema: { type: string }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [growth]
+      summary: POST /developments — developments store
+      operationId: supervisi.developments.store
+      x-permission: supervisi.development.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/developments/{development}:
+    delete:
+      tags: [growth]
+      summary: DELETE /developments/{development} — developments destroy
+      operationId: supervisi.developments.destroy
+      x-permission: supervisi.development.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: development
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    patch:
+      tags: [growth]
+      summary: PATCH /developments/{development} — developments update
+      operationId: supervisi.developments.update
+      x-permission: supervisi.development.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: development
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/disputes/{dispute}/resolve:
+    post:
+      tags: [visits]
+      summary: POST /disputes/{dispute}/resolve — disputes resolve
+      operationId: supervisi.disputes.resolve
+      x-permission: supervisi.dispute.resolve
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: dispute
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/evaluations:
+    get:
+      tags: [cipp]
+      summary: GET /evaluations — evaluations index
+      operationId: supervisi.evaluations.index
+      x-permission: supervisi.evaluation.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: period
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/evaluations/{evaluation}:
+    get:
+      tags: [cipp]
+      summary: GET /evaluations/{evaluation} — evaluations show
+      operationId: supervisi.evaluations.show
+      x-permission: supervisi.evaluation.view|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: evaluation
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    patch:
+      tags: [cipp]
+      summary: PATCH /evaluations/{evaluation} — evaluations update
+      operationId: supervisi.evaluations.update
+      x-permission: supervisi.evaluation.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: evaluation
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CippUpdate"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/evaluations/{evaluation}/finalize:
+    post:
+      tags: [cipp]
+      summary: POST /evaluations/{evaluation}/finalize — evaluations finalize
+      operationId: supervisi.evaluations.finalize
+      x-permission: supervisi.evaluation.finalize
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: evaluation
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/grade-scales:
+    get:
+      tags: [instruments]
+      summary: GET /grade-scales — grade_scales index
+      operationId: supervisi.grade_scales.index
+      x-permission: supervisi.instrument.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [instruments]
+      summary: POST /grade-scales — grade_scales store
+      operationId: supervisi.grade_scales.store
+      x-permission: supervisi.settings.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/grade-scales/{scale}:
+    put:
+      tags: [instruments]
+      summary: PUT /grade-scales/{scale} — grade_scales update
+      operationId: supervisi.grade_scales.update
+      x-permission: supervisi.settings.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: scale
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/grade-scales/{scale}/default:
+    post:
+      tags: [instruments]
+      summary: POST /grade-scales/{scale}/default — grade_scales default
+      operationId: supervisi.grade_scales.default
+      x-permission: supervisi.settings.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: scale
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/health:
+    get:
+      tags: [analytics]
+      summary: GET /health — health
+      operationId: supervisi.health
+      x-permission: supervisi.audit.view|supervisi.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/instrument-versions/{version}:
+    get:
+      tags: [instruments]
+      summary: GET /instrument-versions/{version} — versions show
+      operationId: supervisi.versions.show
+      x-permission: supervisi.instrument.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/instrument-versions/{version}/checklist:
+    get:
+      tags: [instruments]
+      summary: GET /instrument-versions/{version}/checklist — versions checklist
+      operationId: supervisi.versions.checklist
+      x-permission: supervisi.instrument.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/instrument-versions/{version}/clone:
+    post:
+      tags: [instruments]
+      summary: POST /instrument-versions/{version}/clone — versions clone
+      operationId: supervisi.versions.clone
+      x-permission: supervisi.instrument.create
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/instrument-versions/{version}/export:
+    get:
+      tags: [instruments]
+      summary: GET /instrument-versions/{version}/export — versions export
+      operationId: supervisi.versions.export
+      x-permission: supervisi.instrument.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/instrument-versions/{version}/publish:
+    post:
+      tags: [instruments]
+      summary: POST /instrument-versions/{version}/publish — versions publish
+      operationId: supervisi.versions.publish
+      x-permission: supervisi.instrument.publish
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/instrument-versions/{version}/structure:
+    put:
+      tags: [instruments]
+      summary: PUT /instrument-versions/{version}/structure — versions structure
+      operationId: supervisi.versions.structure
+      x-permission: supervisi.instrument.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: version
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/instruments:
+    get:
+      tags: [instruments]
+      summary: GET /instruments — instruments index
+      operationId: supervisi.instruments.index
+      x-permission: supervisi.instrument.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+        - name: target_type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: active
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [instruments]
+      summary: POST /instruments — instruments store
+      operationId: supervisi.instruments.store
+      x-permission: supervisi.instrument.create
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/instruments/import/{instrument}:
+    post:
+      tags: [instruments]
+      summary: POST /instruments/import/{instrument} — instruments import
+      operationId: supervisi.instruments.import
+      x-permission: supervisi.instrument.import
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: instrument
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/instruments/{instrument}:
+    delete:
+      tags: [instruments]
+      summary: DELETE /instruments/{instrument} — instruments destroy
+      operationId: supervisi.instruments.destroy
+      x-permission: supervisi.instrument.delete
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: instrument
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    get:
+      tags: [instruments]
+      summary: GET /instruments/{instrument} — instruments show
+      operationId: supervisi.instruments.show
+      x-permission: supervisi.instrument.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: instrument
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [instruments]
+      summary: PUT /instruments/{instrument} — instruments update
+      operationId: supervisi.instruments.update
+      x-permission: supervisi.instrument.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: instrument
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/instruments/{instrument}/versions:
+    post:
+      tags: [instruments]
+      summary: POST /instruments/{instrument}/versions — versions store
+      operationId: supervisi.versions.store
+      x-permission: supervisi.instrument.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: instrument
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/meta/instruments:
+    get:
+      tags: [module]
+      summary: GET /meta/instruments — meta instruments
+      operationId: supervisi.meta.instruments
+      x-permission: supervisi.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/pips:
+    get:
+      tags: [pip]
+      summary: GET /pips — pips index
+      operationId: supervisi.pips.index
+      x-permission: supervisi.pip.manage|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisee_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [pip]
+      summary: POST /pips — pips store
+      operationId: supervisi.pips.store
+      x-permission: supervisi.pip.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/pips/items/{pipItem}:
+    patch:
+      tags: [pip]
+      summary: PATCH /pips/items/{pipItem} — pips items update
+      operationId: supervisi.pips.items.update
+      x-permission: supervisi.pip.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipItem
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/pips/{pipPlan}:
+    get:
+      tags: [pip]
+      summary: GET /pips/{pipPlan} — pips show
+      operationId: supervisi.pips.show
+      x-permission: supervisi.pip.manage|supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    patch:
+      tags: [pip]
+      summary: PATCH /pips/{pipPlan} — pips update
+      operationId: supervisi.pips.update
+      x-permission: supervisi.pip.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/pips/{pipPlan}/acknowledge:
+    post:
+      tags: [pip]
+      summary: POST /pips/{pipPlan}/acknowledge — pips acknowledge
+      operationId: supervisi.pips.acknowledge
+      x-permission: supervisi.report.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/pips/{pipPlan}/conclude:
+    post:
+      tags: [pip]
+      summary: POST /pips/{pipPlan}/conclude — pips conclude
+      operationId: supervisi.pips.conclude
+      x-permission: supervisi.pip.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/pips/{pipPlan}/items:
+    post:
+      tags: [pip]
+      summary: POST /pips/{pipPlan}/items — pips items store
+      operationId: supervisi.pips.items.store
+      x-permission: supervisi.pip.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/pips/{pipPlan}/reviews:
+    post:
+      tags: [pip]
+      summary: POST /pips/{pipPlan}/reviews — pips reviews store
+      operationId: supervisi.pips.reviews.store
+      x-permission: supervisi.pip.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: pipPlan
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/programs:
+    get:
+      tags: [programs]
+      summary: GET /programs — programs index
+      operationId: supervisi.programs.index
+      x-permission: supervisi.program.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: scope
+          in: query
+          required: false
+          schema: { type: string }
+        - name: academic_year_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [programs]
+      summary: POST /programs — programs store
+      operationId: supervisi.programs.store
+      x-permission: supervisi.program.create
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/programs/{program}:
+    get:
+      tags: [programs]
+      summary: GET /programs/{program} — programs show
+      operationId: supervisi.programs.show
+      x-permission: supervisi.program.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [programs]
+      summary: PUT /programs/{program} — programs update
+      operationId: supervisi.programs.update
+      x-permission: supervisi.program.update
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/programs/{program}/assignments:
+    post:
+      tags: [programs]
+      summary: POST /programs/{program}/assignments — assignments store
+      operationId: supervisi.assignments.store
+      x-permission: supervisi.assignment.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/programs/{program}/close:
+    post:
+      tags: [programs]
+      summary: POST /programs/{program}/close — programs close
+      operationId: supervisi.programs.close
+      x-permission: supervisi.program.publish
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/programs/{program}/evaluations:
+    post:
+      tags: [programs]
+      summary: POST /programs/{program}/evaluations — evaluations store
+      operationId: supervisi.evaluations.store
+      x-permission: supervisi.evaluation.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/programs/{program}/publish:
+    post:
+      tags: [programs]
+      summary: POST /programs/{program}/publish — programs publish
+      operationId: supervisi.programs.publish
+      x-permission: supervisi.program.publish
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: program
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/reports:
+    post:
+      tags: [reports]
+      summary: POST /reports — reports generate
+      operationId: supervisi.reports.generate
+      x-permission: supervisi.report.export
+      x-rate-limit: supervisi-module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/reports/catalog:
+    get:
+      tags: [reports]
+      summary: GET /reports/catalog — reports catalog
+      operationId: supervisi.reports.catalog
+      x-permission: supervisi.report.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/reports/history:
+    get:
+      tags: [reports]
+      summary: GET /reports/history — reports history
+      operationId: supervisi.reports.history
+      x-permission: supervisi.report.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/reports/preview:
+    post:
+      tags: [reports]
+      summary: POST /reports/preview — reports preview
+      operationId: supervisi.reports.preview
+      x-permission: supervisi.report.view
+      x-rate-limit: supervisi-module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/reports/verify/{code}:
+    get:
+      tags: [reports]
+      summary: GET /reports/verify/{code} — reports verify public
+      operationId: supervisi.reports.verify.public
+      x-rate-limit: supervisi-public-verify
+      security: []  # publik: hanya keterangan dokumen yang diungkap
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/reports/{report}/download:
+    get:
+      tags: [reports]
+      summary: GET /reports/{report}/download — reports download
+      operationId: supervisi.reports.download
+      x-permission: supervisi.report.export
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: report
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/schedules:
+    get:
+      tags: [schedules]
+      summary: GET /schedules — schedules index
+      operationId: supervisi.schedules.index
+      x-permission: supervisi.schedule.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: from
+          in: query
+          required: false
+          schema: { type: string }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [schedules]
+      summary: POST /schedules — schedules store
+      operationId: supervisi.schedules.store
+      x-permission: supervisi.schedule.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/schedules/{schedule}:
+    put:
+      tags: [schedules]
+      summary: PUT /schedules/{schedule} — schedules update
+      operationId: supervisi.schedules.update
+      x-permission: supervisi.schedule.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/schedules/{schedule}/cancel:
+    post:
+      tags: [schedules]
+      summary: POST /schedules/{schedule}/cancel — schedules cancel
+      operationId: supervisi.schedules.cancel
+      x-permission: supervisi.schedule.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/schedules/{schedule}/invite:
+    post:
+      tags: [schedules]
+      summary: POST /schedules/{schedule}/invite — schedules invite
+      operationId: supervisi.schedules.invite
+      x-permission: supervisi.schedule.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/schedules/{schedule}/reschedule:
+    post:
+      tags: [schedules]
+      summary: POST /schedules/{schedule}/reschedule — schedules reschedule
+      operationId: supervisi.schedules.reschedule
+      x-permission: supervisi.schedule.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: schedule
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/settings:
+    get:
+      tags: [module]
+      summary: GET /settings — settings index
+      operationId: supervisi.settings.index
+      x-permission: supervisi.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [module]
+      summary: PUT /settings — settings update
+      operationId: supervisi.settings.update
+      x-permission: supervisi.settings.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/supervisors:
+    get:
+      tags: [supervisors]
+      summary: GET /supervisors — supervisors index
+      operationId: supervisi.supervisors.index
+      x-permission: supervisi.supervisor.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string }
+        - name: active
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [supervisors]
+      summary: POST /supervisors — supervisors store
+      operationId: supervisi.supervisors.store
+      x-permission: supervisi.supervisor.manage
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/supervisors/candidates:
+    get:
+      tags: [supervisors]
+      summary: GET /supervisors/candidates — supervisors candidates
+      operationId: supervisi.supervisors.candidates
+      x-permission: supervisi.supervisor.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/supervisors/coverage:
+    get:
+      tags: [supervisors]
+      summary: GET /supervisors/coverage — supervisors coverage
+      operationId: supervisi.supervisors.coverage
+      x-permission: supervisi.supervisor.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/supervisors/eligible:
+    get:
+      tags: [supervisors]
+      summary: GET /supervisors/eligible — supervisors eligible
+      operationId: supervisi.supervisors.eligible
+      x-permission: supervisi.supervisor.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/supervisors/kinds:
+    get:
+      tags: [supervisors]
+      summary: GET /supervisors/kinds — supervisors kinds
+      operationId: supervisi.supervisors.kinds
+      x-permission: supervisi.view
+      x-rate-limit: supervisi-module
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/supervisors/{supervisor}:
+    delete:
+      tags: [supervisors]
+      summary: DELETE /supervisors/{supervisor} — supervisors destroy
+      operationId: supervisi.supervisors.destroy
+      x-permission: supervisi.supervisor.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: supervisor
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    get:
+      tags: [supervisors]
+      summary: GET /supervisors/{supervisor} — supervisors show
+      operationId: supervisi.supervisors.show
+      x-permission: supervisi.supervisor.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: supervisor
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [supervisors]
+      summary: PUT /supervisors/{supervisor} — supervisors update
+      operationId: supervisi.supervisors.update
+      x-permission: supervisi.supervisor.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: supervisor
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits:
+    get:
+      tags: [visits]
+      summary: GET /visits — visits index
+      operationId: supervisi.visits.index
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: status[]
+          in: query
+          required: false
+          schema: { type: string }
+        - name: activity_kind
+          in: query
+          required: false
+          schema: { type: string }
+        - name: program_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisee_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: supervisor_employee_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: from
+          in: query
+          required: false
+          schema: { type: string }
+        - name: to
+          in: query
+          required: false
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: mine
+          in: query
+          required: false
+          schema: { type: string }
+        - name: open
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: string }
+        - name: page
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    post:
+      tags: [visits]
+      summary: POST /visits — visits store
+      operationId: supervisi.visits.store
+      x-permission: supervisi.visit.create
+      x-rate-limit: supervisi-module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VisitCreate"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}:
+    delete:
+      tags: [visits]
+      summary: DELETE /visits/{visit} — visits destroy
+      operationId: supervisi.visits.destroy
+      x-permission: supervisi.visit.create
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    get:
+      tags: [visits]
+      summary: GET /visits/{visit} — visits show
+      operationId: supervisi.visits.show
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [visits]
+      summary: PUT /visits/{visit} — visits update
+      operationId: supervisi.visits.update
+      x-permission: supervisi.visit.execute
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/acknowledge:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/acknowledge — visits acknowledge
+      operationId: supervisi.visits.acknowledge
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/action-plan:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/action-plan — visits action_plan store
+      operationId: supervisi.visits.action_plan.store
+      x-permission: supervisi.action_plan.create
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/answers:
+    put:
+      tags: [visits]
+      summary: PUT /visits/{visit}/answers — visits answers
+      operationId: supervisi.visits.answers
+      x-permission: supervisi.visit.execute
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnswerBatch"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/answers/sync:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/answers/sync — visits answers sync
+      operationId: supervisi.visits.answers.sync
+      x-permission: supervisi.visit.execute
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfflineAnswerBatch"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/blank-form:
+    get:
+      tags: [visits]
+      summary: GET /visits/{visit}/blank-form — visits blank_form
+      operationId: supervisi.visits.blank_form
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/visits/{visit}/cancel:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/cancel — visits cancel
+      operationId: supervisi.visits.cancel
+      x-permission: supervisi.visit.cancel
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/conferences:
+    get:
+      tags: [visits]
+      summary: GET /visits/{visit}/conferences — visits conferences index
+      operationId: supervisi.visits.conferences.index
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/visits/{visit}/conferences/{kind}:
+    put:
+      tags: [visits]
+      summary: PUT /visits/{visit}/conferences/{kind} — visits conferences record
+      operationId: supervisi.visits.conferences.record
+      x-permission: supervisi.conference.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+        - name: kind
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/dispute:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/dispute — visits dispute
+      operationId: supervisi.visits.dispute
+      x-permission: supervisi.dispute.create
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisputePayload"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/evidence:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/evidence — visits evidence store
+      operationId: supervisi.visits.evidence.store
+      x-permission: supervisi.evidence.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/evidence/{evidence}:
+    delete:
+      tags: [visits]
+      summary: DELETE /visits/{visit}/evidence/{evidence} — visits evidence destroy
+      operationId: supervisi.visits.evidence.destroy
+      x-permission: supervisi.evidence.manage
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+        - name: evidence
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/visits/{visit}/finalize:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/finalize — visits finalize
+      operationId: supervisi.visits.finalize
+      x-permission: supervisi.visit.finalize
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizePayload"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/findings:
+    get:
+      tags: [visits]
+      summary: GET /visits/{visit}/findings — visits findings index
+      operationId: supervisi.visits.findings.index
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+    put:
+      tags: [visits]
+      summary: PUT /visits/{visit}/findings — visits findings replace
+      operationId: supervisi.visits.findings.replace
+      x-permission: supervisi.visit.execute
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/preview:
+    get:
+      tags: [visits]
+      summary: GET /visits/{visit}/preview — visits preview
+      operationId: supervisi.visits.preview
+      x-permission: supervisi.visit.view
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+  /supervisi/visits/{visit}/reopen:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/reopen — visits reopen
+      operationId: supervisi.visits.reopen
+      x-permission: supervisi.visit.reopen
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReopenPayload"
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /supervisi/visits/{visit}/submit:
+    post:
+      tags: [visits]
+      summary: POST /visits/{visit}/submit — visits submit
+      operationId: supervisi.visits.submit
+      x-permission: supervisi.visit.execute
+      x-rate-limit: supervisi-module
+      parameters:
+        - name: visit
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Berhasil
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiEnvelope" }
+        "401": { description: Belum terautentikasi }
+        "403": { description: Izin tidak mencukupi }
+        "422":
+          description: Validasi gagal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+
+    VisitCreate:
+      type: object
+      required: [supervisee_employee_id, instrument_version_id]
+      properties:
+        supervisee_employee_id: { type: integer }
+        instrument_version_id: { type: integer }
+        program_id: { type: integer, nullable: true }
+        schedule_id: { type: integer, nullable: true }
+        activity_kind: { type: string, enum: [WALKTHROUGH, CLASS_OBSERVATION, CLINICAL, PEER, SELF, DOCUMENT_REVIEW, COACHING] }
+        observed_at: { type: string, format: date-time }
+        lesson_topic: { type: string, nullable: true }
+    AnswerBatch:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          items: { $ref: "#/components/schemas/Answer" }
+    OfflineAnswerBatch:
+      type: object
+      required: [answers]
+      properties:
+        device: { type: string, nullable: true }
+        answers:
+          type: array
+          maxItems: 500
+          items: { $ref: "#/components/schemas/OfflineAnswer" }
+    FindingBatch:
+      type: object
+      required: [findings]
+      properties:
+        findings:
+          type: array
+          items:
+            type: object
+            properties:
+              component: { type: string }
+              priority: { type: string, enum: [LOW, MEDIUM, HIGH, URGENT] }
+              weakness: { type: string }
+              cause: { type: string, nullable: true }
+              recommendation: { type: string, nullable: true }
+    ConferencePayload:
+      type: object
+      properties:
+        held_at: { type: string, format: date-time }
+        agreements: { type: array, items: { type: string } }
+        reflection: { type: string, nullable: true }
+    FinalizePayload:
+      type: object
+      properties:
+        summary: { type: string, nullable: true }
+        strengths: { type: string, nullable: true }
+        improvements: { type: string, nullable: true }
+    ReopenPayload:
+      type: object
+      required: [reason]
+      properties: { reason: { type: string, minLength: 10 } }
+    DisputePayload:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string }
+        expected: { type: string, nullable: true }
+    CalibrationCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        threshold: { type: number, description: "Selisih maks-min yang disepakati" }
+        held_at: { type: string, format: date-time }
+        instrument_version_id: { type: integer, nullable: true }
+        note: { type: string, nullable: true }
+    CalibrationScores:
+      type: object
+      required: [scores]
+      properties:
+        scores:
+          type: array
+          items: { $ref: "#/components/schemas/CalibrationScore" }
+    CalibrationFinalize:
+      type: object
+      required: [conclusion]
+      properties: { conclusion: { type: string, minLength: 20 } }
+    CippUpdate:
+      type: object
+      properties:
+        period: { type: string, nullable: true }
+        context: { type: object, nullable: true }
+        input: { type: object, nullable: true }
+        process: { type: object, nullable: true }
+        product: { type: object, nullable: true }
+        context_score: { type: number, nullable: true }
+        input_score: { type: number, nullable: true }
+        process_score: { type: number, nullable: true }
+        product_score: { type: number, nullable: true }
+        stakeholders: { type: array, items: { type: string } }
+        finding: { type: string, nullable: true }
+        recommendation: { type: string, nullable: true }
