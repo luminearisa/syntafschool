@@ -138,6 +138,61 @@ class BkCaseRecordController extends BaseApiController
         return $this->successResponse($rows, 'Sesi konseling kasus.');
     }
 
+    /**
+     * Rincian satu sesi konseling.
+     *
+     * Endpoint ini sebelumnya tidak ada, sehingga permintaan terhadap sesi
+     * menjawab 404 — "tidak ditemukan" — padahal sesinya ada dan yang terjadi
+     * adalah penolakan akses. Perbedaan itu penting: 404 menyembunyikan sebab,
+     * dan jejak audit tidak pernah tercatat. Di sini kasusnya diotorisasi lebih
+     * dahulu (403 bila bukan haknya), baru catatan konselor disaring.
+     */
+    public function showSession(Request $request, \App\Modules\Bk\Models\BkCounselingSession $session): JsonResponse
+    {
+        $case = BkCase::query()->find($session->case_id);
+
+        if ($case === null) {
+            abort(404, 'Sesi tidak menunjuk kasus yang ada.');
+        }
+
+        // Penolakan di sini menyangkut ISI SESI, jadi dicatat menurut tingkat
+        // kerahasiaan sesinya — bukan menurut kasusnya: sesi yang bersifat
+        // konselor-saja harus meninggalkan jejak VIEW_CONFIDENTIAL, sekalipun
+        // kasus induknya tidak. Tanpa itu, percobaan membuka catatan konseling
+        // tidak terlihat sama sekali di jejak audit.
+        if (! app(\App\Modules\Bk\Application\Services\BkAccessService::class)->canViewCase($request->user(), $case)) {
+            $level = $session->confidentiality_level;
+            $aksi = ($level instanceof \App\Modules\Bk\Domain\Enums\ConfidentialityLevel && $level->isCounselorOnly())
+                ? 'VIEW_CONFIDENTIAL'
+                : 'VIEW';
+
+            app(\App\Modules\Bk\Application\Services\BkAuditService::class)
+                ->logAccess($request->user(), $aksi, $session, false, 'Sesi konseling di luar cakupan.');
+
+            abort(403, 'Anda tidak memiliki akses ke sesi konseling ini.');
+        }
+
+        $canSeeCounseling = $request->user()->can('viewConfidential', $case);
+
+        return $this->successResponse([
+            'id' => $session->id,
+            'session_number' => $session->session_number,
+            'session_type' => $session->session_type->value,
+            'mode' => $session->mode->value,
+            'status' => $session->status->value,
+            'scheduled_at' => $session->scheduled_at?->toDateTimeString(),
+            'started_at' => $session->started_at?->toDateTimeString(),
+            'ended_at' => $session->ended_at?->toDateTimeString(),
+            'counselor' => $session->counselor?->name,
+            'attendance_status' => $session->attendance_status->value,
+            'objective' => $session->objective,
+            'session_summary' => $session->session_summary,
+            'counselor_note' => $canSeeCounseling ? $session->counselor_note : null,
+            'has_counselor_note' => $session->counselor_note !== null,
+            'next_action' => $session->next_action,
+        ], 'Rincian sesi konseling.');
+    }
+
     public function storeSession(Request $request, BkCase $case): JsonResponse
     {
         $this->authorize('view', $case);

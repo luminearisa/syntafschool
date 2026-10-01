@@ -169,16 +169,23 @@ class BkEarlyWarningEngine
         $existing = BkEarlyWarningEvent::query()->where('dedup_key', $dedupKey)->first();
 
         if ($existing !== null) {
-            return $this->recordEvent($attributes + [
+            // array_merge, BUKAN operator `+`: pada `+` kunci dari operand KIRI
+            // yang menang, sehingga dedup_key khusus cooldown ini tertimpa oleh
+            // kunci tindakan — baris cooldown tidak pernah lahir (jejak
+            // "kenapa tidak ada peringatan kedua?" hilang), dan statusnya gagal
+            // diuji. Ditemukan lewat uji idempotensi evaluasi.
+            return $this->recordEvent(array_merge($attributes, [
                 // Kunci tersendiri agar jejak 'ditahan jeda' tidak menabrak kunci
                 // tindakan, tetapi tetap satu baris per aturan/siswa/hari.
                 'dedup_key' => $dedupKey.'#cooldown-'.$asOf->toDateString(),
-                'matched' => true,
+                // Bukan kecocokan BARU: jejak ini mencatat bahwa tindakan sudah
+                // pernah diambil, sehingga hitungan peristiwa bertindak tetap satu.
+                'matched' => false,
                 'status' => EarlyWarningEventStatus::COOLDOWN,
                 'indicator_id' => $existing->indicator_id,
                 'action_taken' => $existing->action_taken,
                 'reason' => sprintf('Sudah ditindak pada %s (jeda %d hari).', $existing->evaluation_date?->toDateString(), (int) $rule->cooldown_days),
-            ]);
+            ]));
         }
 
         $event = $this->recordEvent($attributes + [

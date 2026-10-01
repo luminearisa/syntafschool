@@ -52,7 +52,11 @@ enum ConferenceParticipantType: string
     {
         return match ($this) {
             self::COUNSELOR, self::BK_COORDINATOR => ConfidentialityLevel::HIGHLY_CONFIDENTIAL,
-            self::MANAGEMENT => ConfidentialityLevel::CONFIDENTIAL,
+            // Manajemen hadir di rapat, tetapi kehadiran TIDAK memberi akses
+            // catatan konseling: langit-langitnya setara staf lain. Bila memang
+            // berhak (mis. kepala sekolah yang juga supervisor), haknya datang
+            // dari `BkAccessService`, bukan dari jenis peserta.
+            self::MANAGEMENT => ConfidentialityLevel::STAFF_ONLY,
             self::CLINIC_STAFF, self::BOARDING_STAFF, self::TEACHER, self::HOMEROOM_TEACHER => ConfidentialityLevel::STAFF_ONLY,
             self::PARENT => ConfidentialityLevel::RESTRICTED,
             self::STUDENT => ConfidentialityLevel::RESTRICTED,

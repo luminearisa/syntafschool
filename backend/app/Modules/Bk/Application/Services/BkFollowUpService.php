@@ -82,7 +82,11 @@ class BkFollowUpService
             'due_date' => $data['due_date'],
             'due_time' => $data['due_time'] ?? null,
             'status' => FollowUpStatus::PENDING->value,
-            'confidentiality_level' => $data['confidentiality_level'] ?? $case->confidentiality_level->value,
+            // Tingkat kerahasiaan kasus dapat terbaca null (rekaman lama atau
+            // relasi yang tidak memilih kolomnya). Tindak lanjut TIDAK boleh gagal
+            // dibuat karena itu; bawaannya adalah bawaan kolomnya (RESTRICTED).
+            'confidentiality_level' => $data['confidentiality_level']
+                ?? ($case->confidentiality_level ?? \App\Modules\Bk\Domain\Enums\ConfidentialityLevel::RESTRICTED)->value,
         ]);
 
         $this->timeline->record(CaseEventType::FOLLOW_UP_CREATED, $actor, $case,

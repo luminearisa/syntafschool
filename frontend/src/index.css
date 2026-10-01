@@ -846,7 +846,11 @@ a {
 
 .app-page-content table thead th {
   border-bottom: 1px solid #e5ece7;
-  color: #738178 !important;
+  /* Warna gelap wajib: #738178 hanya mencapai rasio kontras 3.82:1 terhadap latar
+     #f5f8f6, di bawah ambang WCAG AA 4.5:1 untuk teks kecil (10px). Nilai di bawah
+     ini mencapai 5.32:1 — ditemukan lewat audit tata letak, bukan lewat
+     pembacaan kode. */
+  color: #5c6a62 !important;
   font-size: 10px !important;
   font-weight: 720 !important;
   letter-spacing: 0.065em;

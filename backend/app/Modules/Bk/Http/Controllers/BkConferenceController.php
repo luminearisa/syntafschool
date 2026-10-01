@@ -32,7 +32,11 @@ class BkConferenceController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', BkCaseConference::class);
+        // Gate, bukan $this->authorize(): controller ini tidak memakai trait
+        // AuthorizesRequests, sehingga pemanggilan sebelumnya melempar
+        // "Call to undefined method ...::authorize()" dan daftar konferensi
+        // menjawab 500 — bukan daftar kosong seperti yang seharusnya.
+        \Illuminate\Support\Facades\Gate::authorize('viewAny', BkCaseConference::class);
 
         return $this->successResponse($this->service->paginate($request->user(), $request->only([
             'case_id', 'status', 'upcoming', 'from', 'to',

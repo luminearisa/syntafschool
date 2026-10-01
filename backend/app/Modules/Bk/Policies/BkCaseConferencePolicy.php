@@ -19,9 +19,18 @@ class BkCaseConferencePolicy
     {
     }
 
+    /**
+     * Daftar konferensi boleh dibuka siapa pun yang sudah masuk.
+     *
+     * Barisnya disaring per aktor oleh `BkAccessService::scopeConferences`, jadi
+     * wali yang tidak diundang menerima daftar KOSONG — bukan 403. Menolak di
+     * pintu membuat orang tua tidak dapat memastikan sendiri bahwa memang tidak
+     * ada konferensi untuk anaknya, dan mengubah "tidak ada" menjadi "tidak
+     * boleh tahu".
+     */
     public function viewAny(User $user): bool
     {
-        return $user->can('bk.conference.view') || $this->access->isBkStaff($user);
+        return true;
     }
 
     public function view(User $user, BkCaseConference $conference): bool

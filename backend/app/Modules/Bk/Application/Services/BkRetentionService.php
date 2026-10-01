@@ -236,7 +236,11 @@ class BkRetentionService
             'approved_at' => now(),
         ])->save();
 
-        $this->record(
+        // Keputusan ditulis sebagai baris BARU, dan baris itulah yang dikembalikan:
+        // pemanggil meminta hasil keputusan, bukan permintaan lamanya. Sebelumnya
+        // fungsi ini mengembalikan baris permintaan (action = DISPOSAL_REQUESTED),
+        // sehingga pemeriksa hasil tidak pernah melihat keputusannya.
+        $keputusan = $this->record(
             $actor,
             $request->policy,
             $request->entity_type,
@@ -251,7 +255,7 @@ class BkRetentionService
             'entity_id' => $request->entity_id,
         ]);
 
-        return $request->refresh();
+        return $keputusan->refresh();
     }
 
     /**

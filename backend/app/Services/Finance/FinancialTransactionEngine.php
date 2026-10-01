@@ -139,6 +139,8 @@ class FinancialTransactionEngine
                     'cost_center_id' => $line['cost_center_id'] ?? $context['cost_center_id'] ?? null,
                     'kode_unit' => $line['kode_unit'] ?? null,
                     'kode_dana' => $line['kode_dana'] ?? null,
+                    'kode_persediaan' => $line['kode_persediaan'] ?? null,
+                    'kuantiti' => $line['kuantiti'] ?? null,
                     'debit' => $line['debit'],
                     'credit' => $line['credit'],
                     'description' => $line['description'] ?? null,
@@ -238,7 +240,7 @@ class FinancialTransactionEngine
      *
      * @param  list<array{account: FinanceCashAccount|FinanceBankAccount, delta: float}>  $balances
      */
-    public function reverse(FinancialTransaction $original, string $reason, ?int $actorId = null, array $balances = []): FinancialTransaction
+    public function reverse(FinancialTransaction $original, string $reason, ?int $actorId = null, array $balances = [], ?Carbon $tanggal = null): FinancialTransaction
     {
         $reason = trim($reason);
 
@@ -246,7 +248,7 @@ class FinancialTransactionEngine
             throw ValidationException::withMessages(['reason' => 'Alasan pembatalan wajib diisi.']);
         }
 
-        return DB::transaction(function () use ($original, $reason, $actorId, $balances): FinancialTransaction {
+        return DB::transaction(function () use ($original, $reason, $actorId, $balances, $tanggal): FinancialTransaction {
             // Penjaga "sudah pernah dibatalkan" hanya berarti bila tidak ada
             // reversal lain yang sedang berjalan pada baris yang sama: tanpa
             // kunci, dua permintaan paralel sama-sama membaca `posted` dan
@@ -274,11 +276,15 @@ class FinancialTransactionEngine
                     // berbeda dari kenyataan.
                     'kode_unit' => $line->kode_unit,
                     'kode_dana' => $line->kode_dana,
+                    'kode_persediaan' => $line->kode_persediaan,
+                    'kuantiti' => $line->kuantiti,
                 ];
             }
 
             $counter = $this->post($fresh->type, "Pembatalan {$fresh->transaction_number}: {$reason}", $counterLines, [
-                'date' => Carbon::now(),
+                // Tanggal pembalikan boleh ditentukan pemanggil (akrual dibalik
+                // pada tanggal baliknya, bukan pada tanggal orang menekan tombol).
+                'date' => $tanggal ?? Carbon::now(),
                 'sumber_modul' => $fresh->sumber_modul,
                 'reference_type' => $fresh->reference_type,
                 'reference_id' => $fresh->reference_id,
@@ -453,6 +459,13 @@ class FinancialTransactionEngine
                 // pemanggil lama, dan diisi/diwarisi di post().
                 'kode_unit' => $line['kode_unit'] ?? null,
                 'kode_dana' => $line['kode_dana'] ?? null,
+                // Dimensi persediaan: baris jurnal yang menggerakkan stok menyebut
+                // barang & jumlahnya, supaya kartu persediaan dan buku besar tidak
+                // dapat saling menyimpang.
+                'kode_persediaan' => $line['kode_persediaan'] ?? null,
+                'kuantiti' => isset($line['kuantiti']) && $line['kuantiti'] !== null
+                    ? \App\Support\Money::quantity($line['kuantiti'])
+                    : null,
             ];
         }
 

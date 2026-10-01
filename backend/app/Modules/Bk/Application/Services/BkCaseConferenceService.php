@@ -74,12 +74,19 @@ class BkCaseConferenceService
     {
         $this->access->assertCanViewCase($actor, $case, 'Anda tidak memiliki akses ke kasus konferensi ini.');
 
-        // Konferensi tidak boleh lebih terbuka daripada kasusnya.
+        // Konferensi tidak boleh lebih TERBUKA daripada kasusnya. `rank()` makin
+        // besar makin ketat (lihat ConfidentialityLevel::rank), sehingga yang
+        // ditolak adalah tingkat yang LEBIH KECIL — bukan lebih besar. Versi
+        // sebelumnya membandingkannya terbalik: konferensi yang lebih ketat
+        // justru ditolak, dan konferensi yang lebih terbuka lolos.
+        // Bawaannya pun mengikuti kasusnya, bukan RESTRICTED: bawaan tetap lebih
+        // longgar akan ditolak sendiri oleh aturan ini pada kasus yang rahasia.
+        $levelKasus = $case->confidentiality_level ?? ConfidentialityLevel::RESTRICTED;
         $level = isset($data['confidentiality_level'])
             ? ConfidentialityLevel::from((string) $data['confidentiality_level'])
-            : ConfidentialityLevel::RESTRICTED;
+            : $levelKasus;
 
-        if ($level->rank() > $case->confidentiality_level->rank()) {
+        if ($level->rank() < $levelKasus->rank()) {
             throw new BkValidationException([
                 'confidentiality_level' => ['Konferensi tidak boleh lebih terbuka daripada kasusnya.'],
             ]);
@@ -106,10 +113,38 @@ class BkCaseConferenceService
 
             // Peserta bawaan: tim BK yang menangani kasus. Guru/asrama tidak
             // ditambahkan otomatis — undangan adalah keputusan, bukan bawaan.
-            $defaults = [ConferenceParticipantType::COUNSELOR, ConferenceParticipantType::BK_COORDINATOR];
+            // Peserta bawaan harus PENGGUNA NYATA. Versi sebelumnya menambahkan
+            // peserta hanya dengan jenisnya (tanpa user/wali/siswa/nama pihak
+            // luar), sehingga setiap konferensi gagal dibuat dengan pesan
+            // "Peserta harus berupa pengguna, wali, siswa, atau pihak luar
+            // bernama" — konferensi tidak pernah bisa dibuat sama sekali.
+            $pesertaBawaan = [];
 
-            foreach ($defaults as $type) {
-                $this->addParticipant($actor, $conference, ['participant_type' => $type->value], silent: true);
+            if ($case->assigned_counselor_id !== null) {
+                $pesertaBawaan[] = [ConferenceParticipantType::COUNSELOR, (int) $case->assigned_counselor_id];
+            }
+
+            // Fasilitator/pengaju selalu ikut tercatat — sebagai koordinator BK
+            // bila ia memegang peran itu, selain itu sebagai konselor.
+            $peranPengaju = $actor->hasRole('BK_COORDINATOR')
+                ? ConferenceParticipantType::BK_COORDINATOR
+                : ConferenceParticipantType::COUNSELOR;
+
+            $pesertaBawaan[] = [$peranPengaju, (int) $actor->id];
+
+            $sudahAda = [];
+
+            foreach ($pesertaBawaan as [$type, $userId]) {
+                if (isset($sudahAda[$userId])) {
+                    continue;
+                }
+
+                $sudahAda[$userId] = true;
+
+                $this->addParticipant($actor, $conference, [
+                    'participant_type' => $type->value,
+                    'user_id' => $userId,
+                ], silent: true);
             }
 
             foreach (($data['participants'] ?? []) as $participant) {
@@ -444,17 +479,34 @@ class BkCaseConferenceService
             return true;
         }
 
+        // Peserta diperiksa pada ketiga bentuk keanggotaan: pengguna, siswa, dan
+        // wali. Sebelumnya wali tidak pernah cocok dengan baris pesertanya
+        // sendiri (barisnya memakai guardian_id, bukan user_id).
+        $studentId = $this->access->studentIdForUser($actor);
+        $guardianId = method_exists($this->access, 'guardianIdForUser')
+            ? $this->access->guardianIdForUser($actor)
+            : null;
+
         $isParticipant = $conference->participants()
-            ->where(fn ($query) => $query->where('user_id', $actor->id)->orWhere('student_id', $this->access->studentIdForUser($actor)))
+            ->where(function ($query) use ($actor, $studentId, $guardianId): void {
+                $query->where('user_id', $actor->id);
+
+                if ($studentId !== null) {
+                    $query->orWhere('student_id', $studentId);
+                }
+
+                if ($guardianId !== null) {
+                    $query->orWhere('guardian_id', $guardianId);
+                }
+            })
             ->exists();
 
-        if ($isParticipant) {
-            return true;
-        }
-
-        $case = $conference->case;
-
-        return $case !== null && $this->access->canViewCase($actor, $case);
+        // Selain tim BK, HANYA peserta yang boleh membuka konferensi. Versi
+        // sebelumnya juga membuka konferensi bagi siapa pun yang boleh melihat
+        // kasusnya, sehingga wali yang tidak diundang dapat membaca konferensi
+        // internal anaknya — rapat yang pesertanya ditentukan justru menjadi
+        // terbuka bagi seluruh pihak yang punya akses kasus.
+        return $isParticipant;
     }
 
     public function assertCanView(User $actor, BkCaseConference $conference): void

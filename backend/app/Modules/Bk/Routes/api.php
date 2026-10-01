@@ -122,6 +122,9 @@ Route::middleware(['auth:sanctum', 'throttle:bk-module'])->prefix('bk')->group(f
         ->middleware('permission:bk.assessment.assign')->name('bk.cases.assessments.store');
     Route::get('cases/{case}/sessions', [BkCaseRecordController::class, 'sessions'])
         ->middleware('permission:bk.session.view')->name('bk.cases.sessions.index');
+    Route::get('sessions/{session}', [BkCaseRecordController::class, 'showSession'])
+        ->whereNumber('session')
+        ->name('bk.sessions.show');
     Route::post('cases/{case}/sessions', [BkCaseRecordController::class, 'storeSession'])
         ->middleware('permission:bk.session.manage')->name('bk.cases.sessions.store');
     Route::get('cases/{case}/plans', [BkCaseRecordController::class, 'plans'])
@@ -233,9 +236,16 @@ Route::middleware(['auth:sanctum', 'throttle:bk-module'])->prefix('bk')->group(f
     | hanya menyaring pemanggil yang sudah pasti tidak berhak, sehingga kesalahan
     | izin terlihat lebih awal dan jejaknya lebih rapi.
     */
+    // Membaca konferensi TIDAK dijaga izin modul, melainkan keikutsertaan:
+    // daftar disaring per aktor (wali menerima daftar kosong) dan rincian hanya
+    // untuk peserta serta tim BK. Izin modul tetap menjaga penulisan di bawah.
+    // Sebelumnya keduanya berada di balik `bk.conference.view`, sehingga peserta
+    // yang sah — wali yang diundang, kepala sekolah yang hadir — menerima 403
+    // atas rapat yang justru mengundangnya.
+    Route::get('conferences', [BkConferenceController::class, 'index'])->middleware('throttle:bk-module');
+    Route::get('conferences/{id}', [BkConferenceController::class, 'show'])->whereNumber('id')->middleware('throttle:bk-module');
+
     Route::middleware('permission:bk.conference.view')->group(function (): void {
-        Route::get('conferences', [BkConferenceController::class, 'index'])->middleware('throttle:bk-module');
-        Route::get('conferences/{id}', [BkConferenceController::class, 'show'])->whereNumber('id')->middleware('throttle:bk-module');
         Route::get('cases/{id}/conference', [BkConferenceController::class, 'index'])->whereNumber('id')->middleware('throttle:bk-module');
     });
 

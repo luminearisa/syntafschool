@@ -100,6 +100,9 @@ class RolePermissionSeeder extends Seeder
             'closing.view', 'closing.manage',
             // Persetujuan yang tidak boleh dilakukan orang yang sama dengan pengaju:
             'closing.approve', 'journal.approve',
+            // Aset tetap, penyusutan, akrual, dan persediaan bermuara jurnal.
+            'asset.view', 'asset.manage', 'depreciation.view', 'depreciation.post',
+            'accrual.view', 'accrual.manage', 'inventory.post',
             // Laporan, konfigurasi.
             'report.view', 'report.export',
             // Otomasi & observability (§28, §29). Membaca register pekerjaan/kegagalan
@@ -530,6 +533,8 @@ class RolePermissionSeeder extends Seeder
             }
         }
 
+        $this->grantStandardAccountingPermissions();
+
         // Buat role & assign permission
         foreach ($this->roles as $roleName => $scopes) {
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
@@ -569,6 +574,46 @@ class RolePermissionSeeder extends Seeder
      * verifikasi dokumen, jadwalkan seleksi) tanpa hak hapus.
      * Bendahara memverifikasi pembayaran; kepala sekolah hanya melihat laporan.
      */
+    /**
+     * Izin akuntansi standar (aset, penyusutan, akrual, persediaan) diberikan
+     * mengikuti izin "saudaranya" yang sudah ada, bukan lewat daftar peran baru:
+     * siapa pun yang selama ini boleh mengelola COA juga boleh mengelola aset,
+     * dan siapa pun yang boleh melihat COA boleh melihatnya. Dengan begitu tidak
+     * ada peran yang tiba-tiba kehilangan akses, dan tidak ada pula yang mendapat
+     * akses baru di luar lingkupnya.
+     */
+    protected function grantStandardAccountingPermissions(): void
+    {
+        $peta = [
+            'finance.asset.view' => 'finance.account.view',
+            'finance.depreciation.view' => 'finance.account.view',
+            'finance.accrual.view' => 'finance.account.view',
+            'finance.asset.manage' => 'finance.account.manage',
+            'finance.depreciation.post' => 'finance.account.manage',
+            'finance.accrual.manage' => 'finance.account.manage',
+            'finance.inventory.post' => 'finance.account.manage',
+            // Persetujuan tidak diwariskan dari pencatat: yang boleh menyetujui
+            // adalah pemegang izin persetujuan lain (manajer/direktur).
+            'finance.closing.approve' => 'finance.budget.approve',
+            'finance.journal.approve' => 'finance.adjustment.approve',
+        ];
+
+        foreach ($peta as $baru => $saudara) {
+            $izin = Permission::firstOrCreate(['name' => $baru, 'guard_name' => 'web']);
+            $asli = Permission::query()->where('name', $saudara)->where('guard_name', 'web')->first();
+
+            if ($asli === null) {
+                continue;
+            }
+
+            foreach (Role::query()->whereHas('permissions', fn ($q) => $q->where('name', $saudara))->get() as $role) {
+                if (! $role->hasPermissionTo($baru)) {
+                    $role->givePermissionTo($izin);
+                }
+            }
+        }
+    }
+
     protected function grantPpdbPermissions(): void
     {
         $role = Role::firstOrCreate(['name' => 'panitia-ppdb', 'guard_name' => 'web']);

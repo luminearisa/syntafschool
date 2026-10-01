@@ -1582,3 +1582,69 @@ Menyelaraskan akuntansi proyek ini dengan standar pada
 - [x] **`EscalationLevel`/`PlanStatus` (BK)** — catatan lintas modul: pola yang sama (nilai enum yang
       tidak ada) pernah membuat fitur tidak pernah berjalan; kini setiap nilai enum yang dipakai
       seeder & layanan dipastikan ada
+
+## Modul Finance — implementasi penuh standar akuntansi (2026-12-16)
+
+Melanjutkan penyelarasan dengan standar al-wafi: **seluruh** modul standar diimplementasikan dan
+**seluruh** endpoint diuji.
+
+### Modul yang ditambahkan
+
+- [x] **Aset tetap & penyusutan** (`finance_assets`, `finance_asset_depreciations`, `AssetService`,
+      `DepreciationService`): garis lurus & saldo menurun, penyusutan per periode (idempoten lewat kunci
+      basis data), `preview()` sebelum menjalankan, pelepasan aset dengan satu jurnal penutup
+- [x] **Akrual** (`finance_accruals`, `AccrualService`): pembalikan otomatis pada tanggal balik,
+      sisi akun divalidasi menurut jenis, `reverse()` kini dapat bertanggal
+- [x] **Persediaan bermuara jurnal** (`InventoryLedgerService`, kolom `kode_persediaan` & `kuantiti`
+      pada baris jurnal): satu transaksi menghasilkan satu jurnal + satu pergerakan stok, stok terkunci
+      (`lockForUpdate`) sehingga tidak dapat minus
+- [x] **Seeder data awal** (`FinanceStandardSeeder`): unit YAYASAN/SEKOLAH/ASRAMA/KOPERASI, pemetaan unit
+      bawaan 12 modul, dana bebas, dan unit penampung
+- [x] **9 izin baru** yang diberikan mengikuti izin "saudaranya" (aset, penyusutan, akrual, persediaan,
+      persetujuan tutup buku & void jurnal)
+
+### Uji
+
+- [x] `FinanceStandardApiTest` — **11 tes, 171 asersi**: seluruh endpoint baru diuji lewat HTTP
+      (unit bisnis, dana, saldo awal, permohonan buka periode & void, laporan, aset & penyusutan, akrual,
+      persediaan), termasuk penolakan 403 untuk pengguna tanpa izin dan 422 untuk permintaan cacat
+- [x] `FinanceAccountingStandardTest` (12 tes, 93 asersi) dan `FinanceAccountingE2ETest` (10 tes,
+      277 asersi) tetap hijau → **33 tes, 541 asersi** untuk modul Finance
+- [x] Verifikasi peramban 7 layar baru pada desktop & seluler; memperbaiki kontras header tabel
+      (3,82:1 → 5,32:1, berlaku seluruh aplikasi) dan tombol ikon tanpa `aria-label`
+
+### Perbaikan modul BK (12 kegagalan fase 2 → 0)
+
+Suite BK kini **69 tes, 285 asersi, HIJAU**. Akar masalahnya bukan satu, melainkan tujuh:
+
+- [x] **23 tabel BK tidak punya kolom `school_id`** padahal 41 modelnya memakai `BelongsToSchool` yang
+      mengisinya saat baris dibuat → begitu penyaringan unit menyala, pembuatan rekaman gagal
+      ("no column named school_id"). Migrasi baru menambahkan kolomnya (nullable, ber-FK, ber-indeks)
+- [x] **5 tabel BK memakai `SoftDeletes` tanpa kolom `deleted_at`** → setiap kueri gagal
+      ("no such column: … deleted_at"); kolomnya ditambahkan
+- [x] **`bk_audit_logs` tidak punya kolom `granted`** — keputusan ditolak/diberikan hanya tersimpan di
+      dalam JSON `context`, sehingga penolakan tidak dapat disaring maupun dihitung; kini kolom tersendiri
+- [x] **Konferensi tidak pernah bisa dibuat**: peserta bawaan ditambahkan hanya dengan jenisnya, tanpa
+      pengguna/wali/siswa → `addParticipant` menolaknya. Peserta bawaan sekarang pengguna nyata
+      (konselor penanggung jawab + pengaju), tanpa duplikat
+- [x] **Perbandingan kerahasiaan konferensi terbalik**: konferensi yang lebih ketat daripada kasusnya
+      justru ditolak, dan yang lebih terbuka lolos. Kini ditolak bila lebih TERBUKA, dan bawaannya
+      mengikuti tingkat kasusnya
+- [x] **Wali melihat seluruh konferensi anaknya** (termasuk rapat internal), dan daftar konferensi dijaga
+      izin modul sehingga peserta yang sah menerima 403. Kini daftar disaring menurut keikutsertaan
+      (wali menerima daftar kosong), dan rincian hanya untuk peserta serta tim BK
+- [x] **Penolakan tidak meninggalkan jejak audit** pada jalur policy → kini dicatat
+      (`VIEW_CONFIDENTIAL`, `granted = false`); endpoint rincian sesi konseling juga ditambahkan —
+      sebelumnya permintaan atas sesi menjawab 404, bukan 403
+- [x] **Early warning tidak pernah mencatat COOLDOWN**: operator `+` pada array membuat kunci cooldown
+      tertimpa kunci tindakan, sehingga jejak "kenapa tidak ada peringatan kedua?" hilang; kini
+      `array_merge` dan baris cooldown tidak dihitung sebagai kecocokan baru
+- [x] **`approveDisposal()` mengembalikan baris permintaan, bukan baris keputusan** → pemeriksa hasil
+      tidak pernah melihat keputusannya
+- [x] **Izin fase 2 tidak disemai di basis uji** sehingga peran yang seharusnya berwenang ditolak;
+      basis uji fase 2 kini menyemainya
+
+### Masih berjalan
+
+- [ ] Suite backend **penuh** (1.718 tes) sedang dijalankan di latar belakang; hasil akhirnya dicatat
+      pada pesan berikutnya. Modul yang sudah diverifikasi sendiri: Finance 33/33, BK 69/69.

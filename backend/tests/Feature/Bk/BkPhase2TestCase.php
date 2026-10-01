@@ -19,6 +19,16 @@ use App\Models\User;
  */
 abstract class BkPhase2TestCase extends BkTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Izin BK fase 2 wajib ada di basis uji: tanpa itu, pemeriksaan izin
+        // menolak bahkan peran yang seharusnya berwenang (mis. koordinator BK
+        // yang mengespor kasus), dan uji gagal karena sebab yang salah.
+        $this->seed(\App\Modules\Bk\Database\Seeders\BkPhase2PermissionSeeder::class);
+    }
+
     protected function makeSchool(string $name): School
     {
         return School::query()->create([

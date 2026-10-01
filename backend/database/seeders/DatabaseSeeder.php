@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(FinanceStandardSeeder::class);
         $this->call([
             // --- Fondasi referensi -------------------------------------
             RolePermissionSeeder::class,

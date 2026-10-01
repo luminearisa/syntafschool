@@ -18,9 +18,25 @@ class BkCasePolicy
     {
     }
 
+    /**
+     * Boleh melihat kasus.
+     *
+     * Penolakan DICATAT pada jejak audit — tindakan yang ditolak pun harus
+     * terlihat saat diperiksa. Tanpa itu, permintaan yang ditolak policy tidak
+     * meninggalkan jejak apa pun, padahal justru itulah yang dicari pemeriksa.
+     */
     public function view(User $user, BkCase $model): bool
     {
-        return $this->access->canViewCase($user, $model);
+        if ($this->access->canViewCase($user, $model)) {
+            return true;
+        }
+
+        $level = $model->confidentiality_level ?? \App\Modules\Bk\Domain\Enums\ConfidentialityLevel::RESTRICTED;
+
+        app(\App\Modules\Bk\Application\Services\BkAuditService::class)
+            ->logAccess($user, $level->isCounselorOnly() ? 'VIEW_CONFIDENTIAL' : 'VIEW', $model, false, 'Ditolak policy kasus.');
+
+        return false;
     }
 
     public function viewConfidential(User $user, BkCase $model): bool

@@ -87,6 +87,10 @@ class BkAuditService
             'confidentiality_level' => $this->subjectLevel($subject)?->value,
             'access_reason' => $reason,
             'changes' => null,
+            // Ditulis sebagai KOLOM, bukan hanya di dalam konteks JSON: tanpa itu
+            // penolakan tidak dapat disaring/dihitung, dan uji pun tidak dapat
+            // membuktikan bahwa penolakan benar-benar tercatat.
+            'granted' => $granted,
             'context' => $this->requestContext() + ['granted' => $granted],
             'occurred_at' => now(),
         ]);

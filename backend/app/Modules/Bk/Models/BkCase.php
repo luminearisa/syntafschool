@@ -191,4 +191,5 @@ class BkCase extends BkModel
     {
         return $query->where('student_id', $studentId);
     }
+
 }

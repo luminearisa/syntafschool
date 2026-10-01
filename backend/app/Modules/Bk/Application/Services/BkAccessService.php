@@ -279,14 +279,20 @@ class BkAccessService
 
     public function assertCanViewCase(User $user, BkCase $case, ?string $reason = null): void
     {
+        // Penolakan atas rekaman rahasia dicatat sebagai VIEW_CONFIDENTIAL, bukan
+        // VIEW: jejak audit harus menunjukkan bahwa yang ditolak adalah data
+        // rahasia — informasi yang menentukan saat kejadian itu diperiksa.
+        $level = $case->confidentiality_level ?? \App\Modules\Bk\Domain\Enums\ConfidentialityLevel::RESTRICTED;
+        $aksi = $level->isCounselorOnly() ? 'VIEW_CONFIDENTIAL' : 'VIEW';
+
         if (! $this->canViewCase($user, $case)) {
-            $this->audit->logAccess($user, 'VIEW', $case, false, $reason);
+            $this->audit->logAccess($user, $aksi, $case, false, $reason);
 
             throw new AccessDeniedHttpException('Anda tidak memiliki akses ke kasus ini.');
         }
 
-        if ($case->confidentiality_level->isCounselorOnly() && ! $this->canViewCounselingContent($user, $case)) {
-            $this->audit->logAccess($user, 'VIEW', $case, false, $reason);
+        if ($level->isCounselorOnly() && ! $this->canViewCounselingContent($user, $case)) {
+            $this->audit->logAccess($user, 'VIEW_CONFIDENTIAL', $case, false, $reason);
 
             throw new AccessDeniedHttpException('Kasus ini bersifat konseling rahasia.');
         }
@@ -476,18 +482,23 @@ class BkAccessService
         }
 
         $studentId = $this->studentIdForUser($user);
+        $guardianIds = \App\Models\Guardian::query()->where('user_id', $user->id)->pluck('id')->all();
 
-        return $query->where(function (Builder $inner) use ($user, $studentId): void {
-            $inner->whereHas('participants', function (Builder $participant) use ($user, $studentId): void {
-                $participant->where('user_id', $user->id);
+        // Wali dan siswa hanya melihat konferensi yang MENGUNDANG mereka.
+        //
+        // Versi sebelumnya menambahkan `orWhere('student_id', anak)` untuk wali,
+        // sehingga setiap konferensi internal anaknya — rapat yang pesertanya
+        // ditentukan dengan sengaja — terbaca oleh wali yang tidak diundang.
+        // Undangan tidak boleh disamakan dengan hubungan keluarga.
+        return $query->whereHas('participants', function (Builder $participant) use ($user, $studentId, $guardianIds): void {
+            $participant->where('user_id', $user->id);
 
-                if ($studentId !== null) {
-                    $participant->orWhere('student_id', $studentId);
-                }
-            });
+            if ($studentId !== null) {
+                $participant->orWhere('student_id', $studentId);
+            }
 
-            foreach ($this->guardianStudentIds($user) as $guardianStudentId) {
-                $inner->orWhere('student_id', $guardianStudentId);
+            if ($guardianIds !== []) {
+                $participant->orWhereIn('guardian_id', $guardianIds);
             }
         });
     }

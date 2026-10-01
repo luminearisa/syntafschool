@@ -80,4 +80,21 @@ class BkCounselingSession extends BkModel
     {
         return $query->where('status', 'COMPLETED');
     }
+
+    /**
+     * Alias `counselor_user_id` → kolom kanonik `counselor_id`.
+     *
+     * Sesi konseling menyebut konselornya sebagai pengguna, dan sebagian
+     * pemanggil menuliskan nama kolom itu apa adanya (`counselor_user_id`,
+     * seperti pada modul karier & beban kerja) alih-alih `counselor_id`.
+     * Alih-alih menambah kolom kedua yang bisa saling bertentangan, alias ini
+     * memetakannya ke kolom kanonik — sehingga tidak pernah ada dua jawaban atas
+     * pertanyaan "siapa konselor sesi ini?".
+     */
+    public function setCounselorUserIdAttribute(mixed $value): void
+    {
+        if ($value !== null && empty($this->attributes['counselor_id'])) {
+            $this->attributes['counselor_id'] = (int) $value;
+        }
+    }
 }

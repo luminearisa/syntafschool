@@ -49,6 +49,10 @@ use App\Http\Controllers\Api\Finance\FinanceJournalVoidController;
 use App\Http\Controllers\Api\Finance\FinanceOpeningBalanceController;
 use App\Http\Controllers\Api\Finance\FinancePeriodReopenController;
 use App\Http\Controllers\Api\Finance\FinanceStandardReportController;
+use App\Http\Controllers\Api\Finance\FinanceAccrualController;
+use App\Http\Controllers\Api\Finance\FinanceAssetController;
+use App\Http\Controllers\Api\Finance\FinanceDepreciationController;
+use App\Http\Controllers\Api\Finance\FinanceInventoryLedgerController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -648,6 +652,19 @@ Route::prefix('finance')->name('finance.')->group(function (): void {
     // ---------------- Laporan keuangan + CSV (§67, §68) ---------------
     // `reports/kinds` harus terdaftar sebelum `reports/{kind}` agar tidak
     // tertangkap sebagai parameter jenis laporan.
+    // Rute laporan BERNAMA HURUF TETAP wajib didaftarkan sebelum pola
+    // `reports/{kind}` di bawah: Laravel mencocokkan rute menurut urutan
+    // pendaftaran, sehingga laporan yang didaftarkan setelahnya tidak pernah
+    // tercapai dan menjawab 404.
+    Route::get('reports/trial-balance', [FinanceStandardReportController::class, 'trialBalance'])
+        ->middleware('permission:finance.report.view')->name('reports.trial-balance');
+    Route::get('reports/profit-loss-by-unit', [FinanceStandardReportController::class, 'profitLossByUnit'])
+        ->middleware('permission:finance.report.view')->name('reports.profit-loss-by-unit');
+    Route::get('reports/fund-statement', [FinanceStandardReportController::class, 'fundStatement'])
+        ->middleware('permission:finance.report.view')->name('reports.fund-statement');
+    Route::get('reports/modules', [FinanceStandardReportController::class, 'modules'])
+        ->middleware('permission:finance.report.view')->name('reports.modules');
+
     Route::get('reports/kinds', [FinanceReportController::class, 'kinds'])
         ->middleware('permission:finance.report.view')->name('reports.kinds');
     Route::get('reports/{kind}', [FinanceReportController::class, 'show'])
@@ -752,13 +769,40 @@ Route::prefix('finance')->name('finance.')->group(function (): void {
     Route::post('journal-void-requests/{id}/decide', [FinanceJournalVoidController::class, 'decide'])
         ->middleware('permission:finance.journal.approve')->name('journal-void.decide');
 
-    Route::get('reports/trial-balance', [FinanceStandardReportController::class, 'trialBalance'])
-        ->middleware('permission:finance.report.view')->name('reports.trial-balance');
-    Route::get('reports/profit-loss-by-unit', [FinanceStandardReportController::class, 'profitLossByUnit'])
-        ->middleware('permission:finance.report.view')->name('reports.profit-loss-by-unit');
-    Route::get('reports/fund-statement', [FinanceStandardReportController::class, 'fundStatement'])
-        ->middleware('permission:finance.report.view')->name('reports.fund-statement');
-    Route::get('reports/modules', [FinanceStandardReportController::class, 'modules'])
-        ->middleware('permission:finance.report.view')->name('reports.modules');
+
+    // --------------------------------------------------- aset tetap & penyusutan
+    Route::get('assets', [FinanceAssetController::class, 'index'])
+        ->middleware('permission:finance.asset.view')->name('assets.index');
+    Route::post('assets', [FinanceAssetController::class, 'store'])
+        ->middleware('permission:finance.asset.manage')->name('assets.store');
+    Route::get('assets/{id}', [FinanceAssetController::class, 'show'])
+        ->middleware('permission:finance.asset.view')->name('assets.show');
+    Route::patch('assets/{id}', [FinanceAssetController::class, 'update'])
+        ->middleware('permission:finance.asset.manage')->name('assets.update');
+    Route::post('assets/{id}/dispose', [FinanceAssetController::class, 'dispose'])
+        ->middleware('permission:finance.asset.manage')->name('assets.dispose');
+
+    Route::get('depreciations/preview', [FinanceDepreciationController::class, 'preview'])
+        ->middleware('permission:finance.depreciation.view')->name('depreciations.preview');
+    Route::post('depreciations/run', [FinanceDepreciationController::class, 'run'])
+        ->middleware('permission:finance.depreciation.post')->name('depreciations.run');
+
+    // ------------------------------------------------------------------- akrual
+    Route::get('accruals', [FinanceAccrualController::class, 'index'])
+        ->middleware('permission:finance.accrual.view')->name('accruals.index');
+    Route::post('accruals', [FinanceAccrualController::class, 'store'])
+        ->middleware('permission:finance.accrual.manage')->name('accruals.store');
+    Route::patch('accruals/{id}', [FinanceAccrualController::class, 'update'])
+        ->middleware('permission:finance.accrual.manage')->name('accruals.update');
+    Route::post('accruals/{id}/post', [FinanceAccrualController::class, 'post'])
+        ->middleware('permission:finance.accrual.manage')->name('accruals.post');
+    Route::post('accruals/reverse-due', [FinanceAccrualController::class, 'reverseDue'])
+        ->middleware('permission:finance.accrual.manage')->name('accruals.reverse-due');
+
+    // ------------------------------------------------- persediaan bermuara jurnal
+    Route::post('inventory/items/{item}/masuk', [FinanceInventoryLedgerController::class, 'masuk'])
+        ->middleware('permission:finance.inventory.post')->name('inventory.masuk');
+    Route::post('inventory/items/{item}/keluar', [FinanceInventoryLedgerController::class, 'keluar'])
+        ->middleware('permission:finance.inventory.post')->name('inventory.keluar');
 
 });
