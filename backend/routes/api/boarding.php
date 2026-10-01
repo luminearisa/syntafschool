@@ -382,6 +382,10 @@ Route::prefix('boarding')->name('boarding.')->group(function (): void {
         Route::get('children/{student}/permissions', [BoardingPortalController::class, 'permissions'])->name('children.permissions');
         Route::get('children/{student}/homecomings', [BoardingPortalController::class, 'homecomings'])->name('children.homecomings');
         Route::get('children/{student}/visitors', [BoardingPortalController::class, 'visitors'])->name('children.visitors');
+        Route::post('children/{student}/permissions', [BoardingPortalController::class, 'storePermission'])->middleware('throttle:20,1')->name('children.permissions.store');
+        Route::post('children/{student}/permissions/{permission}/cancel', [BoardingPortalController::class, 'cancelPermission'])->name('children.permissions.cancel');
+        Route::post('children/{student}/homecomings', [BoardingPortalController::class, 'storeHomecoming'])->middleware('throttle:20,1')->name('children.homecomings.store');
+        Route::post('children/{student}/homecomings/{homecoming}/cancel', [BoardingPortalController::class, 'cancelHomecoming'])->name('children.homecomings.cancel');
     });
 
     // ---------------- Pengaturan ------------------------------------------

@@ -1737,3 +1737,9 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [x] Backend: FK `recorded_by`, pagar kepemilikan siswa, batas kewenangan guru, hak Workflow/Aset pegawai — lihat [docs/24](./24-MOBILE-FASE-1.md)
 - [ ] Supervisi; ajukan cuti; pemindai kamera
 - [ ] Tes backend `MobilePhase1Test` + `MobileContextTest` **belum dijalankan** (PHP 8.3 di sandbox; Laravel 13 butuh 8.4)
+
+### Mobile — Fase 2 (wali murid)
+- [x] Keuangan lengkap + bayar online (default mati; perlu `portal_payment_enabled` & rekening tujuan), Asrama + pengajuan izin/kepulangan, Tahfiz, Ekskul + persetujuan, Kesehatan, Konseling BK, Dompet + top up gateway
+- [x] Backend: endpoint bayar portal, pengajuan asrama oleh orang tua, portal dompet; detail: [docs/25](./25-MOBILE-FASE-2.md)
+- [ ] UKS untuk wali, top up manual (unggah bukti), Resource khusus portal BK/Keuangan
+- [ ] Tes `MobilePhase2Test` belum dijalankan (PHP 8.3 di sandbox)

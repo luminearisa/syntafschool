@@ -48,12 +48,15 @@ export const FEATURES: Feature[] = [
   { key: 'supervisi', title: 'Supervisi', hint: 'Kunjungan & tindak lanjut', icon: 'eye', tint: '#116149', category: 'Pekerjaan', roles: e, phase: 1 },
 
   // ---- Fase 2: wali ----
-  { key: 'asrama', title: 'Asrama', hint: 'Poin, izin, kepulangan', icon: 'bed', tint: '#2F6FB2', category: 'Kesiswaan', roles: g, phase: 2 },
-  { key: 'tahfiz', title: 'Tahfiz', hint: 'Setoran & capaian', icon: 'moon', tint: '#116149', category: 'Belajar', roles: [...g, ...s, ...e], phase: 2 },
-  { key: 'aktivitas', title: 'Ekstrakurikuler', hint: 'Kegiatan, prestasi, izin', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: all, phase: 2 },
-  { key: 'kesehatan', title: 'Kesehatan', hint: 'Klinik & UKS', icon: 'medkit', tint: '#C8423B', category: 'Kesehatan & Konseling', roles: all, phase: 2 },
-  { key: 'bk', title: 'Konseling', hint: 'Bimbingan & konseling', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: all, phase: 2 },
-  { key: 'dompet', title: 'Dompet', hint: 'Saldo & top-up', icon: 'card', tint: '#B8892B', category: 'Keuangan', roles: [...g, ...s], phase: 2 },
+  { key: 'asrama', title: 'Asrama', hint: 'Poin, izin, kepulangan', icon: 'bed', tint: '#2F6FB2', category: 'Kesiswaan', roles: g, route: '/asrama' },
+  { key: 'tahfiz', title: 'Tahfiz', hint: 'Setoran & capaian', icon: 'moon', tint: '#116149', category: 'Belajar', roles: g, route: '/tahfiz' },
+  { key: 'tahfiz-lain', title: 'Tahfiz', hint: 'Setoran & capaian', icon: 'moon', tint: '#116149', category: 'Belajar', roles: [...s, ...e], phase: 3 },
+  { key: 'aktivitas', title: 'Ekstrakurikuler', hint: 'Kegiatan, prestasi, izin', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: g, route: '/ekskul' },
+  { key: 'aktivitas-lain', title: 'Ekstrakurikuler', hint: 'Kegiatan & prestasi', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: [...s, ...e], phase: 3 },
+  { key: 'kesehatan', title: 'Kesehatan', hint: 'Klinik sekolah', icon: 'medkit', tint: '#C8423B', category: 'Kesehatan & Konseling', roles: gs, route: '/kesehatan' },
+  { key: 'bk', title: 'Konseling', hint: 'Bimbingan & konseling', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: gs, route: '/konseling' },
+  { key: 'bk-staf', title: 'Konseling', hint: 'Kasus & janji temu', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: e, phase: 3 },
+  { key: 'dompet', title: 'Dompet', hint: 'Saldo & top-up', icon: 'card', tint: '#B8892B', category: 'Keuangan', roles: gs, route: '/dompet' },
 
   // ---- Fase 3: siswa ----
   { key: 'lms', title: 'Kelas Digital', hint: 'Materi, kuis, forum', icon: 'laptop', tint: '#2F6FB2', category: 'Belajar', roles: [...s, ...g], phase: 3 },

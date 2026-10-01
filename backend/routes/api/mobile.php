@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Mobile\MobileController;
+use App\Http\Controllers\Api\Mobile\MobileWalletController;
 use Illuminate\Support\Facades\Route;
 
 // Aplikasi mobile — wali murid · siswa · pegawai. Dibatasi KONTEKS token
@@ -21,6 +22,9 @@ Route::prefix('mobile')->name('mobile.')->group(function (): void {
         Route::get('children/{student}/schedule', [MobileController::class, 'schedule'])->name('children.schedule');
         Route::get('children/{student}/finance', [MobileController::class, 'finance'])->name('children.finance');
         Route::get('children/{student}/boarding', [MobileController::class, 'boarding'])->name('children.boarding');
+        Route::get('children/{student}/wallet', [MobileWalletController::class, 'show'])->name('children.wallet');
+        Route::post('children/{student}/wallet/topups', [MobileWalletController::class, 'topup'])
+            ->middleware('throttle:10,1')->name('children.wallet.topup');
     });
 
     // Pegawai

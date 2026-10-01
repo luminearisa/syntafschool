@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, TextInputProps, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import dayjs from 'dayjs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '@/theme';
 
@@ -71,3 +72,24 @@ export function Kv({ k, v }: { k: string; v?: string | number | null }) {
     </View>
   );
 }
+
+/** Isian tanggal (dan jam) dengan pintasan hari — tanpa pustaka picker agar ringan & sama di web. */
+export function DateField({ label, value, onChange, withTime = false, hint }: { label: string; value: string; onChange: (v: string) => void; withTime?: boolean; hint?: string }) {
+  const base = (d: number) => dayjs().add(d, 'day').format('YYYY-MM-DD');
+  const time = withTime ? (value.split(' ')[1] ?? '08:00') : '';
+  const set = (d: number) => onChange(withTime ? `${base(d)} ${time}` : base(d));
+  return (
+    <View style={{ gap: 6 }}>
+      <TextArea label={label} value={value} onChangeText={onChange} multiline={false} placeholder={withTime ? 'TTTT-BB-HH JJ:MM' : 'TTTT-BB-HH'} hint={hint} autoCapitalize="none" />
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+        {[['Hari ini', 0], ['Besok', 1], ['Lusa', 2], ['+7 hari', 7]].map(([l, d]) => (
+          <Pressable key={String(l)} onPress={() => set(d as number)} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: colors.primarySoft }}>
+            <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.primary }}>{l}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export const isDate = (v: string, withTime = false) => (withTime ? /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/ : /^\d{4}-\d{2}-\d{2}$/).test(v) && dayjs(v).isValid();

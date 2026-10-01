@@ -8,6 +8,7 @@ use App\Http\Resources\FinancePaymentPlanResource;
 use App\Http\Resources\FinancePaymentResource;
 use App\Http\Resources\FinanceReceiptResource;
 use App\Http\Resources\FinanceReRegistrationResource;
+use App\Models\FinanceBankAccount;
 use App\Models\FinanceInvoice;
 use App\Models\FinancePayment;
 use App\Models\FinanceReceipt;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Portal orang tua Keuangan (§9) — HANYA BACA.
@@ -77,7 +79,7 @@ class FinancePortalController extends BaseApiController
         $month = $this->month($request);
 
         $query = FinanceInvoice::query()
-            ->with(['student:id,full_name,nis', 'billing', 'costCenter'])
+            ->with(['student:id,full_name,nis', 'billing', 'costCenter', 'items.feeType'])
             ->withCount('items')
             ->where('student_id', $childId)
             ->when($request->filled('status'), fn (Builder $q) => $q->where('status', $request->string('status')))
@@ -177,6 +179,104 @@ class FinancePortalController extends BaseApiController
             ['summary' => $this->receivables->summary(['student_id' => $childId])],
             'Daftar piutang anak berhasil diambil',
         );
+    }
+
+    /**
+     * Bayar tagihan anak lewat payment gateway (aplikasi orang tua).
+     *
+     * Aturan yang ditegakkan di sini — selebihnya (alokasi, jurnal, kuitansi)
+     * tetap dilakukan FinancePaymentService/FinanceGatewayService yang sama dengan
+     * jalur kasir:
+     *  1. Kepemilikan: invoice harus milik anak akun ini (404 bila bukan).
+     *  2. Fitur harus diaktifkan sekolah (`portal_payment_enabled`) dan punya
+     *     rekening tujuan (`portal_payment_bank_account_id`) — bawaannya mati.
+     *  3. Hanya invoice berjalan dengan sisa > 0; nominal ≤ sisa (default: sisa).
+     *  4. Satu pembayaran online yang masih menunggu per invoice per orang tua:
+     *     tanpa ini setiap ketukan menumpuk `pending` yang menggantung.
+     *  5. `Idempotency-Key` dari klien → ulang jaringan tidak membuat dua pembayaran.
+     *  6. Bila kanal gateway gagal dibuka, pembayaran yang baru lahir ditolak
+     *     (bukan dibiarkan `pending` menunggu verifikasi petugas yang tak berarti).
+     */
+    public function pay(Request $request, Student $student, FinanceInvoice $invoice): JsonResponse
+    {
+        $childId = $this->portal->assertChild($request->user(), $student->id);
+
+        abort_unless((int) $invoice->student_id === $childId, 404, 'Tagihan tidak ditemukan pada akun Anda.');
+
+        $settings = app(\App\Services\Finance\FinanceSettingsService::class);
+        $bankId = (int) $settings->get('portal_payment_bank_account_id', 0);
+
+        if (! (bool) $settings->get('portal_payment_enabled', false) || $bankId <= 0
+            || ! FinanceBankAccount::query()->whereKey($bankId)->exists()) {
+            throw ValidationException::withMessages(['payment' => 'Pembayaran online belum diaktifkan oleh sekolah. Silakan bayar melalui kasir atau transfer ke rekening sekolah.']);
+        }
+
+        if (! in_array($invoice->status, \App\Services\Finance\FinancePortalService::OUTSTANDING_STATUSES, true)
+            || (float) $invoice->remaining_amount <= 0.0001) {
+            throw ValidationException::withMessages(['invoice' => 'Tagihan ini tidak memiliki sisa yang harus dibayar.']);
+        }
+
+        $remaining = round((float) $invoice->remaining_amount, 2);
+        $requested = $request->validate(['amount' => ['nullable', 'numeric', 'min:1']])['amount'] ?? null;
+        $amount = round($requested === null ? $remaining : (float) $requested, 2);
+
+        if ($amount > $remaining + 0.0001) {
+            throw ValidationException::withMessages(['amount' => 'Nominal melebihi sisa tagihan (Rp '.number_format($remaining, 0, ',', '.').').']);
+        }
+
+        $key = $request->header('Idempotency-Key') ?: $request->input('idempotency_key');
+        $key = is_string($key) && $key !== '' ? 'portal-'.$key : null;
+
+        $waiting = FinancePayment::query()
+            ->where('invoice_id', $invoice->id)
+            ->where('created_by', $request->user()->id)
+            ->where('status', FinancePayment::STATUS_PENDING)
+            ->where('method', FinancePayment::METHOD_GATEWAY)
+            ->where(fn (Builder $q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->when($key !== null, fn (Builder $q) => $q->where(fn (Builder $k) => $k->whereNull('idempotency_key')->orWhere('idempotency_key', '!=', $key)))
+            ->latest('id')
+            ->first();
+
+        if ($waiting !== null) {
+            throw ValidationException::withMessages(['payment' => "Masih ada pembayaran online yang menunggu untuk tagihan ini ({$waiting->payment_number}). Selesaikan atau tunggu hingga kedaluwarsa."]);
+        }
+
+        $payments = app(\App\Services\Finance\FinancePaymentService::class);
+
+        $payment = $payments->record([
+            'invoice_id' => $invoice->id,
+            'student_id' => $childId,
+            'customer_type' => $invoice->customer_type,
+            'customer_id' => $invoice->customer_id,
+            'amount' => $amount,
+            'method' => FinancePayment::METHOD_GATEWAY,
+            'gateway' => \App\Services\Payments\PaymentGatewayManager::DEFAULT_PROVIDER,
+            'bank_account_id' => $bankId,
+            'idempotency_key' => $key,
+            'notes' => 'Dibayar lewat aplikasi orang tua',
+        ], $request->user());
+
+        // Permintaan ulang dengan kunci yang sama mengembalikan pembayaran lama.
+        if ($payment->status !== FinancePayment::STATUS_PENDING) {
+            return $this->successResponse(new FinancePaymentResource($payment), 'Pembayaran sudah diproses');
+        }
+
+        try {
+            $charge = app(\App\Services\Finance\FinanceGatewayService::class)->charge($payment);
+        } catch (\Throwable $e) {
+            report($e);
+            $payments->reject($payment, 'Kanal pembayaran online gagal dibuka.', $request->user(), true);
+
+            throw ValidationException::withMessages(['payment' => 'Kanal pembayaran online sedang tidak tersedia. Coba lagi nanti atau bayar melalui kasir.']);
+        }
+
+        return $this->createdResponse([
+            'payment_number' => $payment->payment_number,
+            'amount' => $amount,
+            'redirect_url' => $charge['redirect_url'],
+            'token' => $charge['token'],
+            'expires_at' => $charge['expires_at'],
+        ], 'Lanjutkan pembayaran di halaman penyedia pembayaran.');
     }
 
     /** Rencana pembayaran anak (§9). */
