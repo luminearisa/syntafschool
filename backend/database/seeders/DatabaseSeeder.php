@@ -37,9 +37,15 @@ class DatabaseSeeder extends Seeder
             ActivityPermissionSeeder::class,
             // Modul Workflow: permission granular workflow.* + peran approver.
             WorkflowPermissionSeeder::class,
+            // Modul Bimbingan & Konseling: permission granular bk.* + peran
+            // BK_ADMIN/BK_COORDINATOR/COUNSELOR. Aditif: izin modul lain pada
+            // peran yang sama tidak pernah dihapus.
+            BkPermissionSeeder::class,
             SupInstrumentSeeder::class,
             // Master aktivitas: kategori, keterampilan, tujuan, periode bawaan.
             ActivityMasterSeeder::class,
+            // Master BK: label kasus + template asesmen bawaan.
+            BkMasterSeeder::class,
             CbtPermissionSeeder::class,
         ClinicPermissionSeeder::class,
         ClinicMasterSeeder::class,

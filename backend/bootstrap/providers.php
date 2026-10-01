@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\CBT\Providers\CbtServiceProvider;
+use App\Modules\Bk\Providers\BkServiceProvider;
 use App\Modules\Clinic\Providers\ClinicServiceProvider;
 use App\Modules\LMS\Providers\LmsServiceProvider;
 use App\Modules\Supervisi\Providers\SupServiceProvider;
@@ -26,6 +27,12 @@ return [
     // alur ringan, Clinic untuk alur klinis penuh (triase → resep →
     // dispensing → pemulangan) dengan Inventory sebagai sumber stok.
     ClinicServiceProvider::class,
+
+    // Modul Bimbingan & Konseling (BK) mendaftarkan migrasi `bk_*`, binding
+    // kontrak integrasi (siswa, wali, akademik, presensi, kedisiplinan, asrama,
+    // klinik, aktivitas, notifikasi, dokumen, workflow, audit), Policy, batas
+    // laju, perintah artisan, dan route `/api/v1/bk/*`.
+    BkServiceProvider::class,
     // Modul Workflow & Approval Engine: infrastruktur bersama seluruh modul.
     // Mendaftarkan migrasi `workflow_*`, route /api/v1/workflows/*, registry
     // resolver approver & aksi otomatis, kalender kerja, dan direktori

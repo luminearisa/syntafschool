@@ -1408,3 +1408,63 @@ Perbaikan yang ikut terbawa:
 
 Dokumen: [`docs/18-MODUL-AKTIVITAS-SISWA.md`](18-MODUL-AKTIVITAS-SISWA.md) ·
 [`docs/activity/01-PANDUAN-INTEGRASI.md`](activity/01-PANDUAN-INTEGRASI.md)
+
+## Modul Bimbingan & Konseling (BK) — Phase 1 (2026-12-01)
+
+Dukungan siswa dari kekhawatiran pertama sampai kasus dinyatakan selesai, dengan
+kerahasiaan sebagai fondasi: 30 tabel, 35 enum, 31 model, 19 layanan, 12 kontrak
+integrasi, 79 rute `/api/v1/bk/*`, 7 halaman, dan 41 tes / 133 asersi hijau.
+
+- [x] **Lifecycle lengkap**: referral → screening → kasus → penugasan → asesmen →
+      rencana → sesi → intervensi → tindak lanjut → tinjauan → penutupan, dengan
+      timeline append-only dan pembukaan kembali yang terjaga
+- [x] **Kerahasiaan berlapis enam tingkat** ditegakkan `BkAccessService` pada
+      endpoint, Query, Resource, dokumen, laporan, dan notifikasi — guru/siswa/wali
+      tidak pernah menerima `counselor_note`, dan pembacaan data rahasia (termasuk
+      penolakan) selalu tercatat
+- [x] **Mesin asesmen configurable**: template → bagian → pertanyaan (9 tipe),
+      dikirim ke siswa/orang tua/guru/konselor, dengan pertanyaan sensitif yang
+      disembunyikan dari audiens yang tidak berhak
+- [x] **Janji temu sadar bentrok**: jadwal pelajaran, ketersediaan konselor, janji
+      lain konselor/siswa, kegiatan asrama, ujian, dan kegiatan sekolah — dapat
+      ditembus hanya koordinator dan selalu tercatat
+- [x] **Penutupan yang tidak asal tutup**: checklist penghalang (tindak lanjut,
+      intervensi, sasaran, sesi, pertemuan, tinjauan) sebelum kasus boleh ditutup
+- [x] **Portal siswa & orang tua**: permintaan dukungan tanpa detail sensitif,
+      jadwal sendiri, dan persetujuan yang hanya dapat diputuskan wali sah
+- [x] **Integrasi lewat 12 kontrak** (siswa, wali, akademik, presensi, kedisiplinan,
+      asrama, klinik **tanpa diagnosis**, aktivitas, notifikasi, dokumen, workflow,
+      audit) — BK tidak menduplikasi sumber kebenaran
+- [x] **5 perintah artisan** (keterlambatan tindak lanjut, pengingat janji,
+      kedaluwarsa persetujuan, tinjauan kasus, kesehatan modul)
+- [x] **12 laporan agregat** tanpa isi catatan, aman untuk kepala sekolah & auditor
+- [x] Frontend **7 halaman** + grup menu **Bimbingan & Konseling**, diverifikasi di
+      browser sungguhan
+- [x] `docs/19-MODUL-BK.md` sebagai blueprint modul
+
+### Cacat yang ditemukan & diperbaiki selama pengujian
+
+- [x] **`bk_cases.severity` NOT NULL** diisi `null` saat kasus dibuka dari referral
+      → deret 500 pada alur utama; kini diturunkan dari prioritas
+      (`Severity::fromPriority`) sehingga tidak pernah kosong
+- [x] **`document_sequences.reset_period`** memakai `YEARLY` sedangkan kolomnya
+      `enum('never','year','month')` → penomoran BK gagal pada basis data ber-CHECK;
+      kini `year`
+- [x] **SoftDeletes pada tabel tanpa `deleted_at`** (label, bagian asesmen, sasaran,
+      peserta, tugas pertemuan, …) → setiap kueri gagal; 10 model dibersihkan
+- [x] **Cast enum ditulis sebagai nama pendek** (`'status' => 'CaseStatus'`) → Laravel
+      membacanya sebagai kelas cast; 60 cast diperbaiki menjadi
+      `\App\Modules\Bk\Domain\Enums\…::class`
+- [x] **Pembuat kasus tidak dapat melihat kasusnya sendiri** (bukan koordinator, bukan
+      peserta) → pembuat kini otomatis menjadi peserta kasus
+- [x] **Wali/staf tidak dapat menindaklanjuti permintaan portal** karena aturan
+      sumber `PARENT` menuntut hubungan wali pada **pelaku**, bukan pada siswa;
+      kini staf BK dikecualikan (tetap mengikat wali yang mengajukan sendiri)
+- [x] **Precedence `&& … ?? …`** pada pembuatan tindak lanjut otomatis → tindak
+      lanjut tidak pernah lahir; diperbaiki dengan tanda kurung yang benar
+- [x] **Laporan memaksa `(string)` pada kolom ber-enum** → 500 pada 12 laporan;
+      kini dinormalkan lewat helper `scalar()`
+- [x] **Jejak audit hanya mencatat akses yang ditolak** → pembacaan sesi rahasia
+      yang berhasil kini juga tercatat (`VIEW_CONFIDENTIAL`)
+- [x] **Seeder modul belum terdaftar di `DatabaseSeeder`** (bersama Workflow) →
+      instalasi baru tidak memiliki peran `BK_*`; kini terdaftar dan **aditif**

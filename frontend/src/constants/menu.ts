@@ -16,6 +16,7 @@ import {
   Stethoscope,
   GitPullRequestArrow,
   Trophy,
+  HeartHandshake,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -29,6 +30,7 @@ import { lmsMenu } from '@/routes/domains/lms';
 import { cbtMenu } from '@/routes/domains/cbt';
 import { clinicMenu } from '@/routes/domains/clinic';
 import { activityMenu } from '@/routes/domains/activity';
+import { bkMenu } from '@/routes/domains/bk';
 import { workflowMenu } from '@/routes/domains/workflow';
 
 export interface MenuChild {
@@ -116,6 +118,19 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: Trophy,
     permission: 'activity.view',
     children: activityMenu,
+  },
+  /*
+   * Bimbingan & Konseling — dukungan siswa.
+   *
+   * Menu ini untuk staf BK (dasbor, referral, kasus, janji temu, laporan) dan
+   * portal siswa/orang tua. Catatan konseling tidak pernah muncul di sini bagi
+   * guru/siswa/wali: izinnya tidak mereka pegang.
+   */
+  {
+    label: 'Bimbingan & Konseling',
+    icon: HeartHandshake,
+    permission: 'bk.view',
+    children: bkMenu,
   },
   {
     label: 'Keuangan',
