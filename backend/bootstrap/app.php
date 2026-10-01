@@ -49,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'ctx' => \App\Http\Middleware\RequireContext::class,
+            'student.family' => \App\Http\Middleware\RestrictFamilyStudentAccess::class,
         ]);
 
         // Menegakkan konteks token mobile (wali/siswa dibatasi ke auth/* & mobile/*).

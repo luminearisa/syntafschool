@@ -45,7 +45,7 @@ Route::delete('student-attendances/{attendance}', [StudentAttendanceController::
 
 // ------------------------------------------------------------------- Rekap
 Route::get('attendance-recap/student/{student}', [StudentAttendanceController::class, 'recapStudent'])
-    ->middleware('permission:academic.view')->name('attendance-recap.student');
+    ->middleware(['permission:academic.view', 'student.family'])->name('attendance-recap.student');
 
 Route::get('attendance-recap/class/{class}', [StudentAttendanceController::class, 'recapClass'])
     ->middleware('permission:academic.view')->name('attendance-recap.class');

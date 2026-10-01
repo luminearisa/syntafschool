@@ -211,7 +211,20 @@ class MobileController extends BaseApiController
             ->where('sm.is_active', true)
             ->where('s.day_id', $today->dayOfWeekIso)
             ->orderBy('s.start_time')
-            ->get(['s.start_time', 's.end_time', 'sub.name as subject', 'c.name as class', 'r.name as room']);
+            ->get(['s.id as schedule_id', 's.start_time', 's.end_time', 'sub.name as subject', 'c.name as class', 'r.name as room']);
+
+        $journaled = DB::table('teaching_journals')
+            ->where('teacher_id', $employee->id)
+            ->whereDate('date', $today->toDateString())
+            ->whereNull('deleted_at')
+            ->pluck('schedule_id')
+            ->filter()
+            ->all();
+        $schedule = $schedule->map(function ($row) use ($journaled) {
+            $row->has_journal = in_array($row->schedule_id, $journaled, true);
+
+            return $row;
+        });
 
         $attendance = EmployeeAttendance::query()->with('attendanceStatus:id,code,name,color')
             ->where('employee_id', $employee->id)->whereDate('date', $today)->first();
@@ -221,8 +234,95 @@ class MobileController extends BaseApiController
             'today' => $today->toDateString(),
             'attendance' => $this->presentAttendance($attendance),
             'schedule' => $schedule,
+            'pending_approvals' => $this->pendingApprovals($request),
             'unread_notifications' => $request->user()->unreadNotifications()->count() + $this->tahfizNotifications($request)->whereNull('read_at')->count(),
         ], 'Beranda pegawai berhasil diambil');
+    }
+
+    /**
+     * Kelas yang diampu/diwalikan pegawai pada semester aktif — dasar pemilih
+     * kelas untuk presensi siswa, jurnal, dan penilaian di aplikasi.
+     */
+    public function employeeClasses(Request $request): JsonResponse
+    {
+        $employee = $this->employee($request);
+        $semester = DB::table('semesters')->where('is_active', true)->first(['id', 'name', 'academic_year_id']);
+
+        $taught = DB::table('class_subjects as cs')
+            ->join('school_classes as c', 'c.id', '=', 'cs.school_class_id')
+            ->join('subjects as sub', 'sub.id', '=', 'cs.subject_id')
+            ->where('cs.employee_id', $employee->id)
+            ->when($semester, fn ($q) => $q->where('cs.academic_year_id', $semester->academic_year_id))
+            ->whereNull('c.deleted_at')
+            ->orderBy('c.name')->orderBy('sub.name')
+            ->get(['c.id as class_id', 'c.name as class_name', 'sub.id as subject_id', 'sub.name as subject_name']);
+
+        $homeroom = DB::table('school_classes')
+            ->where('homeroom_teacher_id', $employee->id)
+            ->whereNull('deleted_at')
+            ->get(['id as class_id', 'name as class_name']);
+
+        $classes = $taught->groupBy('class_id')->map(fn ($rows) => [
+            'class_id' => $rows->first()->class_id,
+            'class_name' => $rows->first()->class_name,
+            'is_homeroom' => $homeroom->contains('class_id', $rows->first()->class_id),
+            'subjects' => $rows->map(fn ($r) => ['subject_id' => $r->subject_id, 'subject_name' => $r->subject_name])->values(),
+        ]);
+
+        foreach ($homeroom as $h) {
+            if (! $classes->has($h->class_id)) {
+                $classes->put($h->class_id, ['class_id' => $h->class_id, 'class_name' => $h->class_name, 'is_homeroom' => true, 'subjects' => []]);
+            }
+        }
+
+        return $this->successResponse([
+            'semester' => $semester,
+            'classes' => $classes->sortBy('class_name')->values(),
+        ], 'Kelas pegawai berhasil diambil');
+    }
+
+    /**
+     * Lapor kerusakan aset lewat KODE label (hasil pindai QR/barcode atau ketik).
+     *
+     * Pencarian publik `assets/lookup/{code}` sengaja tidak mengembalikan id aset,
+     * sehingga aplikasi tidak bisa memanggil `assets/{asset}/damage` langsung.
+     * Di sini kode diselesaikan di server dengan aturan pencarian yang sama
+     * (kode aset, barcode, token QR, tag, nomor seri) lalu diteruskan ke
+     * DamageReportService — izin `asset.maintenance.request` dijaga di route.
+     */
+    public function reportDamage(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:120'],
+            'severity' => ['required', 'string', 'in:MINOR,MODERATE,MAJOR,TOTAL'],
+            'description' => ['required', 'string', 'max:2000'],
+            'damage_type' => ['nullable', 'string', 'max:60'],
+        ]);
+
+        $asset = \App\Modules\Asset\Models\Asset::query()
+            ->where(fn ($q) => $q->where('asset_code', $data['code'])
+                ->orWhere('barcode', $data['code'])
+                ->orWhere('qr_token', $data['code'])
+                ->orWhere('asset_tag', $data['code'])
+                ->orWhere('serial_number', $data['code']))
+            ->first();
+
+        if ($asset === null) {
+            return $this->errorResponse('Kode aset tidak dikenali.', 404);
+        }
+
+        $report = app(\App\Modules\Asset\Application\Services\DamageReportService::class)->report($request->user(), [
+            'asset_id' => $asset->id,
+            'severity' => $data['severity'],
+            'description' => $data['description'],
+            'damage_type' => $data['damage_type'] ?? null,
+        ]);
+
+        return $this->successResponse([
+            'report_number' => $report->report_number,
+            'asset' => ['asset_code' => $asset->asset_code, 'name' => $asset->name],
+            'severity' => $data['severity'],
+        ], 'Laporan kerusakan dicatat.', 201);
     }
 
     public function employeeAttendance(Request $request): JsonResponse
@@ -262,7 +362,7 @@ class MobileController extends BaseApiController
             'attendance_status_id' => $row->attendance_status_id ?? $status->id,
             'check_in' => $now->format('H:i:s'),
             'notes' => $request->input('notes'),
-            'recorded_by' => $employee->id,
+            'recorded_by' => $request->user()->getKey(),
         ])->save();
 
         return $this->successResponse($this->presentAttendance($row->load('attendanceStatus')), 'Check-in berhasil', 201);
@@ -370,6 +470,17 @@ class MobileController extends BaseApiController
     }
 
     // ------------------------------------------------------------------
+
+    private function pendingApprovals(Request $request): int
+    {
+        $service = \App\Modules\Workflow\Application\Services\WorkflowInboxService::class;
+
+        if (! class_exists($service) || ! $request->user()->can('workflow.approval.view')) {
+            return 0;
+        }
+
+        return (int) (app($service)->counter($request->user())['pending'] ?? 0);
+    }
 
     private function employee(Request $request): Employee
     {

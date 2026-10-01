@@ -61,6 +61,7 @@ function FamilyHome() {
 }
 
 function EmployeeHome() {
+  const router = useRouter();
   const q = useEmployeeHome();
   const d = q.data;
   const att = d?.attendance;
@@ -76,7 +77,20 @@ function EmployeeHome() {
             <StatTile icon="log-out" tint={colors.info} label="Pulang" value={timeHM(att?.check_out)} />
           </View>
 
-          <SectionTitle title="Jadwal mengajar hari ini" />
+          {d.pending_approvals > 0 ? (
+            <Card onPress={() => router.push('/persetujuan')} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: colors.gold, borderWidth: 1.5 }}>
+              <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: colors.goldSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="checkmark-done-circle" size={24} color={colors.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={T.title}>{d.pending_approvals} persetujuan menunggu</Text>
+                <Text style={T.small}>Ketuk untuk meninjau dan memutuskan.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+            </Card>
+          ) : null}
+
+          <SectionTitle title="Jadwal mengajar hari ini" action="Jurnal" onAction={() => router.push('/jurnal')} />
           {d.schedule.length === 0 ? (
             <Card><EmptyState icon="cafe-outline" title="Tidak ada jadwal hari ini" /></Card>
           ) : d.schedule.map((s, i) => (
@@ -84,7 +98,7 @@ function EmployeeHome() {
               <Row
                 left={<Text style={T.title}>{s.subject}</Text>}
                 sub={<Text style={T.small}>{s.class}{s.room ? ` · ${s.room}` : ''}</Text>}
-                right={<Pill label={`${timeHM(s.start_time)}–${timeHM(s.end_time)}`} />}
+                right={<View style={{ alignItems: 'flex-end', gap: 4 }}><Pill label={`${timeHM(s.start_time)}–${timeHM(s.end_time)}`} /><Pill label={s.has_journal ? 'Jurnal terisi' : 'Belum dijurnal'} color={s.has_journal ? colors.success : colors.warning} /></View>}
               />
             </Card>
           ))}

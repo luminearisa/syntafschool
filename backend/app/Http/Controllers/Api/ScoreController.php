@@ -45,6 +45,8 @@ class ScoreController extends BaseApiController
      */
     public function store(Assessment $assessment, ScoreRequest $request): JsonResponse
     {
+        $this->assertMayGrade($request, $assessment);
+
         $data = $request->validated();
 
         $existing = $this->findScore($assessment, (int) $data['student_id']);
@@ -67,6 +69,7 @@ class ScoreController extends BaseApiController
 
     public function update(Assessment $assessment, Score $score, ScoreRequest $request): JsonResponse
     {
+        $this->assertMayGrade($request, $assessment);
         $this->assertBelongsTo($assessment, $score);
 
         $data = $request->validated();
@@ -94,6 +97,7 @@ class ScoreController extends BaseApiController
 
     public function destroy(Request $request, Assessment $assessment, Score $score): JsonResponse
     {
+        $this->assertMayGrade($request, $assessment);
         $this->assertBelongsTo($assessment, $score);
 
         $data = $request->validate([
@@ -116,6 +120,8 @@ class ScoreController extends BaseApiController
      */
     public function bulkStore(Assessment $assessment, BulkScoreRequest $request): JsonResponse
     {
+        $this->assertMayGrade($request, $assessment);
+
         $data = $request->validated();
         $max = $assessment->maxScoreValue();
 
@@ -210,6 +216,14 @@ class ScoreController extends BaseApiController
         ])->sortByDesc('date')->values();
 
         return $this->successResponse($rows, 'Daftar nilai siswa berhasil diambil');
+    }
+
+    /** Guru hanya menilai penilaian miliknya/kelasnya (lihat TeachingAccess). */
+    protected function assertMayGrade(Request $request, Assessment $assessment): void
+    {
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayGrade($request->user(), $assessment)) {
+            abort(403, 'Anda bukan pengampu penilaian ini.');
+        }
     }
 
     protected function findScore(Assessment $assessment, int $studentId): ?Score

@@ -111,6 +111,7 @@ class StudentAttendanceController extends BaseApiController
     {
         $data = $request->validated();
 
+        $this->assertMayRecordClass($request, (int) $data['class_id']);
         $this->assertStudentInClass((int) $data['student_id'], (int) $data['class_id']);
         $this->assertDateInSemester((int) $data['semester_id'], $data['date']);
         $this->assertSchoolDay((int) $data['semester_id'], $data['date']);
@@ -203,6 +204,8 @@ class StudentAttendanceController extends BaseApiController
             'schedule_id' => 'jadwal',
         ]);
 
+        $this->assertMayRecordClass($request, (int) $data['class_id']);
+
         $students = $this->studentsInClass((int) $data['class_id']);
 
         $existing = StudentAttendance::query()
@@ -255,6 +258,7 @@ class StudentAttendanceController extends BaseApiController
     {
         $data = $request->validated();
 
+        $this->assertMayRecordClass($request, (int) $data['class_id']);
         $this->assertDateInSemester((int) $data['semester_id'], $data['date']);
         $this->assertSchoolDay((int) $data['semester_id'], $data['date']);
 
@@ -411,6 +415,14 @@ class StudentAttendanceController extends BaseApiController
     /**
      * @return \Illuminate\Support\Collection<int, Student>
      */
+    /** Guru hanya boleh mencatat presensi kelas yang diampu/walikelasinya (lihat TeachingAccess). */
+    protected function assertMayRecordClass(Request $request, int $classId): void
+    {
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayRecordClass($request->user(), $classId)) {
+            abort(403, 'Anda bukan wali kelas atau pengampu kelas ini.');
+        }
+    }
+
     protected function studentsInClass(int $classId)
     {
         return Student::query()

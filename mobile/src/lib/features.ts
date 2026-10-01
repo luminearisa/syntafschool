@@ -18,6 +18,8 @@ export interface Feature {
   route?: string;
   /** Fase rencana (docs/23-MOBILE-COVERAGE.md) untuk fitur yang belum jadi. */
   phase?: 1 | 2 | 3 | 4;
+  /** Fitur tampil bila peran aktif memiliki salah satu izin ini (kosong = selalu tampil). */
+  perms?: string[];
 }
 
 const g: RoleType[] = ['guardian'];
@@ -37,12 +39,12 @@ export const FEATURES: Feature[] = [
   { key: 'presensi', title: 'Presensi', hint: 'Check-in & riwayat', icon: 'finger-print', tint: '#116149', category: 'Pekerjaan', roles: e, route: '/presensi' },
 
   // ---- Fase 1: karyawan ----
-  { key: 'persetujuan', title: 'Persetujuan', hint: 'Approval & pengajuan', icon: 'checkmark-done-circle', tint: '#2F6FB2', category: 'Pekerjaan', roles: e, phase: 1 },
-  { key: 'jurnal', title: 'Jurnal & RPP', hint: 'Jurnal mengajar, RPP', icon: 'create', tint: '#116149', category: 'Pekerjaan', roles: e, phase: 1 },
-  { key: 'absen-siswa', title: 'Absensi Siswa', hint: 'Input kehadiran kelas', icon: 'people', tint: '#B8892B', category: 'Pekerjaan', roles: e, phase: 1 },
-  { key: 'nilai', title: 'Input Nilai', hint: 'Penilaian & rapor', icon: 'ribbon', tint: '#8E4EC6', category: 'Pekerjaan', roles: e, phase: 1 },
-  { key: 'tugas-guru', title: 'Tugas', hint: 'Buat & nilai tugas', icon: 'document-text', tint: '#2F6FB2', category: 'Pekerjaan', roles: e, phase: 1 },
-  { key: 'aset', title: 'Aset & Sarpras', hint: 'Pinjam, booking, lapor rusak', icon: 'construct', tint: '#C8423B', category: 'Sarana', roles: e, phase: 1 },
+  { key: 'persetujuan', title: 'Persetujuan', hint: 'Approval & pengajuan', icon: 'checkmark-done-circle', tint: '#2F6FB2', category: 'Pekerjaan', roles: e, route: '/persetujuan', perms: ['workflow.approval.view', 'workflow.request.view'] },
+  { key: 'jurnal', title: 'Jurnal & RPP', hint: 'Jurnal mengajar, RPP', icon: 'create', tint: '#116149', category: 'Pekerjaan', roles: e, route: '/jurnal', perms: ['academic.attendance', 'academic.approve'] },
+  { key: 'absen-siswa', title: 'Absensi Siswa', hint: 'Input kehadiran kelas', icon: 'people', tint: '#B8892B', category: 'Pekerjaan', roles: e, route: '/absen-siswa', perms: ['academic.attendance'] },
+  { key: 'nilai', title: 'Input Nilai', hint: 'Penilaian & rapor', icon: 'ribbon', tint: '#8E4EC6', category: 'Pekerjaan', roles: e, route: '/nilai', perms: ['academic.grade'] },
+  { key: 'tugas-guru', title: 'Tugas', hint: 'Buat & nilai tugas', icon: 'document-text', tint: '#2F6FB2', category: 'Pekerjaan', roles: e, route: '/tugas-guru', perms: ['academic.grade'] },
+  { key: 'aset', title: 'Aset & Sarpras', hint: 'Booking fasilitas, lapor rusak', icon: 'construct', tint: '#C8423B', category: 'Sarana', roles: e, route: '/aset', perms: ['asset.maintenance.request', 'facility.book'] },
   { key: 'supervisi', title: 'Supervisi', hint: 'Kunjungan & tindak lanjut', icon: 'eye', tint: '#116149', category: 'Pekerjaan', roles: e, phase: 1 },
 
   // ---- Fase 2: wali ----
@@ -62,6 +64,13 @@ export const FEATURES: Feature[] = [
   { key: 'cbt', title: 'Ujian', hint: 'Ujian berbasis komputer', icon: 'school', tint: '#C8423B', category: 'Belajar', roles: [...s, ...e], phase: 4 },
 ];
 
-export const featuresFor = (role: RoleType | null): Feature[] => (role ? FEATURES.filter((f) => f.roles.includes(role)) : []);
+/**
+ * Fitur untuk peran aktif. `permissions` kosong (sesi lama yang belum menyegarkan izin)
+ * berarti jangan menyembunyikan apa pun — server tetap menolak yang tidak berhak.
+ */
+export const featuresFor = (role: RoleType | null, permissions: string[] = []): Feature[] =>
+  role
+    ? FEATURES.filter((f) => f.roles.includes(role) && (permissions.length === 0 || !f.perms || f.perms.some((p) => permissions.includes(p))))
+    : [];
 
 export const CATEGORY_ORDER: Category[] = ['Belajar', 'Pekerjaan', 'Keuangan', 'Kesiswaan', 'Kesehatan & Konseling', 'Sarana'];

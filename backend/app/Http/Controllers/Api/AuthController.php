@@ -6,6 +6,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Mobile\ContextService;
+use App\Support\ContextPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -81,9 +82,12 @@ class AuthController extends BaseApiController
     {
         $user = $request->user();
 
+        $active = $this->activeContext($user);
+
         return $this->successResponse([
             'contexts' => $this->contexts->contexts($user),
-            'active_context' => $this->activeContext($user),
+            'active_context' => $active,
+            'permissions' => $active === null ? [] : ContextPermissions::permissionNames($user, $active)->values(),
         ], 'Daftar peran berhasil diambil');
     }
 
@@ -119,6 +123,9 @@ class AuthController extends BaseApiController
             'user' => $this->userPayload($user),
             'contexts' => $this->contexts->contexts($user),
             'active_context' => $type,
+            // Izin efektif PERAN INI (bukan gabungan semua role akun) — hanya untuk
+            // menampilkan/menyembunyikan menu; server tetap menegakkan sendiri.
+            'permissions' => ContextPermissions::permissionNames($user, $type)->values(),
         ], $message);
     }
 

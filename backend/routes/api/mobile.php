@@ -26,6 +26,9 @@ Route::prefix('mobile')->name('mobile.')->group(function (): void {
     // Pegawai
     Route::middleware('ctx:employee')->prefix('employee')->name('employee.')->group(function (): void {
         Route::get('home', [MobileController::class, 'employeeHome'])->name('home');
+        Route::get('classes', [MobileController::class, 'employeeClasses'])->name('classes');
+        Route::post('damage-report', [MobileController::class, 'reportDamage'])
+            ->middleware('permission:asset.maintenance.request')->name('damage-report');
         Route::get('attendance', [MobileController::class, 'employeeAttendance'])->name('attendance');
         Route::post('attendance/check-in', [MobileController::class, 'checkIn'])->name('check-in');
         Route::post('attendance/check-out', [MobileController::class, 'checkOut'])->name('check-out');

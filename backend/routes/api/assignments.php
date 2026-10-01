@@ -23,22 +23,22 @@ Route::get('assignments/recap', [AssignmentController::class, 'recap'])
     ->middleware('permission:academic.view')->name('assignments.recap');
 
 Route::post('assignments', [AssignmentController::class, 'store'])
-    ->middleware('permission:academic.create')->name('assignments.store');
+    ->middleware('permission:academic.create|academic.grade')->name('assignments.store');
 
 Route::get('assignments/{assignment}', [AssignmentController::class, 'show'])
     ->middleware('permission:academic.view')->name('assignments.show');
 
 Route::match(['put', 'patch'], 'assignments/{assignment}', [AssignmentController::class, 'update'])
-    ->middleware('permission:academic.update')->name('assignments.update');
+    ->middleware('permission:academic.update|academic.grade')->name('assignments.update');
 
 Route::delete('assignments/{assignment}', [AssignmentController::class, 'destroy'])
     ->middleware('permission:academic.delete')->name('assignments.destroy');
 
 Route::post('assignments/{assignment}/publish', [AssignmentController::class, 'publish'])
-    ->middleware('permission:academic.publish')->name('assignments.publish');
+    ->middleware('permission:academic.publish|academic.grade')->name('assignments.publish');
 
 Route::post('assignments/{assignment}/close', [AssignmentController::class, 'close'])
-    ->middleware('permission:academic.update')->name('assignments.close');
+    ->middleware('permission:academic.update|academic.grade')->name('assignments.close');
 
 // ---------------------------------------------------- Pengumpulan tugas
 Route::get('assignments/{assignment}/submissions', [AssignmentController::class, 'submissions'])
@@ -58,4 +58,4 @@ Route::delete('assignments/{assignment}/submissions/{submission}', [AssignmentSu
 
 // -------------------------------------------- Tugas milik satu siswa
 Route::get('students/{student}/assignments', [AssignmentSubmissionController::class, 'studentAssignments'])
-    ->middleware('permission:academic.view')->name('students.assignments.index');
+    ->middleware(['permission:academic.view', 'student.family'])->name('students.assignments.index');

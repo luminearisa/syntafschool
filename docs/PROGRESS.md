@@ -1728,3 +1728,12 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [x] Perbaikan bug: Tahfiz `DashboardService` dan BK `BkAccessService` memakai kolom `guardians.user_id` yang tidak ada
 - [x] Mobile: registry fitur (`src/lib/features.ts`), tab Layanan, Akses cepat di Beranda, tombol kembali
 - [ ] Tes backend (`MobileContextTest`, 10 skenario) **belum dijalankan** — sandbox PHP 8.3, Laravel 13 butuh 8.4
+
+### Mobile — Fase 1 (karyawan)
+- [x] Persetujuan (inbox, keputusan ber-Idempotency-Key, pengajuan saya, batal/kirim ulang, komentar)
+- [x] Jurnal mengajar & RPP (buat/ajukan/setujui/tolak)
+- [x] Absensi siswa (lembar kelas, simpan massal), Input nilai (buat penilaian, input, serahkan), Tugas (buat/terbit/nilai)
+- [x] Aset & Sarpras: lapor kerusakan via kode, booking fasilitas
+- [x] Backend: FK `recorded_by`, pagar kepemilikan siswa, batas kewenangan guru, hak Workflow/Aset pegawai — lihat [docs/24](./24-MOBILE-FASE-1.md)
+- [ ] Supervisi; ajukan cuti; pemindai kamera
+- [ ] Tes backend `MobilePhase1Test` + `MobileContextTest` **belum dijalankan** (PHP 8.3 di sandbox; Laravel 13 butuh 8.4)

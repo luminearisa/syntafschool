@@ -11,12 +11,13 @@ import { colors, radius, shadow } from '@/theme';
 /** Pusat layanan: semua fitur untuk peran aktif, dikelompokkan per kategori. */
 export default function Layanan() {
   const active = useAuth((s) => s.active);
+  const permissions = useAuth((s) => s.permissions);
   const router = useRouter();
   const [q, setQ] = useState('');
 
   const grouped = useMemo(() => {
     const term = q.trim().toLowerCase();
-    const list = featuresFor(active).filter((f) => !term || `${f.title} ${f.hint}`.toLowerCase().includes(term));
+    const list = featuresFor(active, permissions).filter((f) => !term || `${f.title} ${f.hint}`.toLowerCase().includes(term));
     const groups = CATEGORY_ORDER.map((c) => ({ category: c, items: list.filter((f) => f.category === c) })).filter((x) => x.items.length > 0);
     // Kategori yang sudah punya fitur siap pakai tampil lebih dulu (urutan kategori tetap stabil).
     const ready = (g: { items: { route?: string }[] }) => (g.items.some((f) => f.route) ? 0 : 1);

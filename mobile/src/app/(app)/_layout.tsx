@@ -1,16 +1,30 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme';
 import { useNotifications } from '@/api/hooks';
+import { useAuth } from '@/store/auth';
+import { get } from '@/api/client';
 
 type Icon = React.ComponentProps<typeof Ionicons>['name'];
 const icon = (on: Icon, off: Icon) => ({ color, focused }: { color: import("react-native").ColorValue; focused: boolean }) => (
   <Ionicons name={focused ? on : off} size={23} color={color} />
 );
 
+/** Sesi lama tidak membawa izin; segarkan dari server agar menu sesuai hak terbaru. */
+function usePermissionRefresh() {
+  const token = useAuth((s) => s.token);
+  const active = useAuth((s) => s.active);
+  const setPermissions = useAuth((s) => s.setPermissions);
+  useEffect(() => {
+    if (!token || !active) return;
+    get<{ permissions: string[] }>('/auth/contexts').then((r) => setPermissions(r.permissions ?? [])).catch(() => undefined);
+  }, [token, active, setPermissions]);
+}
+
 export default function AppTabs() {
+  usePermissionRefresh();
   const unread = useNotifications().data?.unread ?? 0;
 
   return (
@@ -37,6 +51,12 @@ export default function AppTabs() {
       <Tabs.Screen name="akademik" options={{ href: null }} />
       <Tabs.Screen name="keuangan" options={{ href: null }} />
       <Tabs.Screen name="presensi" options={{ href: null }} />
+      <Tabs.Screen name="persetujuan" options={{ href: null }} />
+      <Tabs.Screen name="jurnal" options={{ href: null }} />
+      <Tabs.Screen name="absen-siswa" options={{ href: null }} />
+      <Tabs.Screen name="nilai" options={{ href: null }} />
+      <Tabs.Screen name="tugas-guru" options={{ href: null }} />
+      <Tabs.Screen name="aset" options={{ href: null }} />
     </Tabs>
   );
 }

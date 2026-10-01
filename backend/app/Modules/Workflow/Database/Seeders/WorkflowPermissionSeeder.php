@@ -121,6 +121,28 @@ class WorkflowPermissionSeeder extends Seeder
         ],
     ];
 
+    /**
+     * Peran pegawai biasa: boleh melihat & memutuskan penugasan MILIKNYA sendiri
+     * (inbox disaring `approver_id`, keputusan hanya pada penugasan yang
+     * ditujukan kepadanya) dan mengelola permintaannya sendiri. Sengaja TANPA
+     * `workflow.request.create` — membuat request baru (termasuk atas nama
+     * orang lain lewat `requester_id`) tetap hak peran administratif.
+     *
+     * @var list<string>
+     */
+    protected array $employeeRoles = [
+        'guru', 'wali-kelas', 'staf', 'kepala-unit', 'kepala-asrama', 'musyrif', 'pustakawan',
+        'library-manager', 'pengadaan', 'petugas-absensi', 'petugas-kedisiplinan', 'petugas-kesehatan',
+        'petugas-perizinan', 'petugas-wallet', 'kasir', 'finance-officer', 'finance-manager',
+        'finance-admin', 'admin-boarding', 'auditor',
+    ];
+
+    /** @var list<string> */
+    protected array $employeeGrants = [
+        'workflow.view', 'workflow.request.view', 'workflow.request.submit', 'workflow.request.cancel',
+        'workflow.approval.view', 'workflow.approval.decide',
+    ];
+
     public function run(): void
     {
         foreach (array_keys($this->permissions) as $name) {
@@ -140,6 +162,14 @@ class WorkflowPermissionSeeder extends Seeder
             }
 
             $role->givePermissionTo($this->expand($permissions));
+        }
+
+        foreach ($this->employeeRoles as $roleName) {
+            $role = Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
+
+            if ($role !== null) {
+                $role->givePermissionTo($this->expand($this->employeeGrants));
+            }
         }
     }
 

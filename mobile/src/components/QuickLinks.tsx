@@ -10,9 +10,10 @@ import { colors } from '@/theme';
 /** Pintasan ke fitur yang sudah tersedia untuk peran aktif + tautan ke semua layanan. */
 export function QuickLinks() {
   const active = useAuth((s) => s.active);
+  const permissions = useAuth((s) => s.permissions);
   const router = useRouter();
-  const ready = featuresFor(active).filter((f) => f.route).slice(0, 4);
-  const upcoming = featuresFor(active).filter((f) => !f.route).length;
+  const ready = featuresFor(active, permissions).filter((f) => f.route).slice(0, 4);
+  const upcoming = featuresFor(active, permissions).filter((f) => !f.route).length;
 
   return (
     <View style={{ gap: 10 }}>

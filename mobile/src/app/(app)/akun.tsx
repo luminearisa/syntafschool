@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { Alert } from '@/lib/dialog';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Avatar, Button, Card, Row, Screen, SectionTitle, T } from '@/components/ui';

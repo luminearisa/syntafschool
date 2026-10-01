@@ -20,6 +20,8 @@ export interface AuthPayload {
   user: SessionUser;
   contexts: RoleContext[];
   active_context: RoleType | null;
+  /** Izin efektif peran aktif — hanya untuk tampilan menu; server menegakkan sendiri. */
+  permissions?: string[];
 }
 
 export interface ChildCard {
@@ -110,7 +112,8 @@ export interface EmployeeHome {
   employee: { id: number; full_name: string; nip?: string | null; is_teacher: boolean };
   today: string;
   attendance: EmployeeAttendanceRow | null;
-  schedule: { start_time: string; end_time: string; subject: string; class: string; room?: string | null }[];
+  schedule: { schedule_id: number; start_time: string; end_time: string; subject: string; class: string; room?: string | null; has_journal: boolean }[];
+  pending_approvals: number;
   unread_notifications: number;
 }
 
