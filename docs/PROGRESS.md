@@ -1718,3 +1718,13 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [ ] Tes backend `MobileContextTest` ditulis tetapi **belum dijalankan** (sandbox PHP 8.3, Laravel 13 butuh 8.4) — jalankan `php artisan test --filter=MobileContextTest`
 - [ ] Layar admin web untuk menautkan identitas (API sudah ada)
 - [ ] Push saat aplikasi tertutup (sengaja tanpa Firebase)
+
+### Mobile — Fase 0 (fondasi lintas modul)
+- [x] Resolver identitas tunggal `ContextService` (userable + `user_identities` + akun PPDB); `PpdbParentAccount::childStudentIds` (Keuangan, Asrama) kini mendelegasikan ke sana
+- [x] Peran aktif per request (`ContextState`): `userable` ditimpa di memori sehingga modul Aktivitas/Klinik/UKS/LMS melihat identitas peran aktif tanpa diubah satu per satu
+- [x] Role & permission per peran aktif (`User::hasPermissionTo/hasRole/getRoleNames/getAllPermissions` + `ContextPermissions`)
+- [x] Allowlist path per peran wali/siswa di `config/mobile.php`; identitas dicek ulang tiap request (tautan dicabut → 401)
+- [x] Agregator notifikasi: tabel Laravel (UKS, Aktivitas, LMS, Aset, Keuangan, Perpustakaan) + inbox Tahfiz, disaring per peran
+- [x] Perbaikan bug: Tahfiz `DashboardService` dan BK `BkAccessService` memakai kolom `guardians.user_id` yang tidak ada
+- [x] Mobile: registry fitur (`src/lib/features.ts`), tab Layanan, Akses cepat di Beranda, tombol kembali
+- [ ] Tes backend (`MobileContextTest`, 10 skenario) **belum dijalankan** — sandbox PHP 8.3, Laravel 13 butuh 8.4

@@ -8,6 +8,7 @@ use App\Models\PpdbParentAccount;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\UserIdentity;
+use App\Support\ContextState;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -36,8 +37,12 @@ class ContextService
         $ids = [];
 
         $class = $this->modelClass($type);
-        if ($user->userable_type === (new $class)->getMorphClass() && $user->userable_id !== null) {
-            $ids[] = (int) $user->userable_id;
+
+        // Dibaca langsung dari DB: objek User bisa saja sudah ditimpa peran aktif
+        // (lihat ContextState), sedangkan daftar identitas harus utuh.
+        $real = DB::table('users')->where('id', $user->getKey())->first(['userable_type', 'userable_id']);
+        if ($real && $real->userable_type === (new $class)->getMorphClass() && $real->userable_id !== null) {
+            $ids[] = (int) $real->userable_id;
         }
 
         $ids = array_merge($ids, UserIdentity::query()
@@ -72,9 +77,19 @@ class ContextService
         return $this->identityIds($user, self::STUDENT)[0] ?? null;
     }
 
-    /** @return list<int> */
+    /**
+     * Anak-anak akun ini. Pada token berperan non-wali (siswa/pegawai) hasilnya
+     * kosong — sumber tunggal untuk Keuangan, Asrama, dan portal lain.
+     *
+     * @return list<int>
+     */
     public function childStudentIds(User $user): array
     {
+        $active = ContextState::typeFor($user->getKey());
+        if ($active !== null && $active !== self::GUARDIAN) {
+            return [];
+        }
+
         $guardianIds = $this->identityIds($user, self::GUARDIAN);
 
         if ($guardianIds === []) {

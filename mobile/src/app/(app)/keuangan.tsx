@@ -21,7 +21,7 @@ export default function Keuangan() {
   const t = q.data?.summary.totals;
 
   return (
-    <Screen refreshing={q.isRefetching} onRefresh={() => q.refetch()} header={<Hero subtitle="Tagihan & riwayat pembayaran" />}>
+    <Screen refreshing={q.isRefetching} onRefresh={() => q.refetch()} header={<Hero back subtitle="Tagihan & riwayat pembayaran" />}>
       {loadingKids || q.isLoading ? <Loading /> : null}
       {kidsError || q.error ? <ErrorNote message={errorMessage(kidsError ?? q.error)} onRetry={() => q.refetch()} /> : null}
       {child ? (

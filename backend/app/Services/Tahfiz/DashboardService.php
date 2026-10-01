@@ -400,12 +400,9 @@ class DashboardService
             return collect();
         }
 
-        $guardian = Guardian::query()->where('user_id', $user->id)->first();
-        if ($guardian === null) {
-            return collect();
-        }
-
-        $studentIds = $guardian->students()->pluck('students.id');
+        // Tabel `guardians` tidak punya kolom `user_id`; "anak saya" dihitung dari
+        // sumber tunggal ContextService (userable + user_identities + akun PPDB).
+        $studentIds = collect(app(\App\Services\Mobile\ContextService::class)->childStudentIds($user));
         if ($studentIds->isEmpty()) {
             return collect();
         }

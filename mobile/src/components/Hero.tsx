@@ -3,6 +3,7 @@ import { LayoutChangeEvent, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { IslamicPattern } from './Pattern';
 import { colors, radius, roleMeta } from '@/theme';
 import { useAuth } from '@/store/auth';
@@ -11,7 +12,8 @@ import { RoleSwitcher } from './RoleSwitcher';
 import { Avatar } from './ui';
 
 /** Header beranda: gradien zamrud + motif bintang + sapaan + pengganti peran. */
-export function Hero({ children, subtitle }: { children?: ReactNode; subtitle?: string }) {
+export function Hero({ children, subtitle, back }: { children?: ReactNode; subtitle?: string; back?: boolean }) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user, active, contexts } = useAuth();
   const [size, setSize] = useState({ w: 400, h: 220 });
@@ -27,6 +29,11 @@ export function Hero({ children, subtitle }: { children?: ReactNode; subtitle?: 
       <IslamicPattern width={size.w} height={size.h} opacity={0.13} />
       <View style={{ paddingTop: insets.top + 14, paddingHorizontal: 20, paddingBottom: 24, gap: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          {back ? (
+            <Pressable accessibilityLabel="Kembali" onPress={() => (router.canGoBack() ? router.back() : router.replace('/layanan'))} hitSlop={10} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="chevron-back" size={22} color="#fff" />
+            </Pressable>
+          ) : null}
           <Avatar name={user?.name} size={46} tint="#FFFFFF" />
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#CFE6DD', fontSize: 12.5 }}>{greeting()},</Text>

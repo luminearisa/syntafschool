@@ -20,7 +20,7 @@ export default function Akademik() {
   const [tab, setTab] = useState<Tab>('attendance');
 
   return (
-    <Screen refreshing={isRefetching} onRefresh={() => refetch()} header={<Hero subtitle="Absensi, nilai, jadwal & rapor" />}>
+    <Screen refreshing={isRefetching} onRefresh={() => refetch()} header={<Hero back subtitle="Absensi, nilai, jadwal & rapor" />}>
       {isLoading ? <Loading /> : error ? <ErrorNote message={errorMessage(error)} onRetry={() => refetch()} /> : null}
       {!isLoading && !child ? <EmptyState icon="school-outline" title="Belum ada data siswa" /> : null}
       {child ? (

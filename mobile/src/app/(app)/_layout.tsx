@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme';
-import { useAuth } from '@/store/auth';
 import { useNotifications } from '@/api/hooks';
 
 type Icon = React.ComponentProps<typeof Ionicons>['name'];
@@ -12,10 +11,7 @@ const icon = (on: Icon, off: Icon) => ({ color, focused }: { color: import("reac
 );
 
 export default function AppTabs() {
-  const active = useAuth((s) => s.active);
   const unread = useNotifications().data?.unread ?? 0;
-  const family = active === 'guardian' || active === 'student';
-  const employee = active === 'employee';
 
   return (
     <Tabs
@@ -34,11 +30,13 @@ export default function AppTabs() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Beranda', tabBarIcon: icon('home', 'home-outline') }} />
-      <Tabs.Screen name="akademik" options={{ title: 'Akademik', href: family ? undefined : null, tabBarIcon: icon('book', 'book-outline') }} />
-      <Tabs.Screen name="keuangan" options={{ title: 'Keuangan', href: active === 'guardian' ? undefined : null, tabBarIcon: icon('wallet', 'wallet-outline') }} />
-      <Tabs.Screen name="presensi" options={{ title: 'Presensi', href: employee ? undefined : null, tabBarIcon: icon('finger-print', 'finger-print-outline') }} />
+      <Tabs.Screen name="layanan" options={{ title: 'Layanan', tabBarIcon: icon('apps', 'apps-outline') }} />
       <Tabs.Screen name="notifikasi" options={{ title: 'Kabar', tabBarBadge: unread > 0 ? unread : undefined, tabBarBadgeStyle: { backgroundColor: colors.danger }, tabBarIcon: icon('notifications', 'notifications-outline') }} />
       <Tabs.Screen name="akun" options={{ title: 'Akun', tabBarIcon: icon('person-circle', 'person-circle-outline') }} />
+      {/* Layar fitur: dibuka dari Layanan/Beranda, tidak tampil di tab bar. */}
+      <Tabs.Screen name="akademik" options={{ href: null }} />
+      <Tabs.Screen name="keuangan" options={{ href: null }} />
+      <Tabs.Screen name="presensi" options={{ href: null }} />
     </Tabs>
   );
 }

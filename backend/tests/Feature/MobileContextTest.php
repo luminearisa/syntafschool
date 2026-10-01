@@ -10,7 +10,12 @@ use App\Models\UserIdentity;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use App\Models\TahfizNotification;
+use App\Support\ContextPermissions;
+use App\Support\ContextState;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class MobileContextTest extends TestCase
@@ -197,5 +202,115 @@ class MobileContextTest extends TestCase
 
         $this->getJson("/api/v1/users/{$owner->id}/identities")
             ->assertOk()->assertJsonCount(2, 'data.contexts');
+    }
+
+    protected function tearDown(): void
+    {
+        ContextState::clear();
+        ContextPermissions::flush();
+        parent::tearDown();
+    }
+
+    /** Guru yang juga wali: permission & identitas mengikuti peran aktif, DB tak berubah. */
+    public function test_permissions_and_userable_follow_the_active_role(): void
+    {
+        $employee = Employee::create(['full_name' => 'Pak Dedi']);
+        $guardian = Guardian::create(['full_name' => 'Pak Dedi (Wali)']);
+        $user = $this->user('dedi@syntaf.test', $employee);
+        $user->syncRoles(['guru']);
+        UserIdentity::create(['user_id' => $user->id, 'identity_type' => 'guardian', 'identity_id' => $guardian->id]);
+
+        // Hanya role wali-murid yang memegang izin portal ini.
+        $portal = Permission::firstOrCreate(['name' => 'clinic.portal.view', 'guard_name' => 'web']);
+        Role::findByName('wali-murid', 'web')->givePermissionTo($portal);
+        $teacherOnly = Permission::firstOrCreate(['name' => 'academic.grade', 'guard_name' => 'web']);
+        Role::findByName('guru', 'web')->givePermissionTo($teacherOnly);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Tanpa konteks (token web): perilaku lama.
+        $this->assertTrue($user->fresh()->hasPermissionTo('academic.grade'));
+        $this->assertFalse($user->fresh()->hasPermissionTo('clinic.portal.view'));
+
+        ContextState::set($user->id, 'guardian', $guardian->id);
+        $asGuardian = $user->fresh();
+        $this->assertTrue($asGuardian->hasPermissionTo('clinic.portal.view'));
+        $this->assertFalse($asGuardian->hasPermissionTo('academic.grade'));
+        $this->assertInstanceOf(Guardian::class, $asGuardian->userable);
+        $this->assertSame(['wali-murid'], $asGuardian->getRoleNames()->all());
+        $this->assertTrue($asGuardian->hasRole('wali-murid'));
+        $this->assertFalse($asGuardian->hasRole('guru'));
+
+        ContextPermissions::flush();
+        ContextState::set($user->id, 'employee', $employee->id);
+        $asEmployee = $user->fresh();
+        $this->assertTrue($asEmployee->hasPermissionTo('academic.grade'));
+        $this->assertFalse($asEmployee->hasPermissionTo('clinic.portal.view'));
+        $this->assertInstanceOf(Employee::class, $asEmployee->userable);
+
+        // Penimpaan hanya di memori.
+        $this->assertSame(Employee::class, DB::table('users')->where('id', $user->id)->value('userable_type'));
+    }
+
+    /** Wali yang ditautkan lewat user_identities dikenali portal Keuangan (resolver tunggal). */
+    public function test_finance_portal_uses_the_single_guardian_resolver(): void
+    {
+        $employee = Employee::create(['full_name' => 'Bu Tia']);
+        $guardian = Guardian::create(['full_name' => 'Bu Tia (Wali)']);
+        $kid = $this->child('F-1', $guardian);
+        $user = $this->user('tia@syntaf.test', $employee);
+        UserIdentity::create(['user_id' => $user->id, 'identity_type' => 'guardian', 'identity_id' => $guardian->id]);
+
+        $pending = $this->mobileLogin('tia@syntaf.test')->json('data.token');
+        $guardianToken = $this->postJson('/api/v1/auth/switch-context', ['context' => 'guardian'], $this->bearer($pending))->json('data.token');
+
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/v1/finance/portal/children', $this->bearer($guardianToken))
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.student_id', $kid->id);
+
+        // Di mode pegawai, akun yang sama TIDAK dianggap wali.
+        $employeeToken = $this->postJson('/api/v1/auth/switch-context', ['context' => 'employee'], $this->bearer($guardianToken))->json('data.token');
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/v1/finance/portal/children', $this->bearer($employeeToken))
+            ->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_revoked_identity_invalidates_the_token(): void
+    {
+        $employee = Employee::create(['full_name' => 'Pak Eko']);
+        $guardian = Guardian::create(['full_name' => 'Pak Eko (Wali)']);
+        $user = $this->user('eko@syntaf.test', $employee);
+        $link = UserIdentity::create(['user_id' => $user->id, 'identity_type' => 'guardian', 'identity_id' => $guardian->id]);
+
+        $pending = $this->mobileLogin('eko@syntaf.test')->json('data.token');
+        $token = $this->postJson('/api/v1/auth/switch-context', ['context' => 'guardian'], $this->bearer($pending))->json('data.token');
+
+        $link->delete();
+
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/v1/mobile/children', $this->bearer($token))->assertStatus(401);
+    }
+
+    public function test_notification_inbox_merges_tahfiz_and_filters_by_role(): void
+    {
+        $employee = Employee::create(['full_name' => 'Bu Fani']);
+        $guardian = Guardian::create(['full_name' => 'Bu Fani (Wali)']);
+        $user = $this->user('fani@syntaf.test', $employee);
+        UserIdentity::create(['user_id' => $user->id, 'identity_type' => 'guardian', 'identity_id' => $guardian->id]);
+
+        TahfizNotification::create(['user_id' => $user->id, 'audience' => 'parent', 'type' => 'setoran_reviewed', 'title' => 'Setoran dinilai']);
+        TahfizNotification::create(['user_id' => $user->id, 'audience' => 'instructor', 'type' => 'target_overdue', 'title' => 'Target tertinggal']);
+
+        $pending = $this->mobileLogin('fani@syntaf.test')->json('data.token');
+        $guardianToken = $this->postJson('/api/v1/auth/switch-context', ['context' => 'guardian'], $this->bearer($pending))->json('data.token');
+
+        $this->app['auth']->forgetGuards();
+        $res = $this->getJson('/api/v1/mobile/notifications', $this->bearer($guardianToken))->assertOk();
+        $this->assertSame(['Setoran dinilai'], collect($res->json('data.items'))->pluck('title')->all());
+        $this->assertSame(1, $res->json('data.unread'));
+
+        $employeeToken = $this->postJson('/api/v1/auth/switch-context', ['context' => 'employee'], $this->bearer($guardianToken))->json('data.token');
+        $this->app['auth']->forgetGuards();
+        $res = $this->getJson('/api/v1/mobile/notifications', $this->bearer($employeeToken))->assertOk();
+        $this->assertSame(['Target tertinggal'], collect($res->json('data.items'))->pluck('title')->all());
     }
 }

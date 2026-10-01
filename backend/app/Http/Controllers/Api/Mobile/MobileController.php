@@ -8,6 +8,8 @@ use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\ReportCard;
 use App\Models\Student;
+use App\Models\TahfizNotification;
+use App\Support\ContextState;
 use App\Services\Boarding\BoardingPortalService;
 use App\Services\Finance\FinancePortalService;
 use App\Services\Mobile\ContextService;
@@ -62,7 +64,7 @@ class MobileController extends BaseApiController
         return $this->successResponse([
             'context' => $ctx,
             'children' => $cards,
-            'unread_notifications' => $request->user()->unreadNotifications()->count(),
+            'unread_notifications' => $request->user()->unreadNotifications()->count() + $this->tahfizNotifications($request)->whereNull('read_at')->count(),
         ], 'Beranda berhasil diambil');
     }
 
@@ -219,7 +221,7 @@ class MobileController extends BaseApiController
             'today' => $today->toDateString(),
             'attendance' => $this->presentAttendance($attendance),
             'schedule' => $schedule,
-            'unread_notifications' => $request->user()->unreadNotifications()->count(),
+            'unread_notifications' => $request->user()->unreadNotifications()->count() + $this->tahfizNotifications($request)->whereNull('read_at')->count(),
         ], 'Beranda pegawai berhasil diambil');
     }
 
@@ -288,12 +290,18 @@ class MobileController extends BaseApiController
     // Notifikasi (semua peran) — kanal `database` bawaan Laravel
     // ------------------------------------------------------------------
 
+    /**
+     * Agregator: notifikasi Laravel (UKS, Aktivitas, LMS, Aset, Keuangan,
+     * Perpustakaan, Workflow) + inbox Tahfiz yang punya tabel sendiri.
+     * Id Tahfiz diawali `tahfiz-` supaya satu endpoint "baca" melayani keduanya.
+     */
     public function notifications(Request $request): JsonResponse
     {
         $user = $request->user();
 
         $items = $user->notifications()->latest()->limit(50)->get()->map(fn ($n) => [
             'id' => $n->id,
+            'source' => 'system',
             'title' => $n->data['title'] ?? $n->data['subject'] ?? class_basename($n->type),
             'body' => $n->data['message'] ?? $n->data['body'] ?? null,
             'data' => $n->data,
@@ -301,14 +309,34 @@ class MobileController extends BaseApiController
             'created_at' => $n->created_at?->toIso8601String(),
         ]);
 
+        $tahfiz = $this->tahfizNotifications($request);
+
+        $merged = $items->concat($tahfiz->map(fn (TahfizNotification $n) => [
+            'id' => 'tahfiz-'.$n->id,
+            'source' => 'tahfiz',
+            'title' => $n->title,
+            'body' => $n->body,
+            'data' => $n->data,
+            'read' => $n->read_at !== null,
+            'created_at' => $n->created_at?->toIso8601String(),
+        ]))->sortByDesc('created_at')->take(60)->values();
+
         return $this->successResponse([
-            'unread' => $user->unreadNotifications()->count(),
-            'items' => $items,
+            'unread' => $user->unreadNotifications()->count() + $tahfiz->whereNull('read_at')->count(),
+            'items' => $merged,
         ], 'Notifikasi berhasil diambil');
     }
 
     public function readNotification(Request $request, string $id): JsonResponse
     {
+        if (str_starts_with($id, 'tahfiz-')) {
+            $n = $this->tahfizNotifications($request)->firstWhere('id', (int) substr($id, 7));
+            abort_if($n === null, 404, 'Notifikasi tidak ditemukan.');
+            $n->forceFill(['read_at' => now()])->save();
+
+            return $this->successResponse(null, 'Ditandai dibaca');
+        }
+
         $n = $request->user()->notifications()->where('id', $id)->first();
         abort_if($n === null, 404, 'Notifikasi tidak ditemukan.');
         $n->markAsRead();
@@ -319,8 +347,26 @@ class MobileController extends BaseApiController
     public function readAllNotifications(Request $request): JsonResponse
     {
         $request->user()->unreadNotifications->markAsRead();
+        $this->tahfizNotifications($request)->whereNull('read_at')
+            ->each(fn (TahfizNotification $n) => $n->forceFill(['read_at' => now()])->save());
 
         return $this->successResponse(null, 'Semua notifikasi ditandai dibaca');
+    }
+
+    /** Inbox Tahfiz milik akun ini, disaring sesuai peran aktif. */
+    private function tahfizNotifications(Request $request)
+    {
+        $audiences = match (ContextState::typeFor($request->user()->getKey())) {
+            ContextService::GUARDIAN => [TahfizNotification::AUDIENCE_PARENT],
+            ContextService::STUDENT => [TahfizNotification::AUDIENCE_PARTICIPANT],
+            ContextService::EMPLOYEE => [TahfizNotification::AUDIENCE_INSTRUCTOR, TahfizNotification::AUDIENCE_MUSYRIF, TahfizNotification::AUDIENCE_ADMIN],
+            default => TahfizNotification::AUDIENCES,
+        };
+
+        return TahfizNotification::query()
+            ->where('user_id', $request->user()->getKey())
+            ->whereIn('audience', $audiences)
+            ->latest()->limit(50)->get();
     }
 
     // ------------------------------------------------------------------

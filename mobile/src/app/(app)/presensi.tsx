@@ -23,7 +23,7 @@ export default function Presensi() {
   };
 
   return (
-    <Screen refreshing={list.isRefetching} onRefresh={() => { home.refetch(); list.refetch(); }} header={<Hero subtitle="Catat kehadiran harian Anda" />}>
+    <Screen refreshing={list.isRefetching} onRefresh={() => { home.refetch(); list.refetch(); }} header={<Hero back subtitle="Catat kehadiran harian Anda" />}>
       <Card style={{ alignItems: 'center', gap: 12, paddingVertical: 22 }}>
         <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name={next === 'check-out' ? 'log-out' : next ? 'log-in' : 'checkmark-done'} size={40} color={colors.primary} />

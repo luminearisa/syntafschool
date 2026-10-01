@@ -10,6 +10,7 @@ import { useAuth } from '@/store/auth';
 import { colors } from '@/theme';
 import { dateLong, rupiah, timeHM } from '@/lib/format';
 import { useRouter } from 'expo-router';
+import { QuickLinks } from '@/components/QuickLinks';
 
 export default function Home() {
   const active = useAuth((s) => s.active);
@@ -29,6 +30,7 @@ function FamilyHome() {
       onRefresh={() => q.refetch()}
       header={<Hero subtitle={active === 'guardian' ? 'Pantau perkembangan putra-putri Anda.' : 'Semangat belajar hari ini!'} />}
     >
+      <QuickLinks />
       {q.isLoading ? <Loading /> : q.error ? <ErrorNote message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : null}
       {q.data && kids.length === 0 ? <EmptyState icon="people-outline" title="Belum ada data anak" hint="Hubungi administrasi sekolah untuk menautkan data anak ke akun Anda." /> : null}
 
@@ -65,6 +67,7 @@ function EmployeeHome() {
 
   return (
     <Screen refreshing={q.isRefetching} onRefresh={() => q.refetch()} header={<Hero subtitle={d ? dateLong(d.today) : undefined} />}>
+      <QuickLinks />
       {q.isLoading ? <Loading /> : q.error ? <ErrorNote message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : null}
       {d ? (
         <>
@@ -87,7 +90,7 @@ function EmployeeHome() {
           ))}
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.goldSoft }}>
             <Ionicons name="information-circle" size={20} color={colors.gold} />
-            <Text style={[T.body, { flex: 1 }]}>Catat kehadiran Anda di tab Presensi.</Text>
+            <Text style={[T.body, { flex: 1 }]}>Catat kehadiran Anda di Layanan → Presensi.</Text>
           </Card>
         </>
       ) : null}
