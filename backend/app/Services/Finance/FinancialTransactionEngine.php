@@ -8,6 +8,12 @@ use App\Models\FinanceCashAccount;
 use App\Models\FinancePeriod;
 use App\Models\FinancialTransaction;
 use App\Models\FinancialTransactionLine;
+use App\Services\Finance\Accounting\DanaPolicy;
+use App\Services\Finance\Accounting\UnitResolver;
+use App\Support\Accounting\CoaHierarchy;
+use App\Support\Accounting\JournalValidator;
+use App\Support\Accounting\SumberModul;
+use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -33,12 +39,33 @@ use Illuminate\Validation\ValidationException;
  */
 class FinancialTransactionEngine
 {
-    /** Toleransi pembulatan sampai sen untuk uji keseimbangan. */
-    private const TOLERANCE = 0.005;
+    /**
+     * Toleransi pembulatan float — HANYA untuk jalur kas/bank (subledger) yang
+     * nilainya masih float dari kolom saldo.
+     *
+     * Keseimbangan jurnal TIDAK memakai toleransi ini: ia dibandingkan tepat
+     * sebagai string BCMath lewat JournalValidator, karena selisih satu sen
+     * adalah ketidakseimbangan yang harus terlihat, bukan dibulatkan diam-diam.
+     */
+    private const FLOAT_EPSILON = 0.005;
 
     public function __construct(
         private readonly FinanceNumberingService $numbering,
+        private readonly ?UnitResolver $units = null,
+        private readonly ?DanaPolicy $dana = null,
     ) {}
+
+    /** Penentu unit; disediakan container, dapat diisi manual pada pengujian. */
+    protected function units(): UnitResolver
+    {
+        return $this->units ?? app(UnitResolver::class);
+    }
+
+    /** Penjaga peruntukan dana. */
+    protected function dana(): DanaPolicy
+    {
+        return $this->dana ?? app(DanaPolicy::class);
+    }
 
     /**
      * Posting satu jurnal seimbang + gerakkan saldo kas/bank konkret.
@@ -63,13 +90,19 @@ class FinancialTransactionEngine
         }
 
         $normalized = $this->normalizeLines($lines);
-        $this->assertBalanced($normalized);
+        $totals = $this->assertBalanced($normalized);
 
         $date = $this->resolveDate($context['date'] ?? null);
         $period = $this->resolveOpenPeriod($date);
         $balances = $context['balances'] ?? [];
 
-        return DB::transaction(function () use ($type, $description, $normalized, $date, $period, $context, $balances): FinancialTransaction {
+        // Dimensi standar & penjaga peruntukan dijalankan SEBELUM transaksi
+        // dibuka: penolakan karena dana/pusat biaya tidak boleh meninggalkan
+        // jejak setengah jadi.
+        $sumberModul = $this->resolveSumberModul($context);
+        $normalized = $this->prepareDimensi($normalized, $sumberModul, $context);
+
+        return DB::transaction(function () use ($type, $description, $normalized, $totals, $sumberModul, $date, $period, $context, $balances): FinancialTransaction {
             // Kunci subledger lebih dulu (urutan id deterministik → hindari deadlock
             // saat dua transfer berlawanan arah berjalan bersamaan).
             $locked = $this->lockBalances($balances);
@@ -81,12 +114,14 @@ class FinancialTransactionEngine
                 'transaction_date' => $date->toDateString(),
                 'description' => $description,
                 'type' => $type,
+                'sumber_modul' => $sumberModul,
                 'reference_type' => $context['reference_type'] ?? null,
                 'reference_id' => $context['reference_id'] ?? null,
                 'cost_center_id' => $context['cost_center_id'] ?? null,
                 'period_id' => $period->id,
-                'total_debit' => round(array_sum(array_column($normalized, 'debit')), 2),
-                'total_credit' => round(array_sum(array_column($normalized, 'credit')), 2),
+                // Jumlah dari validator: string BCMath, bukan hasil pembulatan float.
+                'total_debit' => $totals['total_debit'],
+                'total_credit' => $totals['total_credit'],
                 'status' => FinancialTransaction::STATUS_POSTED,
                 'posted_at' => Carbon::now(),
                 'posted_by' => $createdBy,
@@ -100,7 +135,10 @@ class FinancialTransactionEngine
                 $createdLines[] = FinancialTransactionLine::create([
                     'finance_transaction_id' => $transaction->id,
                     'account_id' => $line['account_id'],
+                    'account_name' => $line['account_name'] ?? null,
                     'cost_center_id' => $line['cost_center_id'] ?? $context['cost_center_id'] ?? null,
+                    'kode_unit' => $line['kode_unit'] ?? null,
+                    'kode_dana' => $line['kode_dana'] ?? null,
                     'debit' => $line['debit'],
                     'credit' => $line['credit'],
                     'description' => $line['description'] ?? null,
@@ -172,7 +210,7 @@ class FinancialTransactionEngine
                 $lines,
                 fn (FinancialTransactionLine $line): bool => ! isset($claimed[$line->id])
                     && (int) $line->account_id === (int) $accountId
-                    && abs((float) $line->{$side} - $group['amount']) <= self::TOLERANCE
+                    && abs((float) $line->{$side} - $group['amount']) <= self::FLOAT_EPSILON
                     && (float) $line->{$side} > 0
             ));
 
@@ -226,15 +264,22 @@ class FinancialTransactionEngine
             foreach ($original->lines as $line) {
                 $counterLines[] = [
                     'account_id' => $line->account_id,
-                    'debit' => (float) $line->credit,
-                    'credit' => (float) $line->debit,
+                    'debit' => $line->credit,
+                    'credit' => $line->debit,
                     'description' => $line->description,
                     'cost_center_id' => $line->cost_center_id,
+                    // Dimensi disalin PER BARIS agar jurnal pembalik meniadakan
+                    // angka di unit & dana yang persis sama. Tanpa ini, pembatalan
+                    // akan memindahkan angka antar unit/dana dan laporan per unit
+                    // berbeda dari kenyataan.
+                    'kode_unit' => $line->kode_unit,
+                    'kode_dana' => $line->kode_dana,
                 ];
             }
 
             $counter = $this->post($fresh->type, "Pembatalan {$fresh->transaction_number}: {$reason}", $counterLines, [
                 'date' => Carbon::now(),
+                'sumber_modul' => $fresh->sumber_modul,
                 'reference_type' => $fresh->reference_type,
                 'reference_id' => $fresh->reference_id,
                 'cost_center_id' => $fresh->cost_center_id,
@@ -384,43 +429,50 @@ class FinancialTransactionEngine
         $accountIds = [];
 
         foreach ($lines as $line) {
-            $debit = round((float) ($line['debit'] ?? 0), 2);
-            $credit = round((float) ($line['credit'] ?? 0), 2);
             $accountId = (int) ($line['account_id'] ?? 0);
 
             if ($accountId <= 0) {
                 throw ValidationException::withMessages(['lines' => 'Setiap baris jurnal wajib menunjuk akun.']);
             }
 
-            if ($debit < 0 || $credit < 0) {
-                throw ValidationException::withMessages(['lines' => 'Debit dan credit tidak boleh negatif.']);
-            }
-
-            if (($debit > 0 && $credit > 0) || ($debit <= 0 && $credit <= 0)) {
-                throw ValidationException::withMessages(['lines' => 'Setiap baris jurnal harus mengisi salah satu debit atau credit (bukan keduanya, bukan nol).']);
-            }
-
             $accountIds[] = $accountId;
+
+            // Uang masuk sebagai float di batas sistem, lalu seluruh perhitungan
+            // memakai string BCMath. Setelah titik ini tidak ada float lagi.
             $normalized[] = [
                 'account_id' => $accountId,
-                'debit' => $debit,
-                'credit' => $credit,
+                'debit' => Money::of($line['debit'] ?? 0),
+                'credit' => Money::of($line['credit'] ?? 0),
                 'description' => $line['description'] ?? null,
                 // §5: penelusuran level baris — unit mana yang menanggung dan
                 // nomor dokumen apa yang melahirkannya. Tanpa dilewatkan di sini,
                 // nilai ini hilang sebelum sempat disimpan.
                 'cost_center_id' => $line['cost_center_id'] ?? null,
                 'reference' => $line['reference'] ?? null,
+                // Dimensi standar: unit bisnis & dana. Keduanya boleh kosong pada
+                // pemanggil lama, dan diisi/diwarisi di post().
+                'kode_unit' => $line['kode_unit'] ?? null,
+                'kode_dana' => $line['kode_dana'] ?? null,
             ];
         }
 
-        $this->assertAccountsPostable($accountIds);
+        $accounts = $this->assertAccountsPostable($accountIds);
+
+        foreach ($normalized as $index => $line) {
+            $akun = $accounts[$line['account_id']] ?? null;
+
+            // Nama akun di-snapshot: laporan bertahun lalu harus tetap terbaca
+            // walau nama akunnya diubah kelak.
+            $normalized[$index]['account_name'] = $akun?->name;
+            $normalized[$index]['account_code'] = $akun?->code;
+        }
 
         return $normalized;
     }
 
     /** Hanya akun daun (tanpa anak) yang boleh dipakai memposting (§47). */
-    protected function assertAccountsPostable(array $accountIds): void
+    /** @return array<int, FinanceAccount> akun keyed by id, untuk snapshot nama akun */
+    protected function assertAccountsPostable(array $accountIds): array
     {
         $unique = array_values(array_unique($accountIds));
 
@@ -441,23 +493,75 @@ class FinancialTransactionEngine
                 throw ValidationException::withMessages(['lines' => "Akun {$account->code} adalah akun induk; posting hanya ke akun rincian."]);
             }
         }
+
+        return $accounts->all();
     }
 
     /** @param  list<array{account_id: int, debit: float, credit: float, description: string|null}>  $lines */
-    protected function assertBalanced(array $lines): void
+    /**
+     * @param  array<int, array<string, mixed>>  $lines
+     * @return array{total_debit: string, total_credit: string}
+     */
+    /**
+     * Asal modul jurnal. Bila disebut, nilainya wajib terdaftar di SumberModul —
+     * supaya "jurnal ini lahir dari modul apa?" selalu punya jawaban pasti dan
+     * pemetaan unit bawaan per modul tidak menebak-nebak.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    protected function resolveSumberModul(array $context): ?string
     {
-        $debit = round(array_sum(array_column($lines, 'debit')), 2);
-        $credit = round(array_sum(array_column($lines, 'credit')), 2);
+        $sumber = $context['sumber_modul'] ?? null;
 
-        if ($debit <= 0) {
-            throw ValidationException::withMessages(['lines' => 'Total jurnal harus lebih besar dari nol.']);
+        if ($sumber === null || $sumber === '') {
+            return null;
         }
 
-        if (abs($debit - $credit) > self::TOLERANCE) {
+        if (! SumberModul::isValid((string) $sumber)) {
             throw ValidationException::withMessages([
-                'lines' => 'Jurnal tidak seimbang: total debit '.number_format($debit, 2).' ≠ total credit '.number_format($credit, 2).'.',
+                'sumber_modul' => "Modul '{$sumber}' tidak terdaftar sebagai sumber jurnal yang sah.",
             ]);
         }
+
+        return (string) $sumber;
+    }
+
+    /**
+     * Menyiapkan dimensi standar pada baris: pewarisan dana dari kepala dokumen,
+     * penjaga peruntukan, kewajiban pusat biaya untuk akun beban, lalu resolusi
+     * unit bisnis per baris.
+     *
+     * @param  array<int, array<string, mixed>>  $lines
+     * @param  array<string, mixed>  $context
+     * @return array<int, array<string, mixed>>
+     */
+    protected function prepareDimensi(array $lines, ?string $sumberModul, array $context): array
+    {
+        $danaDokumen = $context['kode_dana'] ?? null;
+
+        if ($danaDokumen !== null) {
+            foreach ($lines as $index => $line) {
+                // Dana boleh disebut di kepala dokumen (semua baris mewarisi) atau
+                // per baris: satu kas keluar bisa membebani dua dana sekaligus.
+                $lines[$index]['kode_dana'] = $line['kode_dana'] ?? $danaDokumen;
+            }
+        }
+
+        $this->dana()->assertPeruntukan($lines, $sumberModul);
+
+        JournalValidator::validatePusatBiaya($lines, $sumberModul ?? SumberModul::JURNAL_UMUM);
+
+        $unitDokumen = $context['kode_unit'] ?? $this->units()->defaultUnitFor($sumberModul);
+
+        return $this->units()->resolveForLines($lines, $unitDokumen);
+    }
+
+    protected function assertBalanced(array $lines): array
+    {
+        // Aturan double-entry dijalankan oleh validator bersama, dengan
+        // perbandingan string BCMath — bukan float bertoleransi. Selisih satu sen
+        // sekalipun adalah ketidakseimbangan, dan itulah yang harus terlihat.
+        return JournalValidator::validateBalanced($lines);
     }
 
     protected function resolveDate(Carbon|string|null $date): Carbon
@@ -567,7 +671,7 @@ class FinancialTransactionEngine
             throw ValidationException::withMessages(['amount' => 'Nominal harus lebih besar dari nol.']);
         }
 
-        if (abs(round($amount, 2) - $amount) > self::TOLERANCE) {
+        if (abs(round($amount, 2) - $amount) > self::FLOAT_EPSILON) {
             throw ValidationException::withMessages(['amount' => 'Nominal maksimum dua angka di belakang koma (sampai sen).']);
         }
     }

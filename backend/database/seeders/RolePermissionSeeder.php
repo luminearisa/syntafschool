@@ -98,6 +98,8 @@ class RolePermissionSeeder extends Seeder
             'clearance.view', 'clearance.request', 'clearance.approve', 'clearance.waive',
             // Penutupan periode (§49 setelah closed tidak boleh diedit).
             'closing.view', 'closing.manage',
+            // Persetujuan yang tidak boleh dilakukan orang yang sama dengan pengaju:
+            'closing.approve', 'journal.approve',
             // Laporan, konfigurasi.
             'report.view', 'report.export',
             // Otomasi & observability (§28, §29). Membaca register pekerjaan/kegagalan

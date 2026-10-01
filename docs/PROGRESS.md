@@ -1531,3 +1531,54 @@ beraudit, dan isolasi unit sekolah.
       lama tetap diterima
 - [x] **`BkEarlyWarningRule::appliesTo()`** memakai `$this->scope` yang belum
       dipastikan array → aturan ber-scope gagal dievaluasi
+
+## Modul Finance — penyelarasan standar akuntansi (2026-12-16)
+
+Menyelaraskan akuntansi proyek ini dengan standar pada
+[AbuNarasya/al-wafi](https://github.com/AbuNarasya/al-wafi) bagian akuntansi, secara **aditif**
+(tidak ada tabel/kolom/alur lama yang diubah maknanya).
+
+- [x] `App\Support\Money` — aritmetika uang BCMath (skala 2, kuantiti 4); float hanya boleh masuk
+      di batas sistem
+- [x] `JournalValidator` — minimal 2 baris, satu sisi per baris, tidak negatif, dan keseimbangan
+      dibandingkan **tepat** (toleransi `TOLERANCE = 0.005` dicabut dari jalur jurnal)
+- [x] `SumberModul` — 29 modul asal jurnal sebagai daftar sah; nilai di luar daftar ditolak
+- [x] `CoaHierarchy` — akar kelompok 1–5 diturunkan dari kode akun (tipe hanya cadangan)
+- [x] **Dimensi unit bisnis** pada baris jurnal: `finance_business_units`, `finance_unit_defaults`,
+      `kode_unit` + aturan **unit penampung** untuk seluruh liabilitas & rekening kas/bank
+- [x] **Fund accounting**: `finance_funds`, `finance_fund_accounts`,
+      `finance_fund_contra_accounts`, `DanaPolicy` — dana terikat hanya membatasi baris beban
+- [x] **Saldo awal** dengan tahap rancangan → posting (`finance_opening_balances`), wajib seimbang,
+      terkunci setelah diposting
+- [x] **Buka periode** lewat permohonan + persetujuan orang lain (`PeriodReopenService`)
+- [x] **Pembatalan jurnal** lewat permohonan + persetujuan orang lain (`JournalVoidService`),
+      jurnal pembalik menyalin dimensi per baris
+- [x] **Laporan standar**: neraca saldo, laba rugi per unit, laporan dana
+      (penerimaan/penggunaan/saldo + arus kas terpisah)
+- [x] Snapshot **nama akun** pada baris jurnal agar laporan lama tidak bergeser saat akun diubah
+- [x] 6 controller + 22 endpoint baru dengan izin yang sudah ada (83 izin `finance.*`) + 2 izin baru
+      (`finance.closing.approve`, `finance.journal.approve`)
+- [x] 12 uji baru (`FinanceAccountingStandardTest`) — HIJAU; 10 uji `FinanceAccountingE2ETest`
+      tetap HIJAU (277 asersi)
+- [ ] Uji HTTP untuk endpoint baru belum dibuat (layanan & engine sudah diuji)
+- [ ] Modul persediaan, aset tetap, dan akrual: kolom dimensinya sudah disiapkan di
+      `SumberModul` (`PERSEDIAAN`, `DEPRESIASI`, `PELEPASAN_ASET`) tetapi modulnya belum ada di repo
+
+### Cacat nyata yang ditemukan & diperbaiki saat penyelarasan
+
+- [x] **Keseimbangan jurnal ditoleransi 0,005** sehingga selisih nyata dapat lolos; kini dibandingkan
+      tepat sebagai string BCMath
+- [x] **Seluruh perhitungan uang memakai float** (`round((float) …)`) — dibaca sebagai bug presisi,
+      bukan sekadar gaya; kini lewat `Money`
+- [x] **Laporan tidak pernah menghitung hari terakhir rentang**: batas kueri memakai tanggal
+      `Y-m-d` sementara kolom `transaction_date` menyimpan datetime, sehingga transaksi hari terakhir
+      terbuang diam-diam (ditemukan saat uji laporan per unit)
+- [x] **Laporan dana berpotensi menghitung ganda**: penerimaan/penggunaan semula dihitung dari sisi
+      debet/kredit baris kas, sehingga pembayaran beban dari kas berdana terhitung sekali sebagai
+      penggunaan dan sekali lagi sebagai penerimaan; kini penerimaan dibaca dari akun pendapatan dan
+      penggunaan dari akun beban, dengan arus kas dilaporkan terpisah
+- [x] **Asal modul jurnal tidak dapat dipastikan** (`reference_type` bebas) — kini divalidasi
+      terhadap daftar `SumberModul`
+- [x] **`EscalationLevel`/`PlanStatus` (BK)** — catatan lintas modul: pola yang sama (nilai enum yang
+      tidak ada) pernah membuat fitur tidak pernah berjalan; kini setiap nilai enum yang dipakai
+      seeder & layanan dipastikan ada

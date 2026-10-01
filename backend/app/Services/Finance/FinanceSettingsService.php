@@ -38,6 +38,10 @@ class FinanceSettingsService
         // Default fiscal year dipakai saat membuat periode/budget baru.
         'fiscal_year' => [self::TYPE_INTEGER, 2026, 'Tahun fiskal berjalan'],
         'fiscal_start_month' => [self::TYPE_INTEGER, 7, 'Bulan awal tahun fiskal (1-12); 7 = Juli (tahun ajaran)'],
+        'container_unit' => [self::TYPE_STRING, '', 'Unit penampung untuk baris NERACA: seluruh liabilitas & rekening kas/bank selalu memakai unit ini, karena neraca hanya bermakna di tingkat yayasan (kosongkan = perilaku lama)'],
+        'require_cost_center_for_expense' => [self::TYPE_BOOLEAN, false, 'Wajibkan pusat biaya pada setiap baris akun beban (menggerakkan realisasi anggaran)'],
+        'cost_center_exempt_modules' => [self::TYPE_STRING, 'TutupBuku,Depresiasi,SaldoAwal', 'Modul yang dikecualikan dari kewajiban pusat biaya, dipisahkan koma'],
+        'fund_control' => [self::TYPE_STRING, 'enforce', 'Kebijakan peruntukan dana: enforce|warning|off'],
         // Ambang approval pengeluaran bertingkat (§32). 0 = semua satu langkah.
         'expense_approval_threshold' => [self::TYPE_INTEGER, 5000000, 'Nominal di atasnya pengeluaran butuh approval manajer'],
         'expense_approval_steps' => [self::TYPE_INTEGER, 1, 'Jumlah langkah persetujuan pengeluaran (1 atau 2)'],

@@ -43,6 +43,12 @@ use App\Http\Controllers\Api\Finance\FinanceSettingsController;
 use App\Http\Controllers\Api\Finance\FinanceTransferController;
 use App\Http\Controllers\Api\Finance\FinanceVendorController;
 use App\Http\Controllers\Api\Finance\FinanceVendorInvoiceController;
+use App\Http\Controllers\Api\Finance\FinanceBusinessUnitController;
+use App\Http\Controllers\Api\Finance\FinanceFundController;
+use App\Http\Controllers\Api\Finance\FinanceJournalVoidController;
+use App\Http\Controllers\Api\Finance\FinanceOpeningBalanceController;
+use App\Http\Controllers\Api\Finance\FinancePeriodReopenController;
+use App\Http\Controllers\Api\Finance\FinanceStandardReportController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -695,4 +701,64 @@ Route::prefix('finance')->name('finance.')->group(function (): void {
         Route::get('children/{student}/receivables', [FinancePortalController::class, 'receivables'])->name('children.receivables');
         Route::get('children/{student}/payment-plans', [FinancePortalController::class, 'paymentPlans'])->name('children.payment-plans');
     });
+
+    // --------------------------------------------------------------------
+    // Standar akuntansi: unit bisnis, dana, saldo awal, permohonan, laporan
+    // --------------------------------------------------------------------
+    Route::get('business-units', [FinanceBusinessUnitController::class, 'index'])
+        ->middleware('permission:finance.account.view')->name('business-units.index');
+    Route::post('business-units', [FinanceBusinessUnitController::class, 'store'])
+        ->middleware('permission:finance.account.manage')->name('business-units.store');
+    Route::patch('business-units/{code}', [FinanceBusinessUnitController::class, 'update'])
+        ->middleware('permission:finance.account.manage')->name('business-units.update');
+    Route::post('business-units/{code}/toggle', [FinanceBusinessUnitController::class, 'toggle'])
+        ->middleware('permission:finance.account.manage')->name('business-units.toggle');
+    Route::post('business-units/defaults', [FinanceBusinessUnitController::class, 'setDefault'])
+        ->middleware('permission:finance.account.manage')->name('business-units.defaults');
+
+    Route::get('funds', [FinanceFundController::class, 'index'])
+        ->middleware('permission:finance.account.view')->name('funds.index');
+    Route::post('funds', [FinanceFundController::class, 'store'])
+        ->middleware('permission:finance.account.manage')->name('funds.store');
+    Route::patch('funds/{id}', [FinanceFundController::class, 'update'])
+        ->middleware('permission:finance.account.manage')->name('funds.update');
+    Route::post('funds/{id}/accounts', [FinanceFundController::class, 'syncAccounts'])
+        ->middleware('permission:finance.account.manage')->name('funds.accounts');
+    Route::delete('funds/{id}', [FinanceFundController::class, 'destroy'])
+        ->middleware('permission:finance.account.manage')->name('funds.destroy');
+
+    Route::get('opening-balances', [FinanceOpeningBalanceController::class, 'index'])
+        ->middleware('permission:finance.account.view')->name('opening-balances.index');
+    Route::post('opening-balances', [FinanceOpeningBalanceController::class, 'save'])
+        ->middleware('permission:finance.account.manage')->name('opening-balances.save');
+    Route::delete('opening-balances/{id}', [FinanceOpeningBalanceController::class, 'destroy'])
+        ->middleware('permission:finance.account.manage')->name('opening-balances.destroy');
+    Route::post('opening-balances/post', [FinanceOpeningBalanceController::class, 'post'])
+        ->middleware('permission:finance.account.manage')->name('opening-balances.post');
+
+    Route::get('period-reopen-requests', [FinancePeriodReopenController::class, 'index'])
+        ->middleware('permission:finance.closing.view')->name('period-reopen.index');
+    Route::post('period-reopen-requests', [FinancePeriodReopenController::class, 'request'])
+        ->middleware('permission:finance.closing.manage')->name('period-reopen.request');
+    Route::post('period-reopen-requests/{id}/decide', [FinancePeriodReopenController::class, 'decide'])
+        ->middleware('permission:finance.closing.approve')->name('period-reopen.decide');
+    Route::get('periods/{periodId}/reopen-history', [FinancePeriodReopenController::class, 'history'])
+        ->middleware('permission:finance.closing.view')->name('period-reopen.history');
+
+    Route::get('journal-void-requests', [FinanceJournalVoidController::class, 'index'])
+        ->middleware('permission:finance.journal.view')->name('journal-void.index');
+    Route::post('journal-void-requests', [FinanceJournalVoidController::class, 'request'])
+        ->middleware('permission:finance.journal.reverse')->name('journal-void.request');
+    Route::post('journal-void-requests/{id}/decide', [FinanceJournalVoidController::class, 'decide'])
+        ->middleware('permission:finance.journal.approve')->name('journal-void.decide');
+
+    Route::get('reports/trial-balance', [FinanceStandardReportController::class, 'trialBalance'])
+        ->middleware('permission:finance.report.view')->name('reports.trial-balance');
+    Route::get('reports/profit-loss-by-unit', [FinanceStandardReportController::class, 'profitLossByUnit'])
+        ->middleware('permission:finance.report.view')->name('reports.profit-loss-by-unit');
+    Route::get('reports/fund-statement', [FinanceStandardReportController::class, 'fundStatement'])
+        ->middleware('permission:finance.report.view')->name('reports.fund-statement');
+    Route::get('reports/modules', [FinanceStandardReportController::class, 'modules'])
+        ->middleware('permission:finance.report.view')->name('reports.modules');
+
 });
