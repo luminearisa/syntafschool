@@ -4,21 +4,38 @@ import { Card, EmptyState, ErrorNote, Loading, Pill, Row, Screen, SectionTitle, 
 import { Chips } from '@/components/forms';
 import { Hero } from '@/components/Hero';
 import { useTahfizParent } from '@/api/family';
+import { useTahfizSelf } from '@/api/student';
+import { useAuth } from '@/store/auth';
 import { errorMessage } from '@/api/client';
 import { colors } from '@/theme';
 import { dateShort } from '@/lib/format';
 
 type R = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** Wali memantau peserta (anak); siswa melihat capaiannya sendiri. */
 export default function Tahfiz() {
+  return useAuth((s) => s.active) === 'student' ? <TahfizStudent /> : <TahfizGuardian />;
+}
+
+function TahfizStudent() {
+  const q = useTahfizSelf();
+  const d = q.data as R | undefined;
+  return (
+    <Screen refreshing={q.isRefetching} onRefresh={() => q.refetch()} header={<Hero back subtitle="Hafalan & capaian Al-Qur'an" />}>
+      {q.isLoading ? <Loading /> : q.error ? <ErrorNote message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : null}
+      {d && !d.is_participant ? <EmptyState icon="moon-outline" title="Belum terdaftar di Tahfiz" hint="Hubungi koordinator Tahfiz untuk didaftarkan sebagai peserta." /> : null}
+      {d?.is_participant ? <ParticipantView child={{ ...d, participant: d.participant }} /> : null}
+    </Screen>
+  );
+}
+
+function TahfizGuardian() {
   const base = useTahfizParent(null);
   const kids: R[] = base.data?.available_children ?? [];
   const [pick, setPick] = useState<number | null>(null);
   const participantId = pick ?? kids[0]?.id ?? null;
   const q = useTahfizParent(participantId);
   const child: R | undefined = q.data?.child;
-  const p = child?.progress;
-  const target = child?.target;
 
   return (
     <Screen refreshing={q.isRefetching} onRefresh={() => { base.refetch(); q.refetch(); }} header={<Hero back subtitle="Hafalan & capaian Al-Qur'an" />}>
@@ -28,7 +45,15 @@ export default function Tahfiz() {
       {q.isLoading && participantId ? <Loading /> : null}
       {q.data?.error ? <ErrorNote message={q.data.error} /> : null}
 
-      {child ? (
+      {child ? <ParticipantView child={child} /> : null}
+    </Screen>
+  );
+}
+
+function ParticipantView({ child }: { child: R }) {
+  const p = child.progress;
+  const target = child.target;
+  return (
         <>
           <Card>
             <Text style={{ fontSize: 17, fontWeight: '800', color: colors.ink }}>{child.participant?.name}</Text>
@@ -72,8 +97,6 @@ export default function Tahfiz() {
             </>
           ) : null}
         </>
-      ) : null}
-    </Screen>
   );
 }
 

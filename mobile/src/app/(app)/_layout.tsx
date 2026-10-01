@@ -63,6 +63,9 @@ export default function AppTabs() {
       <Tabs.Screen name="kesehatan" options={{ href: null }} />
       <Tabs.Screen name="konseling" options={{ href: null }} />
       <Tabs.Screen name="dompet" options={{ href: null }} />
+      <Tabs.Screen name="tugas" options={{ href: null }} />
+      <Tabs.Screen name="kelas" options={{ href: null }} />
+      <Tabs.Screen name="perpustakaan" options={{ href: null }} />
     </Tabs>
   );
 }

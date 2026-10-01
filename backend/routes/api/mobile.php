@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\Mobile\MobileController;
+use App\Http\Controllers\Api\Mobile\MobileLibraryController;
+use App\Http\Controllers\Api\Mobile\MobileStudentController;
 use App\Http\Controllers\Api\Mobile\MobileWalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +27,20 @@ Route::prefix('mobile')->name('mobile.')->group(function (): void {
         Route::get('children/{student}/wallet', [MobileWalletController::class, 'show'])->name('children.wallet');
         Route::post('children/{student}/wallet/topups', [MobileWalletController::class, 'topup'])
             ->middleware('throttle:10,1')->name('children.wallet.topup');
+    });
+
+    // Siswa
+    Route::middleware('ctx:student')->group(function (): void {
+        Route::post('assignments/{assignment}/submit', [MobileStudentController::class, 'submitAssignment'])
+            ->middleware('throttle:20,1')->name('assignments.submit');
+    });
+
+    // Perpustakaan: anggota (siswa atau pegawai)
+    Route::middleware('ctx:student,employee')->prefix('library')->name('library.')->group(function (): void {
+        Route::get('me', [MobileLibraryController::class, 'me'])->name('me');
+        Route::post('reservations', [MobileLibraryController::class, 'reserve'])->middleware('throttle:20,1')->name('reserve');
+        Route::post('reservations/{reservation}/cancel', [MobileLibraryController::class, 'cancelReservation'])->name('reservations.cancel');
+        Route::post('loans/{loan}/renew', [MobileLibraryController::class, 'renew'])->middleware('throttle:20,1')->name('loans.renew');
     });
 
     // Pegawai

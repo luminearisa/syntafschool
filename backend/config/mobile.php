@@ -29,6 +29,7 @@ return [
             'lms/parent/*',
             'library/opac',
             'library/opac/*',
+            'students/*/assignments',
         ],
         'student' => [
             'auth/*',
@@ -37,14 +38,24 @@ return [
             'bk/portal/*',
             'activities/me',
             'activities/my-programs',
-            'activities/registrations/mine',
+            'activities/discover',
+            'activities/categories',
+            'activities/periods',
+            'activities/programs/*',
+            'activities/registrations/*',
             'activities/my-attendance/*',
+            'activities/portal/parent/children/*',
+            'activities/students/*/memberships',
+            'activities/students/*/portfolio',
             'tahfiz/dashboards/peserta',
             'tahfiz/notifications',
             'tahfiz/notifications/*',
-            'lms/auth/me',
-            'lms/dashboard/student',
-            'lms/my/*',
+            // Tugas ERP milik siswa (dipagari middleware `student.family`).
+            'students/*/assignments',
+            // LMS punya model aktor & akses kursus sendiri (enrollment, izin `lms.*` role siswa);
+            // permission siswa tidak memuat hak kelola, sehingga seluruh pohon boleh dilewati
+            // seperti pada portal web siswa.
+            'lms/*',
             'library/opac',
             'library/opac/*',
             'library/members/me/card',

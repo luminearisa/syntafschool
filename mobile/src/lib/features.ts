@@ -49,19 +49,19 @@ export const FEATURES: Feature[] = [
 
   // ---- Fase 2: wali ----
   { key: 'asrama', title: 'Asrama', hint: 'Poin, izin, kepulangan', icon: 'bed', tint: '#2F6FB2', category: 'Kesiswaan', roles: g, route: '/asrama' },
-  { key: 'tahfiz', title: 'Tahfiz', hint: 'Setoran & capaian', icon: 'moon', tint: '#116149', category: 'Belajar', roles: g, route: '/tahfiz' },
-  { key: 'tahfiz-lain', title: 'Tahfiz', hint: 'Setoran & capaian', icon: 'moon', tint: '#116149', category: 'Belajar', roles: [...s, ...e], phase: 3 },
-  { key: 'aktivitas', title: 'Ekstrakurikuler', hint: 'Kegiatan, prestasi, izin', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: g, route: '/ekskul' },
-  { key: 'aktivitas-lain', title: 'Ekstrakurikuler', hint: 'Kegiatan & prestasi', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: [...s, ...e], phase: 3 },
+  { key: 'tahfiz', title: 'Tahfiz', hint: 'Setoran & capaian', icon: 'moon', tint: '#116149', category: 'Belajar', roles: [...g, ...s], route: '/tahfiz' },
+  { key: 'tahfiz-staf', title: 'Tahfiz', hint: 'Halaqah & penilaian setoran', icon: 'moon', tint: '#116149', category: 'Belajar', roles: e, phase: 4 },
+  { key: 'aktivitas', title: 'Ekstrakurikuler', hint: 'Kegiatan, prestasi, izin', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: [...g, ...s], route: '/ekskul' },
+  { key: 'aktivitas-staf', title: 'Ekstrakurikuler', hint: 'Pembina & kehadiran', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: e, phase: 4 },
   { key: 'kesehatan', title: 'Kesehatan', hint: 'Klinik sekolah', icon: 'medkit', tint: '#C8423B', category: 'Kesehatan & Konseling', roles: gs, route: '/kesehatan' },
   { key: 'bk', title: 'Konseling', hint: 'Bimbingan & konseling', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: gs, route: '/konseling' },
   { key: 'bk-staf', title: 'Konseling', hint: 'Kasus & janji temu', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: e, phase: 3 },
   { key: 'dompet', title: 'Dompet', hint: 'Saldo & top-up', icon: 'card', tint: '#B8892B', category: 'Keuangan', roles: gs, route: '/dompet' },
 
   // ---- Fase 3: siswa ----
-  { key: 'lms', title: 'Kelas Digital', hint: 'Materi, kuis, forum', icon: 'laptop', tint: '#2F6FB2', category: 'Belajar', roles: [...s, ...g], phase: 3 },
-  { key: 'tugas', title: 'Tugas', hint: 'Kerjakan & kumpulkan', icon: 'document-text', tint: '#2F6FB2', category: 'Belajar', roles: s, phase: 3 },
-  { key: 'perpus', title: 'Perpustakaan', hint: 'Katalog, pinjaman, kartu', icon: 'library', tint: '#116149', category: 'Belajar', roles: [...s, ...e], phase: 3 },
+  { key: 'lms', title: 'Kelas Digital', hint: 'Materi, kuis, forum', icon: 'laptop', tint: '#2F6FB2', category: 'Belajar', roles: s, route: '/kelas' },
+  { key: 'tugas', title: 'Tugas', hint: 'Kerjakan & kumpulkan', icon: 'document-text', tint: '#2F6FB2', category: 'Belajar', roles: gs, route: '/tugas' },
+  { key: 'perpus', title: 'Perpustakaan', hint: 'Katalog, pinjaman, kartu', icon: 'library', tint: '#116149', category: 'Belajar', roles: [...s, ...e], route: '/perpustakaan' },
 
   // ---- Fase 4 ----
   { key: 'cbt', title: 'Ujian', hint: 'Ujian berbasis komputer', icon: 'school', tint: '#C8423B', category: 'Belajar', roles: [...s, ...e], phase: 4 },

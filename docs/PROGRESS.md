@@ -1743,3 +1743,9 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [x] Backend: endpoint bayar portal, pengajuan asrama oleh orang tua, portal dompet; detail: [docs/25](./25-MOBILE-FASE-2.md)
 - [ ] UKS untuk wali, top up manual (unggah bukti), Resource khusus portal BK/Keuangan
 - [ ] Tes `MobilePhase2Test` belum dijalankan (PHP 8.3 di sandbox)
+
+### Mobile — Fase 3 (siswa)
+- [x] Tugas: daftar & kumpul teks (siswa), pantau (wali); Kelas Digital LMS (kelas, materi, tandai selesai, tugas teks, tenggat, nilai, siaran langsung, sertifikat); Perpustakaan (pinjaman, perpanjang, reservasi, denda, katalog); Tahfiz & Ekskul versi siswa (daftar ekskul ber-Idempotency-Key)
+- [x] Backend: `POST mobile/assignments/{id}/submit` (identitas & waktu dari server, kelas aktif, aturan telat, tidak menimpa nilai), grup `mobile/library/*` (kepemilikan anggota, 404 untuk milik orang lain), allowlist siswa diperluas; detail: [docs/26](./26-MOBILE-FASE-3.md)
+- [ ] Kuis LMS & lampiran berkas (hanya teks), Tahfiz/Ekskul versi staf (Fase 4)
+- [ ] Tes `MobilePhase3Test` belum dijalankan (PHP 8.3 di sandbox)
