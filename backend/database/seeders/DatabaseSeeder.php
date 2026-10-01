@@ -14,6 +14,8 @@ use App\Modules\Supervisi\Database\Seeders\SupPermissionSeeder;
 use App\Modules\UKS\Database\Seeders\UksPermissionSeeder;
 use App\Modules\Activity\Database\Seeders\ActivityMasterSeeder;
 use App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder;
+use App\Modules\Asset\Database\Seeders\AssetMasterSeeder;
+use App\Modules\Asset\Database\Seeders\AssetPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowReferenceSeeder;
 use App\Modules\Bk\Database\Seeders\BkEarlyWarningRuleSeeder;
@@ -41,6 +43,13 @@ class DatabaseSeeder extends Seeder
             // Modul Student Activity: permission granular activity.* + peran
             // ACTIVITY_*/COACH/MENTOR/JUDGE. Tanpa ini, instalasi baru tidak
             // memiliki peran modul sehingga layarnya tidak dapat dibuka siapa pun.
+            // Modul Aset & Sarpras: izin granular asset.*/facility.*/location.*,
+            // 12 peran (ASSET_ADMIN, TECHNICIAN, ...), dan katalog kategori bawaan.
+            // Tanpa ini, instalasi baru tidak memiliki peran modul sehingga layar
+            // aset tidak dapat dibuka siapa pun — persis alasan yang sama dengan
+            // modul lain di atasnya.
+            AssetPermissionSeeder::class,
+            AssetMasterSeeder::class,
             ActivityPermissionSeeder::class,
             // Modul Workflow: permission granular workflow.* + peran approver.
             WorkflowPermissionSeeder::class,

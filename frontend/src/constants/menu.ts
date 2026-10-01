@@ -32,6 +32,7 @@ import { clinicMenu } from '@/routes/domains/clinic';
 import { activityMenu } from '@/routes/domains/activity';
 import { bkMenu } from '@/routes/domains/bk';
 import { workflowMenu } from '@/routes/domains/workflow';
+import { assetMenu } from '@/routes/domains/asset';
 
 export interface MenuChild {
   label: string;
@@ -186,6 +187,12 @@ export const MENU_ITEMS: MenuItem[] = [
     children: libraryMenu,
   },
   { label: 'Inventaris', icon: Package, to: '/inventory', permission: 'inventory.view' },
+  {
+    label: 'Aset & Sarpras',
+    icon: Package,
+    permission: 'asset.view',
+    children: assetMenu,
+  },
   {
     label: 'Pengaturan',
     icon: Settings,

@@ -1679,3 +1679,29 @@ Belum ada: **antarmuka pengguna** (seluruh endpoint siap, layar belum),
 pemetaan ruang akademik, impor XLSX, integrasi pembaca RFID, definisi alur
 Workflow, modul Vendor/Pengadaan, dan pemecahan otomasi ke job antrean.
 Rinciannya pada `docs/22-MODUL-ASSET-SARPRAS.md`.
+
+## Antarmuka Aset & Sarpras (2026-12-17)
+
+16 halaman React di `frontend/src/features/asset` (24 berkas), grup menu
+**Aset & Sarpras** (13 submenu), rute di `routes/domains/asset.tsx`.
+`tsc -b` bersih, `vite build` sukses, dan **diuji pada peramban sungguhan**
+(Chromium, masuk sebagai admin sekolah): dasbor, daftar, detail 10 tab,
+fasilitas, pemeliharaan, penghapusan, laporan, lokasi, peminjaman, serta alur
+stok opname (sesi → mulai → pindai kode tak dikenal → muncul sebagai selisih).
+
+Pilihan yang disengaja pada layar: angka keuangan **tidak dirender** tanpa izin
+(bukan disamarkan); layar penghitungan tidak meminta klik antar barang (kolom
+pindai memegang fokus, kamera hanya jalan alternatif dengan pesan jujur bila
+tidak didukung); label hanya memuat identitas fisik; alasan selalu ditanyakan
+di tempat keputusan dibuat.
+
+Pengujian peramban menemukan dua cacat yang tidak terlihat oleh `tsc` dan sudah
+diperbaiki: daya tampung fasilitas yang datang sebagai objek pernah
+meruntuhkan layar, dan balasan `/scan` berbentuk `{item, result}` membuat pesan
+pindai menampilkan "undefined". `DatabaseSeeder` kini juga mendaftarkan
+`AssetPermissionSeeder` + `AssetMasterSeeder` sehingga instalasi baru langsung
+punya peran modul.
+
+Belum: pemetaan ruang akademik, impor XLSX, integrasi RFID, definisi alur
+Workflow, modul Vendor/Pengadaan, tabel ringkasan laporan, otomasi masih
+sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.

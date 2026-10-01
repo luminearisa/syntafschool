@@ -1,8 +1,9 @@
 # Modul Asset & Sarpras (Facilities & Asset Management)
 
-**Status:** backend, API, integrasi, dan otomasi **selesai dan teruji**; antarmuka
-pengguna belum dibangun (lihat *Yang belum ada* di bagian akhir).
+**Status:** backend, API, integrasi, otomasi, **dan antarmuka pengguna** selesai
+dan teruji (lihat *Bukti verifikasi* di bagian akhir).
 **Uji:** `tests/Feature/Asset` — **47 tes, 166 asersi, hijau**.
+**Layar:** 16 halaman React, `tsc -b` & `vite build` bersih, diuji di browser nyata.
 
 ```
 berkas            232 berkas PHP        18.683 baris
@@ -13,6 +14,7 @@ layanan           28 layanan aplikasi
 HTTP              17 controller · 139 rute · 4 Form Request · 2 Resource
 kebijakan         11 Policy · 12 peran (RBAC) · 41 izin
 uji               9 berkas · 1.316 baris
+antarmuka         24 berkas React · 16 halaman · 1 grup menu (13 submenu)
 ```
 
 ---
@@ -194,30 +196,94 @@ ditugaskan kepadanya). Terdapat 41 izin granular; daftar lengkapnya ada di
 
 ---
 
-## 8. Yang **belum** ada (jujur, agar tidak dikira sudah)
+## 8. Antarmuka pengguna
 
-1. **Antarmuka pengguna.** Seluruh 139 endpoint siap, tetapi layar React
-   (halaman detail aset dengan 18 tab, dashboard aset/sarpras, pemindai QR di
-   seluler) **belum dibangun**. Inilah pekerjaan berikutnya yang paling besar.
-2. **Pemetaan ruang akademik.** Pemeriksaan benturan jadwal pelajaran baru
-   berjalan setelah `locations.academic_room_id` diisi; bawaannya kosong dan
-   dinyatakan kosong.
+Modul ini punya **permukaan sendiri**, bukan sekadar endpoint. Berkasnya di
+`frontend/src/features/asset/` (24 berkas), rutenya `routes/domains/asset.tsx`,
+menunya grup **Aset & Sarpras** (13 submenu).
+
+| Halaman | Alamat | Yang dijawab |
+|---|---|---|
+Dasbor | `/assets/dashboard` | berapa aset, berapa nilainya (bagi yang berhak), apa yang rusak, apa yang menunggu |
+Daftar Aset | `/assets` | cari & saring, pilih banyak untuk label/tindakan massal, ekspor CSV |
+Detail Aset | `/assets/:id` | **10 tab**: ringkasan, penempatan, peminjaman, pemindahan, pemeliharaan, inspeksi, nilai & penyusutan, label & QR, penggantian, jejak audit |
+Label & QR | `/assets/labels` | pilih barang (atau pindai), siapkan, cetak — QR + barcode sungguhan |
+Peminjaman | `/assets/loans` | alur setujui → pesan → serah terima → aktifkan → terima kembali (kondisi wajib) |
+Pemindahan | `/assets/transfers` | alur setujui → serah terima → **penerima** mengonfirmasi |
+Pemeliharaan | `/assets/maintenance` | permintaan & perintah kerja, tugaskan teknisi, suku cadang, selesaikan, verifikasi |
+Jadwal Preventif | `/assets/maintenance/schedules` | jadwal berkala + tombol generator yang aman ditekan berkali-kali |
+Inspeksi | `/assets/inspections` | jadwalkan, isi butir hasil (Lulus/Gagal), lihat akibatnya |
+Fasilitas | `/assets/facilities` | kartu ruang, kapasitas, aturan booking, tutup/buka kembali |
+Jadwal Fasilitas | `/assets/facilities/:id/booking` | **papan pekan** 7 kolom + pesanan yang perlu tindakan |
+Stok Opname | `/assets/stock-opnames` | sesi penghitungan, lingkup wajib dipilih |
+Penghitungan | `/assets/stock-opnames/:id` | **layar pindai**: kolom siap, penghitung terisi sendiri, keputusan selisih |
+Penghapusan | `/assets/disposals` | alur periksa → nilai → setujui → laksanakan → pensiunkan |
+Struktur Lokasi | `/assets/locations` | pohon kampus → gedung → lantai → ruang |
+Laporan | `/assets/reports` | 14 laporan, ekspor CSV, pratinjau & jalankan penyusutan, rekonsiliasi Keuangan |
+
+Empat keputusan rancangan yang disengaja:
+
+1. **Angka keuangan tidak dirender, bukan disamarkan.** `Money` menampilkan
+   “Terbatas” bila pengguna tidak memegang izin keuangan — dan backend memang
+   tidak mengirim angkanya, jadi tidak ada yang bisa dibaca dari Inspect Element.
+2. **Layar penghitungan tidak meminta klik antar barang.** Kolom pindai memegang
+   fokus sendiri; pemindai genggam (yang bekerja seperti papan ketik) langsung
+   terkirim saat Enter. Kamera hanya jalan alternatif, dan bila browser tidak
+   mendukung `BarcodeDetector`, tombolnya mengatakannya — bukan diam-diam gagal.
+3. **Label hanya memuat identitas fisik** (kode, nama, lokasi, kondisi). Harga
+   tidak pernah masuk label, karena label menempel pada barang yang dapat
+   dipindai siapa pun.
+4. **Alasan ditanyakan di tempat keputusan dibuat** — ubah status, tolak booking,
+   ganti label, putuskan selisih — sebab alasan itulah yang dibaca auditor,
+   bukan statusnya.
+
+## 9. Bukti verifikasi
+
+**Uji otomatis:** `php vendor/bin/phpunit tests/Feature/Asset` → 47 tes, 166 asersi,
+hijau (bersama modul BK: 116 tes, 451 asersi, tanpa regresi).
+
+**Peramban sungguhan** (Chromium, backend 8001 + Vite 3000, masuk sebagai
+`admin@syntaf.sch.id`):
+
+| Yang dijalankan | Hasil |
+|---|---|
+Masuk & cek sesi | berhasil, tanpa galat konsol |
+Dasbor / Daftar / Detail / Fasilitas / Pemeliharaan / Penghapusan / Laporan / Lokasi / Peminjaman | semua tampil, judul halaman terverifikasi, tanpa galat render |
+Detail aset | umur manfaat 48 bulan, sisa 35 bulan, akhir 01 Sep 2029, 27% terpakai |
+Stok opname | sesi dibuat → “Mulai penghitungan” → pindai kode tak dikenal → muncul sebagai **selisih “Tidak dikenal”** menunggu keputusan |
+
+Dua temuan nyata ditemukan cara ini dan sudah diperbaiki: **daya tampung
+fasilitas** yang datang sebagai objek (`{total, normal, exam, event}`) pernah
+meruntuhkan layar, dan balasan `/scan` berbentuk `{ item, result }` sehingga
+pesan pindai sempat menampilkan “undefined”. Keduanya lolos dari `tsc` — hanya
+peramban yang menangkapnya, dan itu alasan pengujian ini ada.
+
+Sisa temuan audit yang **belum** disentuh karena bukan milik modul ini: kontras
+teks sidebar bawaan aplikasi, dan dua grup menu paling bawah yang tertutup
+footer sidebar pada jendela ≤ 800px. Grup baru menambah 13 submenu sehingga
+sidebar perlu dapat digulir — perbaikan yang sebaiknya dilakukan sekali untuk
+seluruh aplikasi, bukan ditambal per modul.
+
+## 10. Yang **belum** ada (jujur, agar tidak dikira sudah)
+
+1. ~~Antarmuka pengguna~~ — **sudah ada** (bagian 8).
+2. **Pemetaan ruang akademik** (`locations.academic_room_id`) belum diisi, jadi
+   pemeriksaan benturan jadwal pelajaran belum berjalan — dan bawaannya
+   menyatakan kosong, bukan berpura-pura jalan.
 3. **Impor XLSX.** Validasi + pratinjau + konfirmasi sudah ada untuk CSV; XLSX
    perlu konversi lebih dulu (mis. lewat penyedia dokumen).
 4. **RFID.** Kolom `assets.rfid` dan `asset_identifiers.type = RFID` tersedia,
-   tetapi integrasi pembaca belum ada (dan itu pekerjaan perangkat, bukan basis data).
+   integrasi pembaca belum (pekerjaan perangkat, bukan basis data).
 5. **Definisi alur persetujuan.** Kode memanggil Workflow Engine, tetapi
    *definisi* (`ASSET_DISPOSAL`, `ASSET_TRANSFER`, `ASSET_LOAN`) harus disusun
-   sekolah pada modul Workflow. Tanpa definisi, permintaan menunggu — dan itu
-   perilaku yang dipilih dengan sadar.
-6. **Modul Vendor.** `vendor_id` disimpan sebagai rujukan tanpa kunci asing
-   (tabel `vendors` belum ada; yang ada `finance_vendors`).
-7. **Modul Pengadaan.** Permintaan penggantian masuk outbox; belum ada modul
-   Pengadaan yang mengonsumsinya secara otomatis.
-8. **Laporan berat.** Laporan dihitung langsung dari tabel operasional; untuk
-   puluhan ribu aset perlu tabel ringkasan (agregat harian sudah ada untuk
-   pemanfaatan fasilitas).
-9. **Antrean pekerjaan.** Otomasi berjalan sebagai perintah terjadwal yang
-   sinkron; untuk sekolah besar perlu dipecah ke job antrean (titik pecahnya
-   sudah jelas: `AssetSendRemindersCommand`).
-
+   sekolah. Tanpa definisi, permintaan **menunggu** — perilaku yang dipilih sadar.
+6. **Modul Vendor & Pengadaan.** `vendor_id` disimpan tanpa kunci asing;
+   permintaan penggantian masuk outbox menunggu dikonsumsi Pengadaan.
+7. **Laporan berat.** Dihitung langsung dari tabel operasional; untuk puluhan
+   ribu aset perlu tabel ringkasan (agregat harian sudah ada untuk pemanfaatan
+   fasilitas).
+8. **Otomasi masih sinkron.** `asset:reminders` dll. berjalan sebagai perintah
+   terjadwal; titik pecah ke job antrean sudah jelas dan belum dipindahkan.
+9. **Penghitung opname belum hemat kuota.** `GET /stock-opnames/{id}` mengirim
+   seluruh daftar harapan + selisih; pada sesi 5.000 barang, layar perlu
+   paginasi/端-point terpisah agar ponsel lapangan tidak menarik semuanya.
