@@ -1208,14 +1208,13 @@ tenaga medis dan butuh alur klinis penuh.
       yang ditahan dicatat beserta alasannya
 - [x] Operasional: `clinic:expire-batches` (05:30) & `clinic:expire-follow-ups`
       (06:00) terjadwal; `GET /clinic/health` memeriksa 8 integrasi tanpa data pasien
-- [x] Frontend: **11 halaman** (dasbor + papan antrean, pasien & rekam medis,
+- [x] Frontend: **12 halaman** (dasbor + papan antrean, pasien & rekam medis,
       daftar kunjungan, workspace klinis, farmasi, gawat darurat & cedera,
       rujukan & tindak lanjut, skrining & imunisasi, surat & dokumen, laporan,
       portal orang tua) di grup menu **Clinic / UKS**
 - [x] **52 tes / 342 asersi hijau**; `tsc -b && vite build` bersih (2298 modul);
       diverifikasi di browser: dasbor, daftar pasien, workspace dengan data nyata
       (banner alergi berat, SOAP, diagnosis J06, IMT), portal wali
-
 Perbaikan yang ikut terbawa:
 - [x] `Badge` menerima alias semantik (`danger`/`warning`/`success`/`info`/`neutral`)
 - [x] `vite.config.ts`: `server.allowedHosts` agar dev server dapat dibuka lewat
@@ -1271,14 +1270,13 @@ permintaannya ke satu engine — bukan membangun sistem approval masing-masing.
       dikirim sebagai **data** oleh seeder, bukan kode program
 - [x] Perintah: `workflow:check-sla` (tiap 5 menit), `workflow:expire` (harian),
       `workflow:health`, `workflow:trigger`
-- [x] Frontend: **11 halaman** (dasbor, kotak masuk approver dengan penyaring,
+- [x] Frontend: **12 halaman** (dasbor, kotak masuk approver dengan penyaring,
       permintaan saya, ruang kerja request + visualizer + timeline + konteks +
       jejak audit, definisi & builder graf, delegasi, analitik, audit, pengaturan
       kalender & direktori) + grup menu **Workflow & Persetujuan**
 - [x] **51 tes / 253 asersi hijau**; `tsc -b` & `vite build` bersih (2.314 modul);
       diverifikasi di browser sungguhan: login → kotak masuk → keputusan →
       request berpindah cabang kondisi nominal → APPROVED, rantai audit utuh
-
 Perbaikan yang ikut terbawa:
 - [x] `WorkingCalendar` menyimpan **array konfigurasi** ke cache, bukan model
       Eloquent (model ter-cache pecah menjadi `__PHP_Incomplete_Class` pada proses
@@ -1299,7 +1297,7 @@ organisasi, kompetisi, prestasi, sertifikat, dan portofolio — dengan modul lai
 tetap menjadi sumber kebenarannya.
 
 - [x] **45 tabel `activity_*`** dalam 6 migrasi, **55 model**, **59 enum**, 17 kontrak,
-      **19 layanan**, 10 controller, **111 rute** `/api/v1/activities/*`
+      **19 layanan**, 12 controller, **175 rute** `/api/v1/activities/*`
 - [x] **Pemisahan konsep yang tegas**: kategori ≠ program ≠ periode ≠ keanggotaan ≠
       sesi ≠ penilaian ≠ prestasi ≠ sertifikat; prestasi adalah entitas tersendiri
       (individu/tim) yang menjadi dasar sertifikat dan isi portofolio
@@ -1338,17 +1336,63 @@ tetap menjadi sumber kebenarannya.
       tidak pernah melewati modul ini
 - [x] **Dasbor 4 peran** (pengelola, pembina, siswa, orang tua) + 13 laporan
       operasional + jejak audit append-only
-- [x] **6 perintah**: `activity:generate-sessions`, `activity:session-reminders`,
+- [x] **6 perintah** (dijalankan nyata di DB pengembangan, semuanya bersih): `activity:generate-sessions`, `activity:session-reminders`,
       `activity:expire-consents`, `activity:evaluate-completion`,
-      `activity:check-anomalies`, `activity:health` (terjadwal)
-- [x] Frontend: **7 halaman** (katalog, detail, aktivitas saya, ruang kerja pembina,
-      dasbor & laporan, aktivitas anak, verifikasi sertifikat) + grup menu
-      **Aktivitas Siswa**
-- [x] **55 tes / 184 asersi hijau**; `tsc -b` & `vite build` bersih; diverifikasi di
-      browser sungguhan: dasbor, katalog, ruang kerja pembina (daftar hadir & rekap),
-      dan verifikasi sertifikat `CERT-ACT-2026-000001` → **Valid tanpa PII**
+      `activity:check-anomalies`, `activity:health` (terjadwal) — plus 11 jenis laporan operasional yang semuanya berjalan
+- [x] Frontend: **12 halaman** — katalog, detail, aktivitas saya, ruang kerja pembina,
+      dasbor & 11 laporan, aktivitas anak (persetujuan orang tua), verifikasi
+      sertifikat, **kompetisi** (babak, pertandingan, juri, skor terkunci, koreksi
+      beralasan, penerbitan hasil), **prestasi & sertifikat** (verifikasi,
+      penerbitan, pencabutan), **portofolio & transkrip** (cuplikan + tautan
+      berbagi), **tata kelola & audit** (jejak audit, persetujuan menggantung,
+      tagihan, perlengkapan & ruang), dan **portofolio publik** di luar cangkang
+      aplikasi — plus grup menu **Aktivitas Siswa**
+- [x] **69 tes / 288 asersi hijau**; `tsc -b` & `vite build` bersih; diverifikasi di
+      browser sungguhan (11 langkah, termasuk aksi tulis):
+      - dasbor, katalog, ruang kerja pembina (daftar hadir & rekap 100%)
+      - verifikasi sertifikat `CERT-ACT-2026-000001` → **Valid tanpa PII**
+      - **kompetisi dibuat dari layar** → detail terbuka → pendaftaran dibuka
+      - **prestasi dicatat dari layar → diverifikasi → sertifikat diterbitkan**
+      - portofolio siswa (Aisyah Rahma: 100% hadir, nilai 88, sertifikat) + transkrip
+      - **portofolio publik dibuka tanpa login**, nama tersamar (`Aj*********`), NIS tidak dikirim
+- [x] Kontras teks header tabel dinaikkan (`slate-500` → `slate-600`) setelah audit
+      keterbacaan menandai rasio 3,82:1 (di bawah WCAG AA 4,5:1)
+
+Temuan yang diperbaiki setelah modul ditelusuri ulang (bukan ditemukan lewat tes
+fitur, tetapi lewat pemeriksaan sistematis izin vs rute vs kode):
+
+- [x] **Empat izin tidak dipegang peran mana pun** sehingga kemampuannya mati:
+      `activity.registration.cancel` (petugas tidak dapat membatalkan pendaftaran),
+      `activity.registration.override` (batas aktivitas tidak dapat dikecualikan),
+      `activity.attendance.override` (kehadiran terkunci tidak dapat dikoreksi),
+      `activity.counseling.view` (ringkasan pembinaan tidak terjangkau). Kini
+      diberikan ke peran yang tepat **dan** benar-benar bekerja (13 rute baru).
+- [x] **`activity.settings.manage` dihapus** dari katalog: konfigurasi modul
+      memang berbasis berkas/env, dan izin tanpa wujud hanya menyesatkan.
+- [x] **Daftar persetujuan untuk staf** dan **jejak audit yang dapat dibaca**
+      ditambahkan (`GET /activities/consents`, `GET /activities/audit`) — sebelumnya
+      audit hanya ditulis, tidak pernah dapat diperiksa.
+- [x] **Permintaan ke modul lain kini dapat dirapikan dari sisi aktivitas**
+      (`integration/finance/charges`, `integration/inventory/requests`,
+      `integration/facility/bookings`) sehingga izin `activity.finance.*`,
+      `activity.inventory.*`, dan `activity.facility.*` tidak lagi hiasan.
+- [x] **Bug 500 pada pembatalan pendaftaran**: layanan menulis kolom
+      `release_waitlist` yang **tidak pernah ada** di migrasi — ditemukan oleh tes
+      baru, kini dihapus (status `CANCELLED` sendirilah yang membebaskan kursi).
+- [x] **Bug seeder yang berbahaya**: peran `*` (ERP_ADMIN/super-admin) di-**sync**
+      sehingga menjalankan seeder modul akan **menghapus seluruh izin modul lain**
+      dari peran tersebut. Sekarang aditif (`givePermissionTo`).
+- [x] **Laporan keanggotaan menampilkan kolom kosong**: kunci baris memakai
+      `UPPER_SNAKE` sedangkan kolom tabel huruf kecil, sehingga angka keanggotaan
+      tidak pernah terlihat. Kini dipetakan, dengan tes kontrak untuk semua laporan.
+- [x] **Kehadiran setelah sesi selesai** kini benar-benar terkunci kecuali pemegang
+      `activity.attendance.override`, lengkap dengan jejak `ATTENDANCE_OVERRIDDEN`.
+- [x] **Kontras header tabel** dinaikkan (`slate-500` → `slate-600`) setelah audit
+      keterbacaan menandai rasio 3,82:1 (di bawah WCAG AA 4,5:1).
 
 Perbaikan yang ikut terbawa:
+Perbaikan yang ikut terbawa:
+
 - [x] Persentase kehadiran memakai penyebut **pertemuan yang sudah berlangsung**
       (hadir 1 dari 3 terbaca 33%, bukan 100%)
 - [x] Kelengkapan catatan kehadiran tidak lagi dapat melebihi 100% (catatan anggota

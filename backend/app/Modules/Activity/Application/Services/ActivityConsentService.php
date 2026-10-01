@@ -9,6 +9,7 @@ use App\Modules\Activity\Domain\Enums\ConsentScope;
 use App\Modules\Activity\Domain\Enums\ConsentStatus;
 use App\Modules\Activity\Domain\Exceptions\ActivityValidationException;
 use App\Modules\Activity\Models\ActivityConsent;
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Modules\Activity\Models\ActivityProgram;
 use App\Modules\Activity\Models\ActivityRegistration;
 use Illuminate\Support\Facades\DB;
@@ -278,5 +279,36 @@ class ActivityConsentService
             'expires_at' => $consent->expires_at?->toIso8601String(),
             'can_decide' => $consent->decision?->value === ConsentStatus::PENDING->value,
         ];
+    }
+
+    /**
+     * Daftar persetujuan untuk staf sekolah.
+     *
+     * Cakupan baris tetap dijaga: pemegang izin `activity.consent.view` melihat
+     * seluruh permintaan, selain itu hanya anak yang terlihat olehnya — jadi
+     * seorang pembina tidak dapat mengintip persetujuan anak di program lain.
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function consents(array $filters, User $viewer): LengthAwarePaginator
+    {
+        $query = ActivityConsent::query()
+            ->with(['program:id,name', 'student:id,full_name', 'registration:id,code,status'])
+            ->when(isset($filters['program_id']), fn ($inner) => $inner->where('program_id', $filters['program_id']))
+            ->when(isset($filters['student_id']), fn ($inner) => $inner->where('student_id', $filters['student_id']))
+            ->when(isset($filters['decision']), fn ($inner) => $inner->where('decision', $filters['decision']))
+            ->when(isset($filters['scope']), fn ($inner) => $inner->where('scope', $filters['scope']))
+            ->when(($filters['pending'] ?? false), fn ($inner) => $inner->whereNull('decided_at')->where('expires_at', '>', now()))
+            ->orderByDesc('id');
+
+        // Membuka daftar bukan berarti melihat seluruh sekolah: hanya peran yang
+        // memang memutuskan pendaftaran (pengelola/koordinator/kepala sekolah)
+        // yang melihat semua, selebihnya dibatasi pada anak yang terjangkau.
+        if (! $viewer->can('activity.registration.decide')) {
+            $studentIds = $this->authorisedStudentIds($viewer);
+            $query->whereIn('student_id', $studentIds === [] ? [-1] : $studentIds);
+        }
+
+        return $query->paginate((int) ($filters['per_page'] ?? 30));
     }
 }

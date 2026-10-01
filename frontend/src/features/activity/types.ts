@@ -296,6 +296,125 @@ export interface ActivityAchievementRow {
   team_members?: number;
 }
 
+export interface ActivityCompetitionRow {
+  id: number;
+  code: string;
+  name: string;
+  level?: string;
+  participant_type?: string;
+  organizer?: string | null;
+  location?: string | null;
+  status: string;
+  status_label?: string;
+  registration_opens?: string | null;
+  registration_closes?: string | null;
+  starts_on?: string | null;
+  ends_on?: string | null;
+  program?: { id: number; name: string } | null;
+  categories?: { id: number; name: string }[];
+  participants_count?: number;
+  teams_count?: number;
+  matches_count?: number;
+}
+
+export interface ActivityCompetitionParticipantRow {
+  id: number;
+  student_id: number;
+  category_id?: number | null;
+  student?: { id: number; full_name: string; nis?: string | null } | null;
+  status: string;
+  status_label?: string;
+}
+
+export interface ActivityCompetitionTeamRow {
+  id: number;
+  name: string;
+  category_id?: number | null;
+  status?: string;
+  members?: {
+    id?: number;
+    student_id: number;
+    role?: string | null;
+    receives_achievement?: boolean;
+    student?: { id: number; full_name: string } | null;
+  }[];
+}
+
+export interface ActivityCompetitionMatchRow {
+  id: number;
+  match_number?: number | null;
+  status: string;
+  status_label?: string;
+  score_a?: string | number | null;
+  score_b?: string | number | null;
+  winner_participant_id?: number | null;
+  scheduled_at?: string | null;
+  venue?: string | null;
+  participant_a?: { id: number; student?: { id: number; full_name: string } | null } | null;
+  participant_b?: { id: number; student?: { id: number; full_name: string } | null } | null;
+  scores?: {
+    id: number;
+    judge_id: number;
+    participant_id: number;
+    total: string | number | null;
+    status: string;
+    correction_reason?: string | null;
+  }[];
+}
+
+export interface ActivityCompetitionRoundRow {
+  id: number;
+  name?: string | null;
+  type: string;
+  type_label?: string;
+  scheduled_date?: string | null;
+  status?: string;
+  matches?: ActivityCompetitionMatchRow[];
+}
+
+export interface ActivityCompetitionJudgeRow {
+  id: number;
+  user_id?: number | null;
+  employee_id?: number | null;
+  round_id?: number | null;
+  category_id?: number | null;
+  name?: string | null;
+  user?: { id: number; name: string } | null;
+  status?: string;
+}
+
+export interface ActivityCompetitionResultRow {
+  id: number;
+  rank: number;
+  participant_id?: number | null;
+  team_id?: number | null;
+  total_score?: string | number | null;
+  status?: string;
+  status_label?: string;
+  achievement_id?: number | null;
+  participant?: { id: number; student?: { id: number; full_name: string } | null } | null;
+  team?: { id: number; name: string } | null;
+}
+
+export interface ActivityCompetitionDetail extends ActivityCompetitionRow {
+  categories: { id: number; name: string }[];
+  participants: ActivityCompetitionParticipantRow[];
+  teams: ActivityCompetitionTeamRow[];
+  rounds: ActivityCompetitionRoundRow[];
+  judges: ActivityCompetitionJudgeRow[];
+  results: ActivityCompetitionResultRow[];
+}
+
+export interface ActivityJudgeAssignmentRow {
+  match_id: number;
+  round?: string | null;
+  competition?: string | null;
+  scheduled_at?: string | null;
+  participant_a?: string | null;
+  participant_b?: string | null;
+  locked: boolean;
+}
+
 export interface ActivityPortfolio {
   student: { id: number; name: string; nis?: string | null; class_name?: string | null } | null;
   period_id?: number | null;
@@ -420,6 +539,64 @@ export interface ActivityMeta {
   coached_program_ids: number[];
   pending_registration_decisions: number;
   permissions: string[];
+}
+
+export interface ActivityAuditRow {
+  id: number;
+  action: string;
+  action_label?: string;
+  subject_type?: string | null;
+  subject_id?: number | null;
+  actor_user_id?: number | null;
+  actor?: { id: number; name: string } | null;
+  actor_role?: string | null;
+  program_id?: number | null;
+  student_id?: number | null;
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string | null;
+}
+
+export interface ActivityChargeRow {
+  id: number;
+  program?: { id: number; name: string } | null;
+  student?: { id: number; full_name: string } | null;
+  type?: string;
+  description?: string | null;
+  amount?: string | number | null;
+  currency?: string | null;
+  status: string;
+  external_reference?: string | null;
+  requested_at?: string | null;
+}
+
+export interface ActivityEquipmentRequestRow {
+  id: number;
+  program?: { id: number; name: string } | null;
+  student?: { id: number; full_name: string } | null;
+  description?: string | null;
+  quantity?: number | null;
+  issued_quantity?: number | null;
+  returned_quantity?: number | null;
+  status: string;
+  due_on?: string | null;
+  issued_at?: string | null;
+  returned_at?: string | null;
+  notes?: string | null;
+}
+
+export interface ActivityFacilityBookingRow {
+  id: number;
+  program?: { id: number; name: string } | null;
+  schedule?: { id: number; day_of_week: number; start_time: string; end_time: string } | null;
+  room_id?: number | null;
+  date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  status: string;
+  external_reference?: string | null;
+  conflict_reason?: string | null;
 }
 
 export interface ActivityConsentRow {

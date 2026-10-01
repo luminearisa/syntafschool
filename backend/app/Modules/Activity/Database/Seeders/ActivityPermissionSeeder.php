@@ -75,7 +75,6 @@ class ActivityPermissionSeeder extends Seeder
         'activity.audit.view',
         'activity.counseling.view',
         'activity.settings.view',
-        'activity.settings.manage',
     ];
 
     /**
@@ -93,25 +92,35 @@ class ActivityPermissionSeeder extends Seeder
             'activity.attendance.view', 'activity.assessment.view', 'activity.assessment.manage',
             'activity.assessment.publish', 'activity.competition.view', 'activity.competition.manage',
             'activity.achievement.view', 'activity.achievement.manage', 'activity.certificate.view',
-            'activity.certificate.issue', 'activity.certificate.revoke', 'activity.portfolio.view',
+            'activity.certificate.issue', 'activity.certificate.revoke',
+            'activity.portfolio.view', 'activity.portfolio.share',
             'activity.report.view', 'activity.analytics.view', 'activity.audit.view',
-            'activity.settings.view', 'activity.settings.manage',
+            'activity.finance.view', 'activity.inventory.view', 'activity.facility.view',
+            'activity.settings.view',
+            'activity.registration.override', 'activity.registration.cancel',
         ],
         'ACTIVITY_MANAGER' => [
             'activity.view', 'activity.program.view', 'activity.program.manage', 'activity.program.publish',
             'activity.registration.view', 'activity.registration.create', 'activity.registration.decide',
+            'activity.registration.cancel', 'activity.registration.override',
             'activity.consent.view', 'activity.consent.request', 'activity.membership.view',
             'activity.membership.manage',
             'activity.schedule.manage', 'activity.session.manage', 'activity.attendance.view',
-            'activity.attendance.record', 'activity.assessment.view', 'activity.assessment.manage',
+            'activity.attendance.record', 'activity.attendance.override',
+            'activity.assessment.view', 'activity.assessment.manage',
             'activity.assessment.publish', 'activity.competition.view', 'activity.competition.manage',
             'activity.competition.result.publish', 'activity.competition.score.correct',
             'activity.achievement.view', 'activity.achievement.manage', 'activity.certificate.view', 'activity.portfolio.view',
             'activity.report.view', 'activity.analytics.view',
+            // Permintaan ke modul lain perlu terlihat oleh pengelola aktivitas
+            // (dialah yang mengajukan), sedangkan tindak lanjutnya tetap milik
+            // modul Keuangan/Inventaris/Sarpras.
+            'activity.finance.view', 'activity.inventory.view', 'activity.facility.view',
         ],
         'ACTIVITY_COORDINATOR' => [
             'activity.view', 'activity.program.view', 'activity.registration.view',
-            'activity.registration.create', 'activity.registration.decide', 'activity.membership.view',
+            'activity.registration.create', 'activity.registration.decide', 'activity.registration.cancel',
+            'activity.consent.view', 'activity.membership.view',
             'activity.schedule.manage',
             'activity.session.manage', 'activity.attendance.view', 'activity.attendance.record',
             'activity.assessment.view', 'activity.assessment.manage', 'activity.achievement.view', 'activity.portfolio.view',
@@ -119,7 +128,8 @@ class ActivityPermissionSeeder extends Seeder
         ],
         'ACTIVITY_ADVISOR' => [
             'activity.view', 'activity.program.view', 'activity.registration.view',
-            'activity.registration.create', 'activity.membership.view', 'activity.schedule.manage',
+            'activity.registration.create', 'activity.membership.view', 'activity.consent.view',
+            'activity.schedule.manage',
             'activity.session.manage', 'activity.attendance.view', 'activity.attendance.record',
             'activity.assessment.view', 'activity.assessment.manage', 'activity.achievement.view',
             'activity.achievement.manage',
@@ -137,8 +147,8 @@ class ActivityPermissionSeeder extends Seeder
             'activity.view', 'activity.competition.view', 'activity.competition.judge',
         ],
         'sinter' => [],
-        'siswa' => ['activity.view', 'activity.portal.view', 'activity.registration.create', 'activity.portfolio.view'],
-        'wali-murid' => ['activity.view', 'activity.portal.view', 'activity.consent.decide', 'activity.registration.create', 'activity.portfolio.view'],
+        'siswa' => ['activity.view', 'activity.portal.view', 'activity.registration.create', 'activity.portfolio.view', 'activity.portfolio.share'],
+        'wali-murid' => ['activity.view', 'activity.portal.view', 'activity.consent.decide', 'activity.registration.create', 'activity.portfolio.view', 'activity.portfolio.share'],
         'guru' => ['activity.view', 'activity.attendance.view', 'activity.assessment.view', 'activity.achievement.manage', 'activity.registration.decide'],
         'wali-kelas' => ['activity.view', 'activity.attendance.view', 'activity.achievement.manage', 'activity.registration.create'],
         'kepala-sekolah' => [
@@ -146,8 +156,9 @@ class ActivityPermissionSeeder extends Seeder
             'activity.registration.decide', 'activity.achievement.view', 'activity.achievement.verify',
             'activity.competition.view', 'activity.competition.result.publish',
             'activity.certificate.view', 'activity.portfolio.view', 'activity.report.view', 'activity.analytics.view', 'activity.audit.view',
+            'activity.counseling.view',
         ],
-        'admin-sekolah' => ['activity.view', 'activity.program.view', 'activity.program.manage', 'activity.registration.view', 'activity.membership.view', 'activity.portfolio.view', 'activity.report.view', 'activity.settings.view'],
+        'admin-sekolah' => ['activity.view', 'activity.program.view', 'activity.program.manage', 'activity.registration.view', 'activity.membership.view', 'activity.portfolio.view', 'activity.report.view', 'activity.settings.view', 'activity.counseling.view'],
         'bendahara' => ['activity.view', 'activity.finance.view', 'activity.finance.manage'],
         'petugas-inventaris' => ['activity.view', 'activity.inventory.view', 'activity.inventory.manage'],
         'petugas-sarpras' => ['activity.view', 'activity.facility.view', 'activity.facility.manage'],
@@ -174,7 +185,10 @@ class ActivityPermissionSeeder extends Seeder
             $role = Role::findOrCreate($roleName, 'web');
 
             if ($permissions === '*') {
-                $role->syncPermissions($this->permissions);
+                // Peran super/ERP memang memegang seluruh izin. Modul ini
+                // **menambahkan** izinnya — bukan menyinkronkan — karena
+                // menyinkronkan akan menghapus izin modul lain yang sudah ada.
+                $role->givePermissionTo($this->permissions);
 
                 continue;
             }

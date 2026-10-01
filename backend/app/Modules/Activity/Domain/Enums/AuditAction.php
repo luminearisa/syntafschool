@@ -32,6 +32,7 @@ enum AuditAction: string
     case SESSION_CREATED = 'SESSION_CREATED';
     case SESSION_CANCELLED = 'SESSION_CANCELLED';
     case ATTENDANCE_RECORDED = 'ATTENDANCE_RECORDED';
+    case ATTENDANCE_OVERRIDDEN = 'ATTENDANCE_OVERRIDDEN';
     case ASSESSMENT_SUBMITTED = 'ASSESSMENT_SUBMITTED';
     case ASSESSMENT_PUBLISHED = 'ASSESSMENT_PUBLISHED';
     case COMPLETION_VERIFIED = 'COMPLETION_VERIFIED';
@@ -50,6 +51,9 @@ enum AuditAction: string
     case EQUIPMENT_REQUESTED = 'EQUIPMENT_REQUESTED';
     case EQUIPMENT_ISSUED = 'EQUIPMENT_ISSUED';
     case FACILITY_REQUESTED = 'FACILITY_REQUESTED';
+    case FACILITY_BOOKING_CANCELLED = 'FACILITY_BOOKING_CANCELLED';
+    case CHARGE_CANCELLED = 'CHARGE_CANCELLED';
+    case EQUIPMENT_REQUEST_UPDATED = 'EQUIPMENT_REQUEST_UPDATED';
     case INTEGRATION_CALLED = 'INTEGRATION_CALLED';
 
     /** Label bahasa Indonesia untuk tampilan. */
@@ -76,6 +80,7 @@ enum AuditAction: string
             self::SCHEDULE_CHANGED => 'Jadwal Diubah',
             self::SESSION_CREATED => 'Sesi Dibuat',
             self::SESSION_CANCELLED => 'Sesi Dibatalkan',
+            self::ATTENDANCE_OVERRIDDEN => 'Kehadiran Dikoreksi Setelah Sesi Selesai',
             self::ATTENDANCE_RECORDED => 'Kehadiran Dicatat',
             self::ASSESSMENT_SUBMITTED => 'Penilaian Dikirim',
             self::ASSESSMENT_PUBLISHED => 'Penilaian Diterbitkan',
@@ -95,6 +100,9 @@ enum AuditAction: string
             self::EQUIPMENT_REQUESTED => 'Permintaan Peralatan',
             self::EQUIPMENT_ISSUED => 'Peralatan Diserahkan',
             self::FACILITY_REQUESTED => 'Peminjaman Fasilitas Diminta',
+            self::FACILITY_BOOKING_CANCELLED => 'Pemesanan Fasilitas Dibatalkan',
+            self::CHARGE_CANCELLED => 'Permintaan Tagihan Dibatalkan',
+            self::EQUIPMENT_REQUEST_UPDATED => 'Permintaan Perlengkapan Diperbarui',
             self::INTEGRATION_CALLED => 'Integrasi Dipanggil',
         };
     }

@@ -88,11 +88,11 @@ export default function ActivityDashboardPage() {
               ))
             )}
             <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Penilaian menunggu</p>
+              <p className="text-xs uppercase tracking-wide text-slate-600">Penilaian menunggu</p>
               <p className="mt-1 text-2xl font-semibold text-slate-800">{coach.pending_assessments}</p>
             </div>
             <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Kelengkapan catatan kehadiran</p>
+              <p className="text-xs uppercase tracking-wide text-slate-600">Kelengkapan catatan kehadiran</p>
               <p className="mt-1 text-2xl font-semibold text-slate-800">
                 {coach.attendance_completion === null || coach.attendance_completion === undefined ? '-' : `${coach.attendance_completion}%`}
               </p>
@@ -116,7 +116,7 @@ export default function ActivityDashboardPage() {
             ].map(([label, value]) => (
               <Card key={String(label)}>
                 <CardBody>
-                  <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-600">{label}</p>
                   <p className="mt-1 text-2xl font-semibold text-slate-800">{value as string | number}</p>
                 </CardBody>
               </Card>
@@ -193,7 +193,7 @@ export default function ActivityDashboardPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                    <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-600">
                       {(report?.columns ?? []).map((column) => (
                         <th key={column} className="px-3 py-2">
                           {column}
@@ -229,7 +229,7 @@ export default function ActivityDashboardPage() {
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {Object.entries(healthQuery.data.data).map(([key, value]) => (
                 <div key={key} className="rounded-lg border border-slate-200 p-3">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">{key.replace(/_/g, ' ')}</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-600">{key.replace(/_/g, ' ')}</p>
                   <p className="mt-1 text-lg font-semibold text-slate-800">{value}</p>
                 </div>
               ))}
@@ -238,7 +238,7 @@ export default function ActivityDashboardPage() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-slate-200 text-left uppercase tracking-wide text-slate-600">
                     <th className="px-3 py-2">Waktu</th>
                     <th className="px-3 py-2">Integrasi</th>
                     <th className="px-3 py-2">Aksi</th>

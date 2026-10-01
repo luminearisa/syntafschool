@@ -3,6 +3,7 @@
 namespace App\Modules\Activity\Http\Controllers;
 
 use App\Http\Controllers\Api\BaseApiController;
+use App\Modules\Activity\Application\Services\ActivityConsentService;
 use App\Modules\Activity\Application\Services\ActivityRegistrationService;
 use App\Modules\Activity\Models\ActivityConsent;
 use App\Modules\Activity\Models\ActivityProgram;
@@ -15,7 +16,10 @@ use Illuminate\Http\Request;
  */
 class ActivityRegistrationController extends BaseApiController
 {
-    public function __construct(private readonly ActivityRegistrationService $registrations) {}
+    public function __construct(
+        private readonly ActivityRegistrationService $registrations,
+        private readonly ActivityConsentService $consentService,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -129,5 +133,17 @@ class ActivityRegistrationController extends BaseApiController
                 ->where('decision', 'PENDING')
                 ->get(),
         );
+    }
+
+    /**
+     * Daftar persetujuan orang tua untuk staf.
+     *
+     * Portal orang tua hanya menampilkan persetujuan milik anaknya; sekolah juga
+     * perlu melihat mana yang masih menggantung agar dapat menagih izin sebelum
+     * kegiatan dimulai.
+     */
+    public function consents(Request $request): JsonResponse
+    {
+        return $this->successResponse($this->consentService->consents($request->all(), $request->user()));
     }
 }

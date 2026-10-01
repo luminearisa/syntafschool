@@ -6,6 +6,10 @@ import type {
   ActivityAssessmentRow,
   ActivityAttendanceSheet,
   ActivityAttendanceSummary,
+  ActivityAuditRow,
+  ActivityChargeRow,
+  ActivityEquipmentRequestRow,
+  ActivityFacilityBookingRow,
   ActivityCapacity,
   ActivityCategoryNode,
   ActivityCertificateRow,
@@ -19,6 +23,8 @@ import type {
   ActivityMembershipSummary,
   ActivityMeta,
   ActivityPortfolio,
+  ActivityCompetitionDetail,
+  ActivityCompetitionRow,
   ActivityProgramRow,
   ActivityRegistrationRow,
   ActivityScheduleRow,
@@ -160,26 +166,8 @@ export const activityApi = {
   completeActivity: (membershipId: number, payload: { notes?: string; waive_rules?: boolean }) =>
     api.post(`/activities/memberships/${membershipId}/complete`, payload),
 
-  achievements: (params?: Record<string, unknown>) =>
-    api.get<PaginatedResponse<ActivityAchievementRow>>('/activities/achievements', { params }),
-
-  createAchievement: (payload: Record<string, unknown>) =>
-    api.post<ApiResponse<ActivityAchievementRow>>('/activities/achievements', payload),
-
-  verifyAchievement: (id: number, decision: string, notes?: string) =>
-    api.post<ApiResponse<ActivityAchievementRow>>(`/activities/achievements/${id}/verify`, { decision, notes }),
-
-  certificates: (params?: Record<string, unknown>) =>
-    api.get<PaginatedResponse<ActivityCertificateRow>>('/activities/certificates', { params }),
-
   issueCertificate: (completionId: number, force = false) =>
     api.post<ApiResponse<ActivityCertificateRow>>(`/activities/completions/${completionId}/certificate`, { force }),
-
-  issueAchievementCertificate: (achievementId: number) =>
-    api.post<ApiResponse<ActivityCertificateRow[]>>(`/activities/achievements/${achievementId}/certificate`, {}),
-
-  revokeCertificate: (id: number, reason: string) =>
-    api.post<ApiResponse<ActivityCertificateRow>>(`/activities/certificates/${id}/revoke`, { reason }),
 
   // Verifikasi publik: tanpa token, tanpa data pribadi.
   verifyCertificate: (number: string) =>
@@ -199,6 +187,101 @@ export const activityApi = {
 
   sharePortfolio: (portfolioId: number, enabled: boolean) =>
     api.post(`/activities/portfolios/${portfolioId}/share`, { enabled }),
+
+  // ------------------------------------------------------------------ kompetisi
+  competitions: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityCompetitionRow>>('/activities/competitions', { params }),
+
+  competition: (id: number) => api.get<ApiResponse<ActivityCompetitionDetail>>(`/activities/competitions/${id}`),
+
+  createCompetition: (payload: Record<string, unknown>) =>
+    api.post<ApiResponse<ActivityCompetitionRow>>('/activities/competitions', payload),
+
+  openCompetition: (id: number) => api.post<ApiResponse<ActivityCompetitionRow>>(`/activities/competitions/${id}/open`, {}),
+
+  registerParticipant: (competitionId: number, payload: { student_id: number; category_id: number; idempotency_key?: string }) =>
+    api.post(`/activities/competitions/${competitionId}/participants`, payload),
+
+  createCompetitionTeam: (competitionId: number, payload: { name: string; category_id?: number | null; members?: { student_id: number }[] }) =>
+    api.post(`/activities/competitions/${competitionId}/teams`, payload),
+
+  updateTeamMembers: (teamId: number, members: { student_id: number }[]) =>
+    api.put(`/activities/competition-teams/${teamId}/members`, { members }),
+
+  createRound: (competitionId: number, payload: { type?: string; name?: string; scheduled_date?: string }) =>
+    api.post(`/activities/competitions/${competitionId}/rounds`, payload),
+
+  createMatch: (roundId: number, payload: { participant_a_id?: number; participant_b_id?: number; scheduled_at?: string; venue?: string }) =>
+    api.post(`/activities/competition-rounds/${roundId}/matches`, payload),
+
+  assignJudge: (competitionId: number, payload: { user_id?: number; employee_id?: number; name?: string; round_id?: number | null }) =>
+    api.post(`/activities/competitions/${competitionId}/judges`, payload),
+
+  myJudgeAssignments: () =>
+    api.get<ApiResponse<{ match_id: number; round?: string | null; competition?: string | null; scheduled_at?: string | null; participant_a?: string | null; participant_b?: string | null; locked: boolean }[]>>(
+      '/activities/my-judge-assignments',
+    ),
+
+  submitScore: (matchId: number, payload: { participant_id: number; total?: number | null; criteria_scores?: Record<string, number>; comment?: string | null }) =>
+    api.post(`/activities/competition-matches/${matchId}/scores`, payload),
+
+  lockMatchScores: (matchId: number) => api.post(`/activities/competition-matches/${matchId}/scores/lock`, {}),
+
+  correctScore: (scoreId: number, payload: { reason: string; total?: number | null; comment?: string | null }) =>
+    api.post(`/activities/competition-scores/${scoreId}/correct`, payload),
+
+  buildResults: (competitionId: number) =>
+    api.post<ApiResponse<{ id: number; rank: number; participant?: string | null; total_score?: number | null }[]>>(
+      `/activities/competitions/${competitionId}/results/build`,
+      {},
+    ),
+
+  publishResults: (competitionId: number) =>
+    api.post<ApiResponse<{ results: number; achievements: number }>>(`/activities/competitions/${competitionId}/results/publish`, {}),
+
+  // ------------------------------------------------------- prestasi & sertifikat
+  achievements: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityAchievementRow>>('/activities/achievements', { params }),
+
+  createAchievement: (payload: Record<string, unknown>) =>
+    api.post<ApiResponse<ActivityAchievementRow>>('/activities/achievements', payload),
+
+  verifyAchievement: (id: number, decision: string, notes?: string) =>
+    api.post<ApiResponse<ActivityAchievementRow>>(`/activities/achievements/${id}/verify`, { decision, notes }),
+
+  certificates: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityCertificateRow>>('/activities/certificates', { params }),
+
+  issueAchievementCertificate: (achievementId: number) =>
+    api.post<ApiResponse<ActivityCertificateRow[]>>(`/activities/achievements/${achievementId}/certificate`, {}),
+
+  revokeCertificate: (id: number, reason: string) =>
+    api.post<ApiResponse<ActivityCertificateRow>>(`/activities/certificates/${id}/revoke`, { reason }),
+
+  // ------------------------------------------------------------- tata kelola
+  auditLog: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityAuditRow>>('/activities/audit', { params }),
+
+  staffConsents: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityConsentRow>>('/activities/consents', { params }),
+
+  charges: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityChargeRow>>('/activities/integration/finance/charges', { params }),
+
+  cancelCharge: (id: number, reason: string) =>
+    api.post<ApiResponse<ActivityChargeRow>>(`/activities/integration/finance/charges/${id}/cancel`, { reason }),
+
+  equipmentRequests: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityEquipmentRequestRow>>('/activities/integration/inventory/requests', { params }),
+
+  updateEquipmentRequest: (id: number, status: string, notes?: string) =>
+    api.post<ApiResponse<ActivityEquipmentRequestRow>>(`/activities/integration/inventory/requests/${id}/status`, { status, notes }),
+
+  facilityBookings: (params?: Record<string, unknown>) =>
+    api.get<PaginatedResponse<ActivityFacilityBookingRow>>('/activities/integration/facility/bookings', { params }),
+
+  cancelFacilityBooking: (id: number, reason: string) =>
+    api.post<ApiResponse<ActivityFacilityBookingRow>>(`/activities/integration/facility/bookings/${id}/cancel`, { reason }),
 
   reports: (type: string, params?: Record<string, unknown>) =>
     api.get<ApiResponse<{ type: string; columns: string[]; rows: Record<string, unknown>[]; totals: Record<string, unknown> }>>(

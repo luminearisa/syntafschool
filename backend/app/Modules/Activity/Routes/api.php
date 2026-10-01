@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Activity\Http\Controllers\ActivityAssessmentController;
+use App\Modules\Activity\Http\Controllers\ActivityAuditController;
+use App\Modules\Activity\Http\Controllers\ActivityIntegrationController;
 use App\Modules\Activity\Http\Controllers\ActivityAttendanceController;
 use App\Modules\Activity\Http\Controllers\ActivityCatalogController;
 use App\Modules\Activity\Http\Controllers\ActivityCompetitionController;
@@ -62,7 +64,9 @@ Route::middleware(['auth:sanctum', 'throttle:activity-module'])->group(function 
     Route::get('registrations/{registration}', [ActivityRegistrationController::class, 'show'])->middleware('permission:activity.registration.view');
     Route::post('registrations/{registration}/submit', [ActivityRegistrationController::class, 'submit'])->middleware('permission:activity.registration.create');
     Route::post('registrations/{registration}/decide', [ActivityRegistrationController::class, 'decide'])->middleware('permission:activity.registration.decide');
-    Route::post('registrations/{registration}/cancel', [ActivityRegistrationController::class, 'cancel'])->middleware('permission:activity.registration.create');
+    Route::post('registrations/{registration}/cancel', [ActivityRegistrationController::class, 'cancel'])
+        ->middleware('permission:activity.registration.create|activity.registration.cancel');
+    Route::get('consents', [ActivityRegistrationController::class, 'consents'])->middleware('permission:activity.consent.view');
     Route::post('registrations/{registration}/selection', [ActivityRegistrationController::class, 'select'])->middleware('permission:activity.registration.decide');
     Route::get('programs/{program}/waitlist', [ActivityRegistrationController::class, 'waitlist'])->middleware('permission:activity.registration.view');
 
@@ -156,6 +160,17 @@ Route::middleware(['auth:sanctum', 'throttle:activity-module'])->group(function 
     Route::post('portfolios', [ActivityRecognitionController::class, 'storePortfolio'])->middleware('permission:activity.portfolio.view');
     Route::post('portfolios/{portfolio}/share', [ActivityRecognitionController::class, 'sharePortfolio'])->middleware('permission:activity.portfolio.share');
     Route::get('students/{studentId}/transcript', [ActivityRecognitionController::class, 'transcript'])->middleware('permission:activity.portfolio.view');
+
+    // --------------------------------- keterkaitan modul lain (baca & rapikan)
+    Route::get('integration/finance/charges', [ActivityIntegrationController::class, 'charges'])->middleware('permission:activity.finance.view');
+    Route::post('integration/finance/charges/{charge}/cancel', [ActivityIntegrationController::class, 'cancelCharge'])->middleware('permission:activity.finance.manage');
+    Route::get('integration/inventory/requests', [ActivityIntegrationController::class, 'equipmentRequests'])->middleware('permission:activity.inventory.view');
+    Route::post('integration/inventory/requests/{request}/status', [ActivityIntegrationController::class, 'updateEquipmentRequest'])->middleware('permission:activity.inventory.manage');
+    Route::get('integration/facility/bookings', [ActivityIntegrationController::class, 'facilityBookings'])->middleware('permission:activity.facility.view');
+    Route::post('integration/facility/bookings/{booking}/cancel', [ActivityIntegrationController::class, 'cancelFacilityBooking'])->middleware('permission:activity.facility.manage');
+
+    // ------------------------------------------------------------------ audit
+    Route::get('audit', [ActivityAuditController::class, 'index'])->middleware('permission:activity.audit.view');
 
     // ------------------------------------------------------------- laporan
     Route::get('reports/{type}', [ActivityRecognitionController::class, 'report'])->middleware('permission:activity.report.view');

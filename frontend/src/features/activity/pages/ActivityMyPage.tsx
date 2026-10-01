@@ -125,7 +125,7 @@ export default function ActivityMyPage() {
           ].map(([label, value]) => (
             <Card key={String(label)}>
               <CardBody>
-                <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-600">{label}</p>
                 <p className="mt-1 text-2xl font-semibold text-slate-800">{value as string}</p>
               </CardBody>
             </Card>

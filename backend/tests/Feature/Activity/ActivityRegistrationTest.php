@@ -240,18 +240,27 @@ class ActivityRegistrationTest extends ActivityTestCase
         config(['activity.limits.max_active_activities' => 1]);
 
         $student = $this->makeStudent('Putri');
-        $admin = $this->actingAsRole('ACTIVITY_MANAGER');
+        $manager = $this->actingAsRole('ACTIVITY_MANAGER');
 
         $first = $this->makeProgram(['code' => 'A-1', 'name' => 'Futsal']);
         $second = $this->makeProgram(['code' => 'B-1', 'name' => 'Basket']);
 
-        $this->service()->start($admin, $first, $student->id);
+        $this->service()->start($manager, $first, $student->id);
+
+        // Koordinator tidak memegang izin melampaui batas \u2014 inilah yang diuji di sini.
+        $coordinator = $this->actingAsRole('ACTIVITY_COORDINATOR');
 
         try {
-            $this->service()->start($admin, $second, $student->id);
+            $this->service()->start($coordinator, $second, $student->id);
             $this->fail('Pendaftaran kedua seharusnya ditolak.');
         } catch (ActivityValidationException $exception) {
             $this->assertStringContainsString('aktivitas aktif', implode(' ', $exception->errors()));
         }
+
+        // Sedangkan pengelola aktivitas memang boleh melampaui batas (jalur pengecualian).
+        $this->actAs($manager);
+        $allowed = $this->service()->start($manager, $second, $student->id, ['allow_over_limit' => true]);
+
+        $this->assertSame('APPROVED', $allowed->status->value);
     }
 }

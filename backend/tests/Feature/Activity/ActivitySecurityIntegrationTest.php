@@ -275,6 +275,65 @@ class ActivitySecurityIntegrationTest extends ActivityTestCase
         $this->assertTrue(app(ActivityProgramService::class)->capacity($program->refresh())['active'] >= 1);
     }
 
+    public function test_portofolio_publik_menyamarkan_identitas_dan_mati_saat_dimatikan(): void
+    {
+        $manager = $this->actingAsRole('ACTIVITY_MANAGER');
+        $world = $this->makeStudentWithGuardian('Salma');
+
+        $program = $this->makeProgram(['code' => 'PUB-1', 'name' => 'Paskibra']);
+        app(ActivityRegistrationService::class)->start($manager, $program, (int) $world['student']->id);
+
+        $portfolios = app(\App\Modules\Activity\Application\Services\ActivityPortfolioService::class);
+        $portfolio = $portfolios->store((int) $world['student']->id, null, $manager);
+
+        // Sebelum dibagikan: tautan belum ada, halaman publik menolak.
+        $this->assertNull($portfolio->public_token);
+        $this->getJson('/api/v1/activities/portfolios/public/'.str_repeat('a', 48))->assertStatus(404);
+
+        $admin = $this->actingAsRole('ACTIVITY_ADMIN');
+        $shared = $portfolios->share($portfolio, $admin, true);
+
+        $this->assertNotNull($shared->public_token);
+        $this->assertDatabaseHas('activity_audit_logs', ['action' => 'PORTFOLIO_SHARED']);
+
+        // Halaman publik: capaian boleh tampil, identitas tidak.
+        $snapshot = $portfolios->publicView($shared->public_token);
+
+        $this->assertNotNull($snapshot);
+        $this->assertStringContainsString('*', (string) $snapshot['student']['name']);
+        $this->assertArrayNotHasKey('nis', $snapshot['student']);
+
+        // Endpoint publik tanpa login memang menyajikan hal yang sama.
+        $this->getJson('/api/v1/activities/portfolios/public/'.$shared->public_token)->assertOk();
+
+        // Setelah dimatikan sekolah, tautan itu mati.
+        $portfolios->share($shared, $admin, false);
+        $this->assertNull($portfolios->publicView($shared->public_token));
+    }
+
+    public function test_detail_kompetisi_menyertakan_peserta_agar_panitia_dapat_menyusun_pertandingan(): void
+    {
+        $manager = $this->actingAsRole('ACTIVITY_MANAGER');
+        $competitions = app(\App\Modules\Activity\Application\Services\ActivityCompetitionService::class);
+
+        $competition = $competitions->create([
+            'name' => 'Turnamen Uji',
+            'participant_type' => 'INDIVIDUAL',
+            'categories' => [['code' => 'U-15', 'name' => 'U-15']],
+        ], $manager);
+
+        $category = $competition->categories()->firstOrFail();
+        $competitions->openRegistration($competition, $manager);
+        $competitions->registerIndividual($competition->refresh(), (int) $this->makeStudent('Tami')->id, (int) $category->id, $manager);
+
+        $detail = $competitions->detail($competition->refresh());
+
+        // Tanpa daftar peserta, layar panitia harus menebak ID saat membuat pertandingan.
+        $this->assertTrue($detail->relationLoaded('participants'));
+        $this->assertCount(1, $detail->participants);
+        $this->assertNotNull($detail->participants->first()->student?->full_name);
+    }
+
     public function test_pengaturan_dan_kesehatan_modul_hanya_untuk_pemegang_izin(): void
     {
         $this->actingAsRole('ACTIVITY_ADMIN');

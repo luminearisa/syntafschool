@@ -64,6 +64,10 @@ class ActivityCompetitionService
         return $competition->load([
             'program:id,name',
             'categories',
+            // Peserta ikut dimuat: layar pengelola perlu memilih peserta saat
+            // menyusun pertandingan — tanpa daftar ini, juri & panitia harus
+            // menebak ID.
+            'participants.student:id,full_name,nis',
             'rounds.matches.participantA.student:id,full_name',
             'rounds.matches.participantB.student:id,full_name',
             'teams.members.student:id,full_name',

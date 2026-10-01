@@ -316,7 +316,6 @@ class ActivityRegistrationService
         }
 
         return $this->transition($registration, RegistrationStatus::CANCELLED, $actor, $reason ?? 'Dibatalkan oleh pemohon.', [
-            'release_waitlist' => true,
         ]);
     }
 

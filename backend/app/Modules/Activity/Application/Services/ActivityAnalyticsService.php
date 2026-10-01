@@ -423,16 +423,39 @@ class ActivityAnalyticsService
             ],
             'membership' => [
                 'type' => $type,
-                'columns' => ['activity', 'active', 'suspended', 'completed', 'withdrawn'],
+                'columns' => ['activity', 'active', 'suspended', 'inactive', 'completed', 'withdrawn'],
                 'rows' => ActivityProgram::query()
                     ->when($programId !== null, fn ($query) => $query->whereKey($programId))
                     ->get()
-                    ->map(fn (ActivityProgram $program) => ActivityMembership::query()
-                        ->selectRaw('status, count(*) as total')
-                        ->where('program_id', $program->id)
-                        ->groupBy('status')
-                        ->pluck('total', 'status')
-                        ->all() + ['activity' => $program->name, 'program_id' => (int) $program->id])
+                    ->map(function (ActivityProgram $program) {
+                        // Status tersimpan sebagai UPPER_SNAKE di basis data, sedangkan
+                        // tabel laporan memakai kolom tetap. Tanpa pemetaan ini, kolom
+                        // akan kosong dan angka keanggotaan tidak terlihat — kesalahan
+                        // yang sulit terlihat karena tabelnya tetap "rapi".
+                        $counts = ActivityMembership::query()
+                            ->selectRaw('status, count(*) as total')
+                            ->where('program_id', $program->id)
+                            ->groupBy('status')
+                            ->pluck('total', 'status')
+                            ->all();
+
+                        $row = [
+                            'program_id' => (int) $program->id,
+                            'activity' => $program->name,
+                        ];
+
+                        foreach ([
+                            'active' => MembershipStatus::ACTIVE,
+                            'suspended' => MembershipStatus::SUSPENDED,
+                            'inactive' => MembershipStatus::INACTIVE,
+                            'completed' => MembershipStatus::COMPLETED,
+                            'withdrawn' => MembershipStatus::WITHDRAWN,
+                        ] as $column => $status) {
+                            $row[$column] = (int) ($counts[$status->value] ?? 0);
+                        }
+
+                        return $row;
+                    })
                     ->all(),
                 'totals' => ['memberships' => ActivityMembership::query()->count()],
             ],
@@ -442,8 +465,8 @@ class ActivityAnalyticsService
                 'rows' => [],
                 'totals' => [],
                 'available' => [
-                    'participation', 'membership', 'attendance', 'assessment', 'achievement', 'competition',
-                    'certificate', 'portfolio', 'coach_performance', 'capacity', 'waitlist', 'dropout', 'completion',
+                    'participation', 'membership', 'attendance', 'achievements', 'competition', 'certificates',
+                    'coach_performance', 'capacity', 'waitlist', 'dropout', 'completion',
                 ],
             ],
         };

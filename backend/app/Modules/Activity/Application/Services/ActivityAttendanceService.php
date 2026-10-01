@@ -90,6 +90,16 @@ class ActivityAttendanceService
             throw ActivityConflictException::make('Sesi ini dibatalkan — kehadiran tidak dapat dicatat.');
         }
 
+        // Sesi yang sudah diselesaikan berarti kehadirannya sudah final.
+        $overriding = $session->attendance_locked_at !== null;
+
+        if ($overriding && ! $actor->can('activity.attendance.override')) {
+            throw ActivityConflictException::make(
+                'Kehadiran sesi ini sudah dikunci. Minta pengelola aktivitas melakukan koreksi.',
+                ['locked_at' => $session->attendance_locked_at?->toIso8601String()],
+            );
+        }
+
         $status = strtoupper((string) $payload['status']);
 
         if (! in_array($status, AttendanceStatus::values(), true)) {
@@ -100,8 +110,13 @@ class ActivityAttendanceService
             throw ActivityValidationException::withErrors(['Siswa ini bukan anggota aktif program tersebut.']);
         }
 
-        return DB::transaction(function () use ($session, $studentId, $payload, $actor, $status) {
+        return DB::transaction(function () use ($session, $studentId, $payload, $actor, $status, $overriding) {
             $membership = $this->access->membershipOf($studentId, (int) $session->program_id);
+
+            $sebelum = ActivityAttendance::query()
+                ->where('session_id', $session->id)
+                ->where('student_id', $studentId)
+                ->first();
 
             $attendance = ActivityAttendance::query()->updateOrCreate(
                 ['session_id' => $session->id, 'student_id' => $studentId],
@@ -117,6 +132,19 @@ class ActivityAttendanceService
                     'idempotency_key' => $payload['idempotency_key'] ?? null,
                 ],
             );
+
+            if ($overriding) {
+                // Koreksi setelah sesi selesai dicatat lengkap: nilai sebelum dan
+                // sesudahnya, supaya perubahan kehadiran dapat dipertanggungjawabkan.
+                $this->audit->record(AuditAction::ATTENDANCE_OVERRIDDEN, [
+                    'subject' => $attendance,
+                    'student_id' => $studentId,
+                    'before' => ['status' => $sebelum?->status?->value],
+                    'after' => ['status' => $attendance->status?->value],
+                    'metadata' => ['session_id' => (int) $session->id],
+                    'actor' => $actor->id,
+                ]);
+            }
 
             // Cerminan ke modul Attendance hanya untuk kehadiran yang bermakna
             // bagi absensi akademik; izin/sakit tetap tercatat di sini.

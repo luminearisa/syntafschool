@@ -201,6 +201,8 @@ competition-results/{id}/verify
 achievements (GET/POST) · achievements/{id}/verify · achievements/{id}/certificate
 certificates (GET) · completions/{id}/certificate · certificates/{id}/revoke
 students/{id}/portfolio · portfolios (POST) · portfolios/{id}/share · students/{id}/transcript
+consents (GET, staf) · audit (GET) · integration/finance/charges (+ /cancel)
+integration/inventory/requests (+ /status) · integration/facility/bookings (+ /cancel)
 reports/{type}
 portal/parent · portal/parent/children/{id} · portal/consents (+/{id}/decide)
 counseling/students/{id}/summary
@@ -217,12 +219,13 @@ verifikasi publik dibatasi 20 permintaan/menit per IP.
 
 | Peran | Inti kewenangan | Yang **tidak** boleh |
 |---|---|---|
-| `ACTIVITY_ADMIN` | katalog, periode, program, penilaian, sertifikat, pengaturan | **tidak** memutuskan pendaftaran siswa (perlu `ACTIVITY_MANAGER`/koordinator) maupun memverifikasi prestasi |
+| `ACTIVITY_ADMIN` | katalog, periode, program, penilaian, sertifikat, pengaturan, **pengecualian** (melampaui batas aktivitas, membatalkan pendaftaran) | **tidak** memutuskan pendaftaran siswa (perlu `ACTIVITY_MANAGER`/koordinator) maupun memverifikasi prestasi |
 | `ACTIVITY_MANAGER` | operasional program: keputusan pendaftaran, keanggotaan, sesi, penilaian, kompetisi (termasuk koreksi skor & penerbitan hasil) | mengubah konfigurasi modul |
 | `ACTIVITY_COORDINATOR` | koordinasi beberapa program di bawahnya | sertifikat & pengaturan |
 | `ACTIVITY_ADVISOR` / `COACH` / `MENTOR` | anggota, sesi, kehadiran, penilaian, pembinaan pada **program yang ditugaskan** | program lain |
 | `ACTIVITY_JUDGE` | menilai penampilan yang ditugaskan | mengubah data peserta, mengoreksi skor |
-| `FINANCE` / `INVENTORY` / `FACILITY` | sisi dana, barang, ruang | data keanggotaan & penilaian |
+| `FINANCE` / `INVENTORY` / `FACILITY` | sisi dana, barang, ruang lewat `integration/*` (melihat permintaan aktivitas, menyelaraskan status barang, membatalkan pemesanan) | data keanggotaan & penilaian |
+| `auditor` / `kepala-sekolah` | **jejak audit** (`activity.audit.view`), laporan, analitik, ringkasan pembinaan (`activity.counseling.view`) | menulis apa pun |
 | `siswa` / `wali-murid` | portal: mendaftar, melihat, menyetujui | kehadiran, penilaian, keanggotaan |
 | `kepala-sekolah` | verifikasi prestasi, penerbitan hasil kompetisi, laporan | konfigurasi teknis |
 | `auditor` | membaca laporan, analitik, audit | menulis apa pun |
@@ -241,7 +244,10 @@ verifikasi publik dibatasi 20 permintaan/menit per IP.
 - **Sertifikat beralasan** — penerbitan menyimpan snapshot kelayakan; pencabutan berjejak; verifikasi publik tidak memuat identitas siswa.
 - **Kegagalan modul tetangga tercatat** — `activity_integration_logs` menyebut integrasi, aksi, status, durasi, dan galatnya.
 - **Notifikasi tidak berulang** — kunci idempoten pada `activity_notification_logs`; pengiriman ganda tercatat `SUPPRESSED`.
-- **Audit append-only** — setiap keputusan penting meninggalkan baris yang tidak dapat disunting lewat API.
+- **Audit append-only** — setiap keputusan penting meninggalkan baris yang tidak dapat disunting lewat API, dan dapat **dibaca** lewat `GET /activities/audit` dengan penyaring aksi/sasaran/anak/waktu.
+- **Kehadiran terkunci tidak dapat disunting diam-diam** — setelah sesi diselesaikan, perubahan kehadiran menuntut izin `activity.attendance.override` dan selalu meninggalkan jejak `ATTENDANCE_OVERRIDDEN` beserta nilai sebelum dan sesudah.
+- **Permintaan ke modul lain terlihat di sisi aktivitas** — tagihan yang belum ditagihkan dapat dibatalkan beralasan, status perlengkapan diselaraskan oleh petugas inventaris, dan pemesanan ruang dibatalkan dengan meneruskan pembatalan ke modul Sarpras (bukan hanya menghapusnya di sini).
+- **Modul yang belum terpasang tidak menipu** — Event dan Transportasi menjawab `SKIPPED` dan tercatat di log integrasi.
 
 ---
 
@@ -282,6 +288,15 @@ tests/Feature/Activity/                     55 tes · 184 asersi · hijau
 └── ActivitySecurityIntegrationTest.php     401/403, isolasi siswa & anak, cakupan pembina, jejak audit,
                                             integrasi gagal tidak menjatuhkan alur, inventaris & fasilitas,
                                             modul belum terpasang dilaporkan apa adanya
+… ditambah `ActivityGovernanceTest` (8 tes) yang mengunci izin yang sebelumnya **tidak
+dipegang peran mana pun** — membatalkan pendaftaran oleh petugas, melampaui batas
+jumlah aktivitas, mengoreksi kehadiran terkunci, daftar persetujuan untuk staf,
+jejak audit, tagihan yang dibatalkan, status perlengkapan, dan pembatalan ruang —
+serta `ActivityReportContractTest` (4 tes) yang memastikan setiap kolom yang
+dijanjikan laporan benar-benar ada pada barisnya.
+
+```
+tests/Feature/Activity/                     69 tes · 288 asersi · hijau
 ```
 
 **Verifikasi runtime** (bukan hanya tes) di basis data nyata:
@@ -307,9 +322,13 @@ Frontend React/TypeScript: `frontend/src/features/activity/` (types, klien API,
 | **Ruang Kerja Pembina** | `/activities/workspace` | tersedia | Sesi terjadwal + pembuatan sesi dari jadwal, daftar hadir satu layar, penyelesaian sesi, penilaian (buat/terbitkan/isi), rekap kelengkapan catatan. |
 | **Dasbor Aktivitas** | `/activities/dashboard` | tersedia | Angka pengelola (program, anggota, pendaftaran menunggu, daftar tunggu, kehadiran, prestasi, sertifikat), aktivitas terpopuler, peringatan kapasitas, 11 laporan operasional, kesehatan modul & log integrasi. |
 | **Aktivitas Anak** | `/activities/parent` | tersedia | Daftar anak, ringkasan capaian, dan **persetujuan** (setujui/tolak + catatan) — tanpa kemampuan mengubah kehadiran/penilaian. |
+| **Tata Kelola & Audit** | `/activities/governance` | tersedia | Empat tab sesuai izin: **jejak audit** (penyaring aksi & anak, menampilkan sebelum → sesudah), **persetujuan menggantung** (dapat diputuskan pemegang izin), **permintaan tagihan** ke Keuangan (dapat dibatalkan beralasan), **perlengkapan & ruang** (selaraskan status barang, batalkan pemesanan ruang). |
 | **Verifikasi Sertifikat** | `/activities/verify` | tersedia | Memeriksa nomor/kode sertifikat; hasil memuat fakta sertifikat saja. |
 
-**Yang belum dibuat di layar (API-nya sudah ada):** penyusun kompetisi
-(babak/pertandingan/juri) dan pencatatan hasil, layar prestasi & penerbitan
-sertifikat massal, layar portofolio dengan tautan berbagi, serta halaman
-portofolio publik. Semua dapat dibangun tanpa perubahan backend.
+| **Kompetisi** | `/activities/competitions` | tersedia | Membuat kompetisi & kategori, membuka pendaftaran, menyusun babak dan pertandingan dari daftar peserta, menugaskan juri, mengirim skor (bagi juri: daftar penampilan yang ditugaskan), mengunci skor, **mengoreksi skor beralasan**, menyusun dan menerbitkan hasil (otomatis menjadi prestasi). Hak akses tampil apa adanya: tanpa izin penerbitan hasil, tombolnya tidak muncul beserta alasannya. |
+| **Prestasi & Sertifikat** | `/activities/recognition` | tersedia | Pencatatan prestasi individu/tim, penyaringan status & tingkat, verifikasi (terverifikasi/ditolak/perlu perbaikan), penerbitan sertifikat prestasi, daftar sertifikat aktivitas, dan pencabutan sertifikat beralasan. |
+| **Portofolio & Transkrip** | `/activities/portfolio` | tersedia | Portofolio dirakit ulang (ringkasan, riwayat aktivitas, keterampilan terbukti, kepemimpinan, pengabdian, proyek), penyimpanan cuplikan, tautan berbagi eksplisit + salin tautan, dan transkrip aktivitas (berbeda dari rapor). |
+| **Portofolio publik** | `/aktivitas/portofolio/:token` | tersedia (tanpa login) | Halaman di luar cangkang aplikasi: hanya memuat capaian, nama siswa disamarkan, NIS tidak pernah dikirim. Tautan mati bila sekolah mematikannya. |
+
+Seluruh layar pada tabel di atas sudah tersedia (12 halaman); tidak ada lagi
+layar yang tertinggal dari daftar awal.

@@ -131,7 +131,7 @@ export default function ActivityDetailPage() {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Tujuan perkembangan</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Tujuan perkembangan</p>
                 <ul className="mt-1 list-disc space-y-1 pl-4 text-sm">
                   {(program.objectives ?? []).length === 0 ? <li className="text-slate-500">Belum ditentukan</li> : null}
                   {(program.objectives ?? []).map((objective) => (
@@ -140,7 +140,7 @@ export default function ActivityDetailPage() {
                 </ul>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Keterampilan yang dibina</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Keterampilan yang dibina</p>
                 <div className="mt-1 flex flex-wrap gap-1">
                   {(program.skills ?? []).length === 0 ? <span className="text-sm text-slate-500">Belum ditentukan</span> : null}
                   {(program.skills ?? []).map((skill) => (
@@ -153,7 +153,7 @@ export default function ActivityDetailPage() {
             </div>
 
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Jadwal</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Jadwal</p>
               <div className="mt-1 space-y-1">
                 {(program.schedules ?? []).length === 0 ? (
                   <p className="text-slate-500">Belum ada jadwal tetap.</p>
@@ -170,7 +170,7 @@ export default function ActivityDetailPage() {
 
             {(program.requirements ?? []).length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Syarat penerimaan</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Syarat penerimaan</p>
                 <ul className="mt-1 list-disc space-y-1 pl-4 text-sm">
                   {(program.requirements ?? []).map((requirement) => (
                     <li key={requirement.id}>
