@@ -1223,3 +1223,69 @@ Perbaikan yang ikut terbawa:
 - [x] Impor `Label` tak terpakai di halaman UKS (menghambat build `tsc`)
 
 Dokumen: [`docs/16-MODUL-CLINIC.md`](16-MODUL-CLINIC.md)
+
+---
+
+## Modul Workflow & Approval Engine — infrastruktur bersama (2026-09-30)
+
+Mesin persetujuan **lintas modul**: Finance, Procurement, HRD, Inventory, Asset,
+PPDB, Student, Boarding, Document/e-Office, Maintenance, dan Clinic mengirim
+permintaannya ke satu engine — bukan membangun sistem approval masing-masing.
+
+- [x] **24 tabel `workflow_*`** dalam 3 migrasi, **24 model**, **24 enum domain**,
+      9 kontrak, **19 layanan**, 4 controller, **70+ rute** `/api/v1/workflows/*`
+- [x] **Satu titik ekstensi** (`WorkflowRegistrar`): resolver approver, aksi
+      otomatis, provider konteks, trigger, evaluator kondisi — modul lain
+      menyumbang kemampuannya tanpa menyentuh kode engine
+- [x] **Tanpa duplikasi sumber kebenaran**: mesin tidak pernah membaca tabel
+      bisnis; data datang lewat `WorkflowContextProviderInterface` dan dibekukan
+      sebagai snapshot ber-hash (§65). Nominal yang dipakai percabangan tidak
+      dapat dipalsukan dari payload klien
+- [x] **Graf node**: START · APPROVAL · REVIEW · CONDITION · PARALLEL ·
+      NOTIFICATION · AUTOMATIC · END, dengan mode SEQUENTIAL/PARALLEL/HYBRID dan
+      kuorum ALL/ANY/MINIMUM_N/PERCENTAGE; cabang paralel menunggu **seluruh**
+      cabang hidup selesai sebelum bergabung
+- [x] **Versioned & beku**: setiap perubahan alur melahirkan versi baru
+      ber-`graph_hash`; request lama tetap memakai versi saat ia dibuat
+- [x] **Kebijakan approver kosong** yang jujur (§59): FAIL · ESCALATE ·
+      USE_FALLBACK · PAUSE — tidak ada jalur "lewati diam-diam"; request yang
+      tertahan muncul di dasbor beserta alasannya
+- [x] **Self-approval dilarang secara default** (§36) dan **SoD dapat dikonfigurasi**
+      (`requester_cannot_be_final_approver`, `forbid_same_user_multiple_steps`,
+      `min_distinct_approvers`)
+- [x] **Idempotensi dua lapis** (§64, §68): indeks unik (step, approver) +
+      `Idempotency-Key` pada keputusan; kunci idempoten unik pada notifikasi —
+      klik ganda, retry jaringan, dan webhook berulang tetap satu keputusan
+- [x] **Delegasi tidak menghapus identitas** (§8): penugasan dialihkan, tetapi
+      `original_approver_id` + `delegation_id` tercatat pada penugasan *dan* keputusan
+- [x] **SLA kalender kerja** (§41, §70): "48 jam kerja" sungguhan — melewati akhir
+      pekan, hari libur, dan di luar jam kerja; penyapu `workflow:check-sla`
+      menjalankan pengingat → segera jatuh tempo → terlambat → eskalasi berjenjang
+- [x] **Audit berantai hash** (§48): rantai per instance, `POST /audit/verify`
+      membuktikan tidak ada baris yang disunting/dihapus — termasuk lewat SQL langsung
+- [x] **Analitik operasional** (§53) yang memantau proses, bukan menilai orang:
+      durasi, kepatuhan SLA, volume per modul/unit, titik tersangkut, beban tertunda
+- [x] **Peran sistem** ERP_ADMIN · WORKFLOW_ADMIN · WORKFLOW_MANAGER · AUDITOR —
+      Workflow Admin **tidak** otomatis boleh menyetujui request bisnis (§10)
+- [x] **4 definisi bawaan** siap pakai (Pengadaan, Cuti, Pengeluaran, Dokumen)
+      dikirim sebagai **data** oleh seeder, bukan kode program
+- [x] Perintah: `workflow:check-sla` (tiap 5 menit), `workflow:expire` (harian),
+      `workflow:health`, `workflow:trigger`
+- [x] Frontend: **11 halaman** (dasbor, kotak masuk approver dengan penyaring,
+      permintaan saya, ruang kerja request + visualizer + timeline + konteks +
+      jejak audit, definisi & builder graf, delegasi, analitik, audit, pengaturan
+      kalender & direktori) + grup menu **Workflow & Persetujuan**
+- [x] **51 tes / 253 asersi hijau**; `tsc -b` & `vite build` bersih (2.314 modul);
+      diverifikasi di browser sungguhan: login → kotak masuk → keputusan →
+      request berpindah cabang kondisi nominal → APPROVED, rantai audit utuh
+
+Perbaikan yang ikut terbawa:
+- [x] `WorkingCalendar` menyimpan **array konfigurasi** ke cache, bukan model
+      Eloquent (model ter-cache pecah menjadi `__PHP_Incomplete_Class` pada proses
+      lain — tertangkap saat verifikasi runtime)
+- [x] Daftar "Permintaan Saya" menyertakan ringkasan progres langkah
+- [x] Tombol keputusan di ruang kerja request hanya tampil bila penugasan benar
+      milik pengguna (atau ia memegang izin override)
+
+Dokumen: [`docs/17-MODUL-WORKFLOW-ENGINE.md`](17-MODUL-WORKFLOW-ENGINE.md) ·
+[`docs/workflow/01-PANDUAN-INTEGRASI.md`](workflow/01-PANDUAN-INTEGRASI.md)

@@ -5,6 +5,7 @@ use App\Modules\Clinic\Providers\ClinicServiceProvider;
 use App\Modules\LMS\Providers\LmsServiceProvider;
 use App\Modules\Supervisi\Providers\SupServiceProvider;
 use App\Modules\UKS\Providers\UksServiceProvider;
+use App\Modules\Workflow\Providers\WorkflowServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -24,4 +25,10 @@ return [
     // alur ringan, Clinic untuk alur klinis penuh (triase → resep →
     // dispensing → pemulangan) dengan Inventory sebagai sumber stok.
     ClinicServiceProvider::class,
+    // Modul Workflow & Approval Engine: infrastruktur bersama seluruh modul.
+    // Mendaftarkan migrasi `workflow_*`, route /api/v1/workflows/*, registry
+    // resolver approver & aksi otomatis, kalender kerja, dan direktori
+    // organisasi. Modul ERP lain menambah titik ekstensi lewat
+    // WorkflowRegistrar tanpa menyentuh berkas modul ini.
+    WorkflowServiceProvider::class,
 ];

@@ -14,6 +14,7 @@ import {
   Home,
   Settings,
   Stethoscope,
+  GitPullRequestArrow,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -26,6 +27,7 @@ import { assessmentsMenu } from '@/routes/domains/assessments';
 import { lmsMenu } from '@/routes/domains/lms';
 import { cbtMenu } from '@/routes/domains/cbt';
 import { clinicMenu } from '@/routes/domains/clinic';
+import { workflowMenu } from '@/routes/domains/workflow';
 
 export interface MenuChild {
   label: string;
@@ -87,6 +89,19 @@ export const MENU_ITEMS: MenuItem[] = [
       { label: 'Data Pegawai', to: '/employees', permission: 'employee.view' },
       { label: 'Absensi Pegawai', to: '/employees/attendance', permission: 'employee.view' },
     ],
+  },
+  /*
+   * Workflow & Approval Engine — infrastruktur lintas modul.
+   *
+   * Menu ini bukan milik satu modul: ia tempat semua persetujuan berkumpul
+   * (pengadaan, cuti, pengeluaran, dokumen). Ditaruh sebelum menu modul agar
+   * approver menjadikannya pintu masuk harian.
+   */
+  {
+    label: 'Workflow & Persetujuan',
+    icon: GitPullRequestArrow,
+    permission: 'workflow.view',
+    children: workflowMenu,
   },
   {
     label: 'Keuangan',

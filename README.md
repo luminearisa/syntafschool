@@ -23,8 +23,16 @@ schoolerp/
 | [`docs/03-RANCANGAN-DATABASE.md`](./docs/03-RANCANGAN-DATABASE.md) | Skema database, relasi, ERD, migration |
 | [`docs/04-SPESIFIKASI-API-FRONTEND.md`](./docs/04-SPESIFIKASI-API-FRONTEND.md) | Spesifikasi REST API & struktur frontend |
 | [`docs/05-PLAN-FASE-2.md`](./docs/05-PLAN-FASE-2.md) | Breakdown Fase 2: menu Akademik, Kesiswaan & Kepegawaian |
+| [`docs/17-MODUL-WORKFLOW-ENGINE.md`](./docs/17-MODUL-WORKFLOW-ENGINE.md) | **Workflow & Approval Engine** — infrastruktur persetujuan bersama seluruh modul |
+| [`docs/workflow/01-PANDUAN-INTEGRASI.md`](./docs/workflow/01-PANDUAN-INTEGRASI.md) | Panduan modul ERP memakai engine (provider konteks, trigger, aksi, resolver) |
 | [`docs/PROGRESS.md`](./docs/PROGRESS.md) | Progres implementasi per fase |
 
 ## Status
 
-Tahap **perencanaan** selesai. Implementasi mengikuti roadmap pada dokumen rencana utama.
+Implementasi berjalan mengikuti roadmap; progres per fase dicatat di
+[`docs/PROGRESS.md`](./docs/PROGRESS.md).
+
+Infrastruktur lintas modul yang sudah tersedia:
+
+- **Workflow & Approval Engine** — mesin persetujuan generik, versioned, ber-audit
+  ([blueprint](./docs/17-MODUL-WORKFLOW-ENGINE.md) · [panduan integrasi](./docs/workflow/01-PANDUAN-INTEGRASI.md))

@@ -119,3 +119,22 @@ Schedule::command('uks:health')->weeklyOn(1, '07:05')->withoutOverlapping();
 // yang lewat tenggat ditandai + orang tua diingatkan sekali sehari.
 Schedule::command('clinic:expire-batches')->dailyAt('05:30');
 Schedule::command('clinic:expire-follow-ups')->dailyAt('06:00');
+
+/*
+ * Penjadwalan Workflow & Approval Engine (§40, §41, §69).
+ *
+ * Sapuan SLA berjalan tiap lima menit: pengingat (50% SLA), "segera jatuh tempo"
+ * (80%), penandaan terlambat (100%), lalu eskalasi berjenjang sesuai konfigurasi
+ * node/versi. Delegasi terjadwal diaktifkan dan yang berakhir ditutup pada
+ * sapuan yang sama. Semua langkah idempoten: SLA record menyimpan kapan
+ * pengingat/eskalasi terakhir dikirim, sehingga menjalankan ulang tidak
+ * menggandakan notifikasi.
+ */
+Schedule::command('workflow:check-sla')->everyFiveMinutes()->withoutOverlapping();
+
+/*
+ * Penutupan request yang tidak mungkin dilanjutkan (§17).
+ * Request RETURNED yang tidak direvisi dan draf yang terlantar ditandai EXPIRED
+ * — keputusan lama tetap tersimpan, hanya statusnya yang ditutup dengan alasan.
+ */
+Schedule::command('workflow:expire')->dailyAt('23:40');

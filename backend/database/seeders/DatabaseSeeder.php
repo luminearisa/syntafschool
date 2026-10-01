@@ -12,6 +12,8 @@ use App\Modules\Clinic\Database\Seeders\ClinicPermissionSeeder;
 use App\Modules\Supervisi\Database\Seeders\SupInstrumentSeeder;
 use App\Modules\Supervisi\Database\Seeders\SupPermissionSeeder;
 use App\Modules\UKS\Database\Seeders\UksPermissionSeeder;
+use App\Modules\Workflow\Database\Seeders\WorkflowPermissionSeeder;
+use App\Modules\Workflow\Database\Seeders\WorkflowReferenceSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
