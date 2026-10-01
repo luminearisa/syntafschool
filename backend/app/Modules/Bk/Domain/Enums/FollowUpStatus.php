@@ -45,6 +45,12 @@ enum FollowUpStatus: string
     }
 
     /** Tindak lanjut yang masih menuntut perhatian (dasar widget \"terlambat\"). */
+    /** Tindak lanjut yang sudah tuntas (selesai atau tidak relevan lagi). */
+    public function isCompleted(): bool
+    {
+        return in_array($this, [self::COMPLETED, self::CANCELLED], true);
+    }
+
     public function isOpen(): bool
     {
         return in_array($this, [self::PENDING, self::MISSED, self::RESCHEDULED], true);

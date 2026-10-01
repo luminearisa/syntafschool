@@ -367,6 +367,22 @@ class BkAccessService
     // ------------------------------------------------------------- penyaringan kueri
 
     /** Batasi kueri kasus pada apa yang boleh dilihat pengguna ini. */
+    /**
+     * Menegakkan akses ke profil dukungan siswa.
+     *
+     * Profil dukungan adalah pintu masuk ke banyak data sekaligus (akademik,
+     * presensi, kedisiplinan, asrama, klinik, BK), jadi penolakannya pun harus
+     * tercatat — bukan sekadar 403 tanpa jejak.
+     */
+    public function assertCanViewSupportProfile(User $user, int $studentId): void
+    {
+        if (! $this->canViewSupportProfile($user, $studentId)) {
+            $this->audit->logAccess($user, 'VIEW_CONFIDENTIAL', $user, false, 'Profil dukungan di luar cakupan.');
+
+            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException('Anda tidak memiliki akses ke profil dukungan siswa ini.');
+        }
+    }
+
     public function scopeCases(Builder $query, User $user): Builder
     {
         if ($this->isBkAdmin($user) || $this->isCoordinator($user)) {
@@ -444,6 +460,38 @@ class BkAccessService
     }
 
     /** Tindak lanjut: hanya milik sendiri (atau seluruhnya bagi koordinator). */
+    /**
+     * Cakupan konferensi kasus.
+     *
+     * Tim BK melihat seluruh konferensi pada kasus yang boleh dibukanya; pihak
+     * lain hanya melihat konferensi tempat ia terdaftar sebagai peserta. Guru
+     * tidak melihat konferensi kasus siswa lain, dan wali hanya melihat
+     * konferensi anaknya.
+     */
+    public function scopeConferences(Builder $query, User $user): Builder
+    {
+        if ($this->isBkStaff($user)) {
+            return $query->whereIn('case_id', $this->counselorCaseIds($user))
+                ->orWhereHas('participants', fn (Builder $inner): Builder => $inner->where('user_id', $user->id));
+        }
+
+        $studentId = $this->studentIdForUser($user);
+
+        return $query->where(function (Builder $inner) use ($user, $studentId): void {
+            $inner->whereHas('participants', function (Builder $participant) use ($user, $studentId): void {
+                $participant->where('user_id', $user->id);
+
+                if ($studentId !== null) {
+                    $participant->orWhere('student_id', $studentId);
+                }
+            });
+
+            foreach ($this->guardianStudentIds($user) as $guardianStudentId) {
+                $inner->orWhere('student_id', $guardianStudentId);
+            }
+        });
+    }
+
     public function scopeFollowUps(Builder $query, User $user): Builder
     {
         if ($this->isBkAdmin($user) || $this->isCoordinator($user)) {

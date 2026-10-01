@@ -48,6 +48,10 @@ class BkServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(base_path('config/bk.php'), 'bk');
+
+        // Singleton: keadaan unit yang sedang aktif harus sama di seluruh
+        // permintaan, termasuk saat global scope model bertanya.
+        $this->app->singleton(\App\Modules\Bk\Application\Support\BkTenantResolver::class);
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
 
         $this->bindContracts();
@@ -66,6 +70,10 @@ class BkServiceProvider extends ServiceProvider
                 \App\Modules\Bk\Console\BkExpireConsentsCommand::class,
                 \App\Modules\Bk\Console\BkReviewOverdueCasesCommand::class,
                 \App\Modules\Bk\Console\BkHealthCommand::class,
+                \App\Modules\Bk\Console\BkRunEarlyWarningCommand::class,
+                \App\Modules\Bk\Console\BkMonitorSlaCommand::class,
+                \App\Modules\Bk\Console\BkRunAutomationCommand::class,
+                \App\Modules\Bk\Console\BkApplyRetentionCommand::class,
             ]);
         }
     }
@@ -101,6 +109,7 @@ class BkServiceProvider extends ServiceProvider
         Gate::policy(\App\Modules\Bk\Models\BkAssessment::class, \App\Modules\Bk\Policies\BkAssessmentPolicy::class);
         Gate::policy(\App\Modules\Bk\Models\BkAppointment::class, \App\Modules\Bk\Policies\BkAppointmentPolicy::class);
         Gate::policy(\App\Modules\Bk\Models\BkCaseNote::class, \App\Modules\Bk\Policies\BkCaseNotePolicy::class);
+        Gate::policy(\App\Modules\Bk\Models\BkCaseConference::class, \App\Modules\Bk\Policies\BkCaseConferencePolicy::class);
         Gate::policy(\App\Modules\Bk\Models\BkFollowUp::class, \App\Modules\Bk\Policies\BkFollowUpPolicy::class);
     }
 

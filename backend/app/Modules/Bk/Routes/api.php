@@ -2,6 +2,16 @@
 
 use App\Modules\Bk\Http\Controllers\BkAppointmentController;
 use App\Modules\Bk\Http\Controllers\BkCaseController;
+use App\Modules\Bk\Http\Controllers\BkSecurityController;
+use App\Modules\Bk\Http\Controllers\BkRiskIndicatorController;
+use App\Modules\Bk\Http\Controllers\BkGroupProgramController;
+use App\Modules\Bk\Http\Controllers\BkFeedbackController;
+use App\Modules\Bk\Http\Controllers\BkExternalReferralController;
+use App\Modules\Bk\Http\Controllers\BkDevelopmentPlanController;
+use App\Modules\Bk\Http\Controllers\BkConsentController;
+use App\Modules\Bk\Http\Controllers\BkConferenceController;
+use App\Modules\Bk\Http\Controllers\BkCareerController;
+use App\Modules\Bk\Http\Controllers\BkAnalyticsController;
 use App\Modules\Bk\Http\Controllers\BkCaseRecordController;
 use App\Modules\Bk\Http\Controllers\BkFollowUpController;
 use App\Modules\Bk\Http\Controllers\BkMetaController;
@@ -213,4 +223,193 @@ Route::middleware(['auth:sanctum', 'throttle:bk-module'])->prefix('bk')->group(f
         Route::post('consents/{consent}/decide', [BkPortalController::class, 'decideConsent'])
             ->middleware('permission:bk.consent.decide')->name('bk.portal.consents.decide');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Phase 2 — konferensi kasus, rujukan eksternal, penanda, pengembangan
+    |--------------------------------------------------------------------------
+    |
+    | Cakupan baris dan kerahasiaan tetap ditegakkan layanan; middleware di sini
+    | hanya menyaring pemanggil yang sudah pasti tidak berhak, sehingga kesalahan
+    | izin terlihat lebih awal dan jejaknya lebih rapi.
+    */
+    Route::middleware('permission:bk.conference.view')->group(function (): void {
+        Route::get('conferences', [BkConferenceController::class, 'index'])->middleware('throttle:bk-module');
+        Route::get('conferences/{id}', [BkConferenceController::class, 'show'])->whereNumber('id')->middleware('throttle:bk-module');
+        Route::get('cases/{id}/conference', [BkConferenceController::class, 'index'])->whereNumber('id')->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.conference.manage')->group(function (): void {
+        Route::post('conferences', [BkConferenceController::class, 'store'])->middleware('throttle:bk-write');
+        Route::post('cases/{id}/conference', [BkConferenceController::class, 'store'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::patch('conferences/{id}', [BkConferenceController::class, 'update'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('conferences/{id}/start', [BkConferenceController::class, 'start'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('conferences/{id}/complete', [BkConferenceController::class, 'complete'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('conferences/{id}/participants', [BkConferenceController::class, 'addParticipant'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::delete('conferences/{id}/participants/{participantId}', [BkConferenceController::class, 'removeParticipant'])
+            ->whereNumber('id')->whereNumber('participantId')->middleware('throttle:bk-write');
+        Route::post('conferences/{id}/actions', [BkConferenceController::class, 'addAction'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('conference-actions/{actionId}/complete', [BkConferenceController::class, 'completeAction'])->whereNumber('actionId')->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.external-referral.view')->group(function (): void {
+        Route::get('referral-providers', [BkExternalReferralController::class, 'providers'])->middleware('throttle:bk-module');
+        Route::get('external-referrals', [BkExternalReferralController::class, 'index'])->middleware('throttle:bk-module');
+        Route::get('external-referrals/{id}', [BkExternalReferralController::class, 'show'])->whereNumber('id')->middleware('throttle:bk-module');
+        Route::get('cases/{id}/external-referrals', [BkExternalReferralController::class, 'index'])->whereNumber('id')->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.external-referral.manage')->group(function (): void {
+        Route::post('referral-providers', [BkExternalReferralController::class, 'storeProvider'])->middleware('throttle:bk-write');
+        Route::patch('referral-providers/{id}', [BkExternalReferralController::class, 'updateProvider'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals', [BkExternalReferralController::class, 'store'])->middleware('throttle:bk-write');
+        Route::post('cases/{id}/external-referrals', [BkExternalReferralController::class, 'store'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/assessment', [BkExternalReferralController::class, 'assessment'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/consent', [BkExternalReferralController::class, 'requestConsent'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/submit', [BkExternalReferralController::class, 'submit'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/appointment', [BkExternalReferralController::class, 'appointment'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/result', [BkExternalReferralController::class, 'result'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/follow-up', [BkExternalReferralController::class, 'followUp'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/complete', [BkExternalReferralController::class, 'complete'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('external-referrals/{id}/cancel', [BkExternalReferralController::class, 'cancel'])->whereNumber('id')->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.consent.view')->group(function (): void {
+        Route::get('consents', [BkConsentController::class, 'index'])->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.consent.request')->group(function (): void {
+        Route::post('consents', [BkConsentController::class, 'store'])->middleware('throttle:bk-write');
+    });
+
+    // Pemberian/pencabutan juga dapat dilakukan wali; controller memeriksa hubungan wali.
+    Route::post('consents/{id}/grant', [BkConsentController::class, 'grant'])->whereNumber('id')->middleware('throttle:bk-write');
+    Route::post('consents/{id}/revoke', [BkConsentController::class, 'revoke'])->whereNumber('id')->middleware('throttle:bk-write');
+
+    Route::middleware('permission:bk.risk.view')->group(function (): void {
+        Route::get('risk-indicators', [BkRiskIndicatorController::class, 'index'])->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.risk.manage')->group(function (): void {
+        Route::post('risk-indicators', [BkRiskIndicatorController::class, 'store'])->middleware('throttle:bk-write');
+        Route::post('risk-indicators/{id}/review', [BkRiskIndicatorController::class, 'review'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('risk-indicators/{id}/escalate', [BkRiskIndicatorController::class, 'escalate'])->whereNumber('id')->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.early-warning.view')->group(function (): void {
+        Route::get('early-warning/rules', [BkRiskIndicatorController::class, 'rules'])->middleware('throttle:bk-module');
+        Route::get('early-warning/events', [BkRiskIndicatorController::class, 'events'])->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.early-warning.manage')->group(function (): void {
+        Route::post('early-warning/rules', [BkRiskIndicatorController::class, 'storeRule'])->middleware('throttle:bk-write');
+        Route::post('early-warning/rules/{id}/toggle', [BkRiskIndicatorController::class, 'toggleRule'])->whereNumber('id')->middleware('throttle:bk-write');
+    });
+
+    Route::post('early-warning/evaluate', [BkRiskIndicatorController::class, 'evaluate'])
+        ->middleware(['permission:bk.early-warning.run', 'throttle:bk-report']);
+
+    Route::middleware('permission:bk.development.view')->group(function (): void {
+        Route::get('development-plans', [BkDevelopmentPlanController::class, 'index'])->middleware('throttle:bk-module');
+        Route::get('development-plans/{id}', [BkDevelopmentPlanController::class, 'show'])->whereNumber('id')->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.development.manage')->group(function (): void {
+        Route::post('development-plans', [BkDevelopmentPlanController::class, 'store'])->middleware('throttle:bk-write');
+        Route::patch('development-plans/{id}', [BkDevelopmentPlanController::class, 'update'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('development-plans/{id}/goals', [BkDevelopmentPlanController::class, 'addGoal'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('development-plans/{id}/activities', [BkDevelopmentPlanController::class, 'addActivity'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('development-goals/{goalId}/baseline', [BkDevelopmentPlanController::class, 'baseline'])->whereNumber('goalId')->middleware('throttle:bk-write');
+        Route::post('development-goals/{goalId}/review', [BkDevelopmentPlanController::class, 'review'])->whereNumber('goalId')->middleware('throttle:bk-write');
+        Route::post('development-activities/{activityId}/complete', [BkDevelopmentPlanController::class, 'completeActivity'])->whereNumber('activityId')->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.career.view')->group(function (): void {
+        Route::get('career-profiles', [BkCareerController::class, 'index'])->middleware('throttle:bk-module');
+        Route::get('students/{studentId}/career-sessions', [BkCareerController::class, 'sessions'])->whereNumber('studentId')->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.career.manage')->group(function (): void {
+        Route::post('career-profiles', [BkCareerController::class, 'upsert'])->middleware('throttle:bk-write');
+        Route::post('career-guidance-sessions', [BkCareerController::class, 'storeSession'])->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.program.view')->group(function (): void {
+        Route::get('programs', [BkGroupProgramController::class, 'index'])->middleware('throttle:bk-module');
+        Route::get('programs/{id}', [BkGroupProgramController::class, 'show'])->whereNumber('id')->middleware('throttle:bk-module');
+        Route::get('programs/{id}/evaluation', [BkGroupProgramController::class, 'evaluation'])->whereNumber('id')->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.program.manage')->group(function (): void {
+        Route::post('programs', [BkGroupProgramController::class, 'store'])->middleware('throttle:bk-write');
+        Route::patch('programs/{id}', [BkGroupProgramController::class, 'update'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('programs/{id}/sessions', [BkGroupProgramController::class, 'addSession'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('programs/{id}/members', [BkGroupProgramController::class, 'addMember'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('program-sessions/{sessionId}/attendance', [BkGroupProgramController::class, 'attendance'])->whereNumber('sessionId')->middleware('throttle:bk-write');
+    });
+
+    // Umpan balik: siswa & wali memakai endpoint sendiri; konselor hanya membaca.
+    Route::post('feedback/student', [BkFeedbackController::class, 'storeStudent'])->middleware('throttle:bk-write');
+    Route::post('feedback/guardian', [BkFeedbackController::class, 'storeGuardian'])->middleware('throttle:bk-write');
+    Route::patch('feedback/{id}', [BkFeedbackController::class, 'update'])->whereNumber('id')->middleware('throttle:bk-write');
+    Route::post('feedback/{id}/finalize', [BkFeedbackController::class, 'finalize'])->whereNumber('id')->middleware('throttle:bk-write');
+    Route::post('feedback/{id}/withdraw', [BkFeedbackController::class, 'withdraw'])->whereNumber('id')->middleware('throttle:bk-write');
+
+    Route::middleware('permission:bk.feedback.view')->group(function (): void {
+        Route::get('feedback', [BkFeedbackController::class, 'index'])->middleware('throttle:bk-module');
+        Route::post('feedback/{id}/review', [BkFeedbackController::class, 'review'])->whereNumber('id')->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.analytics.view')->group(function (): void {
+        Route::get('analytics/cases', [BkAnalyticsController::class, 'cases'])->middleware('throttle:bk-report');
+        Route::get('analytics/referrals', [BkAnalyticsController::class, 'referrals'])->middleware('throttle:bk-report');
+        Route::get('analytics/outcomes', [BkAnalyticsController::class, 'outcomes'])->middleware('throttle:bk-report');
+        Route::get('analytics/service', [BkAnalyticsController::class, 'service'])->middleware('throttle:bk-report');
+        Route::get('analytics/trends', [BkAnalyticsController::class, 'trends'])->middleware('throttle:bk-report');
+        Route::get('analytics/aging', [BkAnalyticsController::class, 'aging'])->middleware('throttle:bk-report');
+    });
+
+    Route::middleware('permission:bk.workload.view')->group(function (): void {
+        Route::get('analytics/workload', [BkAnalyticsController::class, 'workload'])->middleware('throttle:bk-report');
+    });
+
+    Route::middleware('permission:bk.search')->group(function (): void {
+        Route::get('search', [BkSecurityController::class, 'search'])->middleware('throttle:bk-search');
+    });
+
+    Route::middleware('permission:bk.report.export')->group(function (): void {
+        Route::post('exports', [BkSecurityController::class, 'export'])->middleware('throttle:bk-report');
+        Route::get('exports', [BkSecurityController::class, 'exportFiles'])->middleware('throttle:bk-report');
+    });
+
+    Route::middleware('permission:bk.sla.view')->group(function (): void {
+        Route::get('sla/events', [BkSecurityController::class, 'slaEvents'])->middleware('throttle:bk-module');
+        Route::get('escalations', [BkSecurityController::class, 'escalations'])->middleware('throttle:bk-module');
+    });
+
+    Route::middleware('permission:bk.sla.manage')->group(function (): void {
+        Route::post('sla/monitor', [BkSecurityController::class, 'monitorSla'])->middleware('throttle:bk-report');
+        Route::post('escalations/{id}/acknowledge', [BkSecurityController::class, 'acknowledgeEscalation'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('escalations/{id}/resolve', [BkSecurityController::class, 'resolveEscalation'])->whereNumber('id')->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.retention.view')->group(function (): void {
+        Route::get('retention', [BkSecurityController::class, 'retention'])->middleware('throttle:bk-report');
+    });
+
+    Route::middleware('permission:bk.retention.manage')->group(function (): void {
+        Route::post('retention/policies', [BkSecurityController::class, 'setRetentionPolicy'])->middleware('throttle:bk-write');
+        Route::post('retention/request-disposal', [BkSecurityController::class, 'requestDisposal'])->middleware('throttle:bk-write');
+    });
+
+    Route::middleware('permission:bk.retention.approve')->group(function (): void {
+        Route::post('retention/actions/{id}/approve', [BkSecurityController::class, 'approveDisposal'])->whereNumber('id')->middleware('throttle:bk-write');
+        Route::post('retention/execute-disposal', [BkSecurityController::class, 'executeDisposal'])->middleware('throttle:bk-report');
+    });
+
+    Route::middleware('permission:bk.settings.view')->group(function (): void {
+        Route::get('automation', [BkSecurityController::class, 'automation'])->middleware('throttle:bk-module');
+        Route::get('early-warning/health', [BkRiskIndicatorController::class, 'health'])->middleware('throttle:bk-module');
+    });
+
 });

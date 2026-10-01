@@ -48,7 +48,7 @@ class BkConsentService
             'requested_by' => $actor->id,
             'scope' => $data['scope'] ?? 'COUNSELING',
             'purpose' => $data['purpose'] ?? null,
-            'status' => 'PENDING',
+            'status' => \App\Modules\Bk\Domain\Enums\ConsentStatus::REQUESTED->value,
             'requested_at' => now(),
             'expires_at' => $data['expires_at'] ?? now()->addDays(14)->endOfDay(),
         ]);
@@ -67,8 +67,12 @@ class BkConsentService
 
     public function decide(User $actor, BkConsent $consent, string $decision, ?string $note = null): BkConsent
     {
-        if ($consent->status !== 'PENDING') {
-            throw new BkValidationException(['status' => ['Persetujuan ini sudah diputuskan.']]);
+        if (! in_array($consent->status, ['REQUESTED', 'PENDING'], true)) {
+            // Menerima istilah kanonik (REQUESTED) maupun ejaan Phase 1 (PENDING),
+            // sehingga alur lama tetap berjalan setelah penyelarasan istilah.
+            if (! in_array($consent->status, ['REQUESTED', 'PENDING'], true)) {
+                throw new BkValidationException(['status' => ['Persetujuan ini sudah diputuskan.']]);
+            }
         }
 
         if (! $this->access->isGuardianOf($actor, (int) $consent->student_id) && ! $this->access->isBkAdmin($actor)) {
@@ -117,7 +121,7 @@ class BkConsentService
         return BkConsent::query()
             ->where('student_id', $studentId)
             ->where('scope', $scope)
-            ->where('status', 'APPROVED')
+            ->whereIn('status', ['GRANTED', 'APPROVED'])
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>=', now()))
             ->exists();
     }
@@ -136,6 +140,13 @@ class BkConsentService
             ->when($filters['status'] ?? null, fn ($q, $status) => $q->where('status', $status))
             ->when(filter_var($filters['pending'] ?? false, FILTER_VALIDATE_BOOLEAN), fn ($q) => $q->pending())
             ->when($filters['student_id'] ?? null, fn ($q, $id) => $q->where('student_id', $id))
+            ->when($filters['case_id'] ?? null, fn ($q, $id) => $q->where('case_id', $id))
+            ->when($filters['scope'] ?? null, fn ($q, $scope) => $q->where('scope', $scope))
+            // Persetujuan yang akan berakhir: pertanyaan rutin menjelang akhir tahun ajaran.
+            ->when($filters['expiring_days'] ?? null, fn ($q, $days) => $q
+                ->whereNotNull('expires_at')
+                ->whereDate('expires_at', '<=', now()->addDays((int) $days))
+                ->whereDate('expires_at', '>=', today()))
             ->orderByDesc('requested_at')
             ->paginate($perPage)
             ->withQueryString();
@@ -145,5 +156,116 @@ class BkConsentService
     public function pendingForCase(BkCase $case): array
     {
         return $case->consents()->pending()->get()->all();
+    }
+
+    // =====================================================================
+    // Phase 2 — persetujuan granular
+    // =====================================================================
+
+    /**
+     * Cakupan persetujuan yang dikenal modul.
+     *
+     * Izin bersifat per-cakupan: persetujuan konseling tidak berarti izin berbagi
+     * dokumen, dan izin mengikuti program tidak berarti izin merujuk ke pihak luar.
+     * Karena itu setiap permintaan menyebut cakupannya secara eksplisit.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    public function scopes(): array
+    {
+        return \App\Modules\Bk\Domain\Enums\ConsentScope::options();
+    }
+
+    /**
+     * Mencatat pemberian izin oleh wali (atau oleh pihak berwenang bila cakupannya
+     * memang tidak menuntut keputusan wali).
+     *
+     * @param array<string, mixed> $data
+     */
+    public function grant(User $actor, BkConsent $consent, array $data = []): BkConsent
+    {
+        if ($consent->status === \App\Modules\Bk\Domain\Enums\ConsentStatus::REVOKED) {
+            throw new BkValidationException(['status' => ['Persetujuan yang sudah dicabut tidak dapat diaktifkan kembali; buat permintaan baru.']]);
+        }
+
+        $consent->forceFill([
+            'status' => \App\Modules\Bk\Domain\Enums\ConsentStatus::GRANTED,
+            'granted_by' => $actor->id,
+            'granted_at' => now(),
+            'decided_by' => $consent->decided_by ?? $actor->id,
+            'decided_at' => $consent->decided_at ?? now(),
+            'decision_note' => $data['note'] ?? $consent->decision_note,
+            'expires_at' => $data['expires_at'] ?? $consent->expires_at ?? now()->addDays(
+                (\App\Modules\Bk\Domain\Enums\ConsentScope::tryFrom((string) $consent->scope)?->defaultValidityDays()) ?? 180
+            ),
+            'document_id' => $data['document_id'] ?? $consent->document_id,
+            'is_standing' => (bool) ($data['is_standing'] ?? $consent->is_standing),
+        ])->save();
+
+        $this->audit->record(\App\Modules\Bk\Domain\Enums\AuditAction::CONSENT_GRANT, $consent, $actor, [
+            'scope' => $consent->scope,
+            'expires_at' => $consent->expires_at?->toDateString(),
+        ]);
+
+        return $consent->refresh();
+    }
+
+    /**
+     * Mencabut izin.
+     *
+     * Pencabutan tidak menghapus jejak pemberian sebelumnya: kolom `granted_at`
+     * tetap terisi, sehingga pertanyaan "apakah pernah ada izin?" tetap terjawab.
+     */
+    public function revoke(User $actor, BkConsent $consent, string $reason, ?string $documentId = null): BkConsent
+    {
+        if ($consent->status === \App\Modules\Bk\Domain\Enums\ConsentStatus::REVOKED) {
+            return $consent;
+        }
+
+        $consent->forceFill([
+            'status' => \App\Modules\Bk\Domain\Enums\ConsentStatus::REVOKED,
+            'revoked_by' => $actor->id,
+            'revoked_at' => now(),
+            'revocation_reason' => $reason,
+        ])->save();
+
+        $this->audit->record(\App\Modules\Bk\Domain\Enums\AuditAction::CONSENT_REVOKE, $consent, $actor, [
+            'scope' => $consent->scope,
+            'reason' => $reason,
+            'had_document' => $documentId !== null,
+        ]);
+
+        return $consent->refresh();
+    }
+
+    /** Persetujuan yang berlaku untuk cakupan tertentu (dipakai penjaga alur rujukan). */
+    public function validFor(int $studentId, \App\Modules\Bk\Domain\Enums\ConsentScope $scope, ?int $caseId = null): ?BkConsent
+    {
+        return BkConsent::query()
+            ->where('student_id', $studentId)
+            ->where('scope', $scope->value)
+            ->whereIn('status', [
+                \App\Modules\Bk\Domain\Enums\ConsentStatus::GRANTED->value,
+                \App\Modules\Bk\Domain\Enums\ConsentStatus::APPROVED->value,
+            ])
+            ->when($caseId !== null, fn ($q) => $q->where(fn ($inner) => $inner->whereNull('case_id')->orWhere('case_id', $caseId)))
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+            ->orderByDesc('granted_at')
+            ->first();
+    }
+
+    /** Persetujuan yang akan berakhir dalam N hari — dipakai pengingat otomatis. */
+    public function expiring(int $days = 14): \Illuminate\Database\Eloquent\Collection
+    {
+        return BkConsent::query()
+            ->whereIn('status', [
+                \App\Modules\Bk\Domain\Enums\ConsentStatus::GRANTED->value,
+                \App\Modules\Bk\Domain\Enums\ConsentStatus::APPROVED->value,
+            ])
+            ->whereNotNull('expires_at')
+            ->whereDate('expires_at', '<=', now()->addDays($days))
+            ->whereDate('expires_at', '>=', today())
+            ->with(['student:id,full_name'])
+            ->get();
     }
 }

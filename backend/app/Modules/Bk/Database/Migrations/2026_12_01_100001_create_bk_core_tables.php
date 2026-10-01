@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('code', 24)->nullable()->unique();      // LN-BK-001
             $table->string('specialization', 120)->nullable();      // mis. "Remaja & keluarga"
             $table->string('qualification', 160)->nullable();       // latar pendidikan/sertifikasi
-            $table->string('level', 24)->default('COUNSELOR');      // COUNSELOR | SENIOR | COORDINATOR
+            $table->string('level', 24)->default('NONE');      // COUNSELOR | SENIOR | COORDINATOR
             $table->unsignedSmallInteger('max_active_cases')->default(25); // kapasitas pantauan beban kerja
             $table->boolean('accepts_self_referral')->default(true);
             $table->boolean('accepts_walk_in')->default(false);

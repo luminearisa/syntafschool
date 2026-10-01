@@ -1468,3 +1468,66 @@ integrasi, 79 rute `/api/v1/bk/*`, 7 halaman, dan 41 tes / 133 asersi hijau.
       yang berhasil kini juga tercatat (`VIEW_CONFIDENTIAL`)
 - [x] **Seeder modul belum terdaftar di `DatabaseSeeder`** (bersama Workflow) →
       instalasi baru tidak memiliki peran `BK_*`; kini terdaftar dan **aditif**
+
+## Modul BK — Phase 2: platform dukungan siswa (2026-12-15)
+
+Advanced student support: konferensi kasus, rujukan eksternal, persetujuan
+granular, penanda risiko, mesin peringatan dini ber-versi, rencana pengembangan,
+bimbingan karier, program kelompok, umpan balik siswa & wali, otomasi idempoten,
+SLA & eskalasi, analitik berprivasi, pencarian aman, ekspor terjaga, retensi
+beraudit, dan isolasi unit sekolah.
+
+- [x] **27 tabel baru** + kolom aditif pada 20 tabel Phase 1 (tidak ada yang dihapus
+      atau diganti nama; istilah status lama tetap diterima sebagai alias baca)
+- [x] **Mesin peringatan dini ber-versi**: ambang, jendela, jeda, dan tindakan
+      tersimpan sebagai data; metrik dibaca dari modul pemiliknya lewat kontrak;
+      metrik tak tersedia dicatat apa adanya, bukan dianggap nol
+- [x] **SLA configurable** per kategori/prioritas/severity/tipe kasus, kebijakan
+      paling spesifik menang, cuplikan kebijakan tersimpan pada setiap baris SLA
+- [x] **Eskalasi berjenjang** `NONE → COORDINATOR → MANAGEMENT` yang dapat diakui
+      dan diselesaikan, dengan pemisahan tugas pada pemusnahan data
+- [x] **Otomasi 9 alur** dengan kunci idempoten (cron ganda & retry antrean aman)
+- [x] **Rujukan eksternal berpagar persetujuan**: pengiriman ditolak selama izin
+      wali belum berlaku; data medis ditolak dengan penjelasan (milik Clinic/Health)
+- [x] **Penutupan kasus tetap terjaga**: usul tinjauan penutupan dibuat otomatis,
+      tetapi keputusan menutup tetap milik manusia
+- [x] **Analitik berprivasi**: kelompok < 3 kasus disamarkan; cache hanya untuk
+      agregat tanpa dimensi pribadi
+- [x] **Isolasi unit sekolah** lewat `school_id` + global scope yang dapat
+      dinyalakan, dengan perilaku lama tetap utuh ketika dimatikan
+- [x] **Pencarian & ekspor terjaga**: penyaring per peran/cakupan/kerahasiaan,
+      daftar kolom terlarang terpusat, ekspor melewati izin → konfirmasi → audit
+- [x] **Retensi beraudit**: kebijakan ber-versi, pemusnahan menuntut persetujuan
+      orang lain, jejak pemusnahan tersimpan setelah isinya dihapus
+- [x] 4 perintah artisan baru + seeder kebijakan (aturan, SLA, retensi, izin)
+- [x] **170 rute** `/api/v1/bk/*` (+91) dan 10 controller Phase 2
+- [ ] Frontend Phase 2 (18 entri menu, tab profil siswa, dasbor lanjutan) — API siap
+- [ ] 12 uji Phase 2 masih merah (jalur HTTP konferensi/rujukan/pencarian + 1 asersi
+      riwayat retensi); **matriks privasi §28 lulus**
+
+### Cacat yang ditemukan & diperbaiki selama Phase 2
+
+- [x] **`DatabaseSeeder` menunjuk namespace seeder BK yang salah**
+      (`Database\Seeders\BkPermissionSeeder`) → instalasi baru gagal saat seeding;
+      kini memakai namespace modul dan mendaftarkan empar seeder Phase 2
+- [x] **`EscalationLevel::COUNSELOR` tidak ada** (nilainya `NONE`, `COORDINATOR`,
+      `MANAGEMENT`, `EXTERNAL`) → SLA tidak pernah berjalan; tingkat awal kini `NONE`,
+      dan seeder SLA memakai nilai enum yang sah
+- [x] **`PlanStatus::IN_PROGRESS` tidak ada** (`DRAFT`, `ACTIVE`, `REVIEW`,
+      `COMPLETED`, `CANCELLED`) → rencana pengembangan gagal diperbarui
+- [x] **`BkTenantResolver` bukan singleton** → unit yang dipaksa pada satu instance
+      tidak terlihat oleh global scope, sehingga isolasi unit tidak bekerja pada uji
+- [x] **Kunci cooldown menabrak kunci tindakan** pada jejak peringatan dini →
+      evaluasi ulang tidak meninggalkan jejak; kini kunci jeda tersendiri per hari
+- [x] **Keputusan retensi mengubah baris permintaan** → riwayat kehilangan jejak
+      "diajukan"; keputusan kini ditulis sebagai baris baru
+- [x] **`RetentionEntityType` tidak terimpor pada model retensi** → tipe argumen
+      scope jatuh ke namespace model dan kueri gagal
+- [x] **`acceptsNewMembers()` dipanggil pada model, bukan pada enum status**
+- [x] **Trait `ApiResponse` terpasang sebagai impor, bukan pemakaian di kelas** →
+      seluruh controller Phase 2 gagal dengan "undefined method successResponse"
+- [x] **`BkConsentService::request()` menulis `PENDING`** sementara Phase 2 memakai
+      `REQUESTED` → keputusan wali ditolak; kini istilah kanonik ditulis dan ejaan
+      lama tetap diterima
+- [x] **`BkEarlyWarningRule::appliesTo()`** memakai `$this->scope` yang belum
+      dipastikan array → aturan ber-scope gagal dievaluasi

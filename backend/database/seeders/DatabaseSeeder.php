@@ -16,6 +16,12 @@ use App\Modules\Activity\Database\Seeders\ActivityMasterSeeder;
 use App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowReferenceSeeder;
+use App\Modules\Bk\Database\Seeders\BkEarlyWarningRuleSeeder;
+use App\Modules\Bk\Database\Seeders\BkMasterSeeder;
+use App\Modules\Bk\Database\Seeders\BkPermissionSeeder;
+use App\Modules\Bk\Database\Seeders\BkPhase2PermissionSeeder;
+use App\Modules\Bk\Database\Seeders\BkRetentionPolicySeeder;
+use App\Modules\Bk\Database\Seeders\BkSlaPolicySeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -45,6 +51,10 @@ class DatabaseSeeder extends Seeder
             // Master aktivitas: kategori, keterampilan, tujuan, periode bawaan.
             ActivityMasterSeeder::class,
             // Master BK: label kasus + template asesmen bawaan.
+            BkEarlyWarningRuleSeeder::class,
+            BkSlaPolicySeeder::class,
+            BkRetentionPolicySeeder::class,
+            BkPhase2PermissionSeeder::class,
             BkMasterSeeder::class,
             CbtPermissionSeeder::class,
         ClinicPermissionSeeder::class,
