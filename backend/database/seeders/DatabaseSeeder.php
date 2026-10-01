@@ -31,7 +31,15 @@ class DatabaseSeeder extends Seeder
             SupPermissionSeeder::class,
             // Modul UKS: permission granular uks.*.
             UksPermissionSeeder::class,
+            // Modul Student Activity: permission granular activity.* + peran
+            // ACTIVITY_*/COACH/MENTOR/JUDGE. Tanpa ini, instalasi baru tidak
+            // memiliki peran modul sehingga layarnya tidak dapat dibuka siapa pun.
+            ActivityPermissionSeeder::class,
+            // Modul Workflow: permission granular workflow.* + peran approver.
+            WorkflowPermissionSeeder::class,
             SupInstrumentSeeder::class,
+            // Master aktivitas: kategori, keterampilan, tujuan, periode bawaan.
+            ActivityMasterSeeder::class,
             CbtPermissionSeeder::class,
         ClinicPermissionSeeder::class,
         ClinicMasterSeeder::class,

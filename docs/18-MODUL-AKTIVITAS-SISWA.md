@@ -251,6 +251,19 @@ verifikasi publik dibatasi 20 permintaan/menit per IP.
 
 ---
 
+## 9b. Pemasangan
+
+```bash
+php artisan migrate            # 6 migrasi modul (tabel activity_*)
+php artisan migrate --seed     # + ActivityPermissionSeeder, ActivityMasterSeeder
+```
+
+Kedua seeder modul **sudah terdaftar** di `DatabaseSeeder`, sehingga instalasi baru
+memperoleh peran `ACTIVITY_*`/`COACH`/`MENTOR`/`ACTIVITY_JUDGE`, izin granular
+`activity.*`, serta master kategori/keterampilan/tujuan/periode tanpa langkah
+manual. Seeder bersifat **aditif**: menjalankannya berulang kali tidak menggandakan
+data dan **tidak menghapus** izin modul lain pada peran yang sama (mis. super-admin).
+
 ## 10. Operasional
 
 ```bash

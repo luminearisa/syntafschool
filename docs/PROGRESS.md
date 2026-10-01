@@ -1347,7 +1347,7 @@ tetap menjadi sumber kebenarannya.
       berbagi), **tata kelola & audit** (jejak audit, persetujuan menggantung,
       tagihan, perlengkapan & ruang), dan **portofolio publik** di luar cangkang
       aplikasi — plus grup menu **Aktivitas Siswa**
-- [x] **69 tes / 288 asersi hijau**; `tsc -b` & `vite build` bersih; diverifikasi di
+- [x] **71 tes / 294 asersi hijau**; `tsc -b` & `vite build` bersih; diverifikasi di
       browser sungguhan (11 langkah, termasuk aksi tulis):
       - dasbor, katalog, ruang kerja pembina (daftar hadir & rekap 100%)
       - verifikasi sertifikat `CERT-ACT-2026-000001` → **Valid tanpa PII**
@@ -1387,6 +1387,11 @@ fitur, tetapi lewat pemeriksaan sistematis izin vs rute vs kode):
       tidak pernah terlihat. Kini dipetakan, dengan tes kontrak untuk semua laporan.
 - [x] **Kehadiran setelah sesi selesai** kini benar-benar terkunci kecuali pemegang
       `activity.attendance.override`, lengkap dengan jejak `ATTENDANCE_OVERRIDDEN`.
+- [x] **Seeder modul tidak terdaftar di `DatabaseSeeder`**: instalasi baru
+      (`php artisan migrate --seed`) tidak akan memiliki peran `ACTIVITY_*`,
+      sehingga seluruh layar modul tidak dapat dibuka siapa pun. Kini terdaftar
+      (bersama `WorkflowPermissionSeeder` yang juga tertinggal), dengan tes
+      penjaga + tes idempotensi yang sekaligus mengunci sifat **aditif** seeder.
 - [x] **Kontras header tabel** dinaikkan (`slate-500` → `slate-600`) setelah audit
       keterbacaan menandai rasio 3,82:1 (di bawah WCAG AA 4,5:1).
 

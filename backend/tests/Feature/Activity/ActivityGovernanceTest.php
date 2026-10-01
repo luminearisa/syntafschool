@@ -117,6 +117,37 @@ class ActivityGovernanceTest extends ActivityTestCase
         $this->assertDatabaseHas('activity_audit_logs', ['action' => 'ATTENDANCE_OVERRIDDEN']);
     }
 
+    public function test_seeder_izin_modul_aditif_dan_tidak_menghapus_izin_modul_lain(): void
+    {
+        // Izin modul lain yang sudah ada pada peran super, mis. dari modul LMS.
+        $asing = \Spatie\Permission\Models\Permission::findOrCreate('lms.course.view', 'web');
+        $super = \Spatie\Permission\Models\Role::findOrCreate('super-admin', 'web');
+        $super->givePermissionTo($asing);
+
+        // Seeder modul dijalankan dua kali: harus idempoten dan tidak merusak.
+        $this->seed(\App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder::class);
+        $this->seed(\App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder::class);
+
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $super->refresh();
+
+        $this->assertTrue($super->hasPermissionTo('lms.course.view'), 'Izin modul lain tidak boleh terhapus oleh seeder modul aktivitas.');
+        $this->assertTrue($super->hasPermissionTo('activity.program.manage'));
+
+        $manager = \Spatie\Permission\Models\Role::findOrCreate('ACTIVITY_MANAGER', 'web');
+        $this->assertTrue($manager->hasPermissionTo('activity.attendance.override'));
+        $this->assertTrue($manager->hasPermissionTo('activity.registration.override'));
+    }
+
+    public function test_seeder_database_menyertakan_peran_modul_aktivitas(): void
+    {
+        // Instalasi baru (`migrate --seed`) harus menghasilkan peran modul ini.
+        $databaseSeeder = file_get_contents(base_path('database/seeders/DatabaseSeeder.php'));
+
+        $this->assertStringContainsString('ActivityPermissionSeeder::class', $databaseSeeder);
+        $this->assertStringContainsString('ActivityMasterSeeder::class', $databaseSeeder);
+    }
+
     public function test_jejak_audit_dapat_dibaca_dan_disaring(): void
     {
         $manager = $this->actingAsRole('ACTIVITY_MANAGER');
