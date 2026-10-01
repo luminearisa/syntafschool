@@ -25,6 +25,8 @@ schoolerp/
 | [`docs/05-PLAN-FASE-2.md`](./docs/05-PLAN-FASE-2.md) | Breakdown Fase 2: menu Akademik, Kesiswaan & Kepegawaian |
 | [`docs/17-MODUL-WORKFLOW-ENGINE.md`](./docs/17-MODUL-WORKFLOW-ENGINE.md) | **Workflow & Approval Engine** — infrastruktur persetujuan bersama seluruh modul |
 | [`docs/workflow/01-PANDUAN-INTEGRASI.md`](./docs/workflow/01-PANDUAN-INTEGRASI.md) | Panduan modul ERP memakai engine (provider konteks, trigger, aksi, resolver) |
+| [`docs/18-MODUL-AKTIVITAS-SISWA.md`](./docs/18-MODUL-AKTIVITAS-SISWA.md) | **Student Activity & Extracurricular** — ekstrakurikuler, keanggotaan, sesi, penilaian perkembangan, kompetisi, prestasi, sertifikat, portofolio |
+| [`docs/activity/01-PANDUAN-INTEGRASI.md`](./docs/activity/01-PANDUAN-INTEGRASI.md) | Panduan integrasi modul aktivitas (kebijakan, kontrak, praktik yang dihindari) |
 | [`docs/PROGRESS.md`](./docs/PROGRESS.md) | Progres implementasi per fase |
 
 ## Status
@@ -36,3 +38,7 @@ Infrastruktur lintas modul yang sudah tersedia:
 
 - **Workflow & Approval Engine** — mesin persetujuan generik, versioned, ber-audit
   ([blueprint](./docs/17-MODUL-WORKFLOW-ENGINE.md) · [panduan integrasi](./docs/workflow/01-PANDUAN-INTEGRASI.md))
+- **Student Activity & Extracurricular** — platform pengembangan diri siswa: katalog,
+  keanggotaan, sesi & kehadiran, penilaian perkembangan, kompetisi, prestasi,
+  sertifikat, dan portofolio
+  ([blueprint](./docs/18-MODUL-AKTIVITAS-SISWA.md) · [panduan integrasi](./docs/activity/01-PANDUAN-INTEGRASI.md))

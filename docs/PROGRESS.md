@@ -1289,3 +1289,73 @@ Perbaikan yang ikut terbawa:
 
 Dokumen: [`docs/17-MODUL-WORKFLOW-ENGINE.md`](17-MODUL-WORKFLOW-ENGINE.md) ·
 [`docs/workflow/01-PANDUAN-INTEGRASI.md`](workflow/01-PANDUAN-INTEGRASI.md)
+
+---
+
+## Modul Student Activity & Extracurricular — Student Development Platform (2026-10-01)
+
+Seluruh kegiatan non-akademik siswa dalam satu modul: ekstrakurikuler, klub,
+organisasi, kompetisi, prestasi, sertifikat, dan portofolio — dengan modul lain
+tetap menjadi sumber kebenarannya.
+
+- [x] **45 tabel `activity_*`** dalam 6 migrasi, **55 model**, **59 enum**, 17 kontrak,
+      **19 layanan**, 10 controller, **111 rute** `/api/v1/activities/*`
+- [x] **Pemisahan konsep yang tegas**: kategori ≠ program ≠ periode ≠ keanggotaan ≠
+      sesi ≠ penilaian ≠ prestasi ≠ sertifikat; prestasi adalah entitas tersendiri
+      (individu/tim) yang menjadi dasar sertifikat dan isi portofolio
+- [x] **Katalog configurable**: kategori berjenjang, tujuan perkembangan,
+      keterampilan, peran anggota, jenis & tipe kegiatan, periode (tahun ajaran/
+      semester/term/musim)
+- [x] **Aturan penerimaan berbasis data** (`activity_registration_requirements`):
+      usia, jenjang, gender, program, prasyarat, keterampilan, kehadiran akademik,
+      rekomendasi guru, audisi/tes coba, persetujuan orang tua, batas jumlah aktivitas
+- [x] **Pendaftaran → seleksi → keanggotaan** dengan pemisahan tugas: admin katalog
+      ≠ pemutus pendaftaran ≠ verifikator prestasi
+- [x] **Kapasitas & daftar tunggu**: kursi terakhir dijaga kunci transaksi; promosi
+      daftar tunggu idempoten (`promotion_key`)
+- [x] **Persetujuan orang tua**: siswa mendaftar, wali memutuskan (setujui/tolak),
+      keanggotaan menunggu sampai persetujuan ada; kedaluwarsa terjadwal
+- [x] **Deteksi bentrok nyata**: aktivitas ↔ aktivitas, ↔ jadwal pelajaran, ↔ kegiatan
+      asrama, ↔ fasilitas; kebijakan tegas atau longgar diatur sekolah
+- [x] **Sesi nyata dari jadwal berulang** dengan kunci idempoten, daftar hadir
+      idempoten (aman untuk QR/NFC berulang), cermin opsional ke modul Attendance
+- [x] **Kehadiran jujur**: persentase dihitung dari pertemuan yang sudah berlangsung;
+      di bawah minimum → peringatan + pembatas kelayakan (bukan sanksi otomatis)
+- [x] **Penilaian perkembangan**: rubrik & butir berbobot, nilai → bukti keterampilan,
+      progres, dan **kelayakan penyelesaian** yang menolak bila syarat belum terpenuhi
+- [x] **Kompetisi**: kategori, peserta, tim, babak, pertandingan, juri berjangkauan,
+      skor terkunci, **koreksi bersebab berjejak audit**, hasil terverifikasi,
+      lalu otomatis menjadi prestasi (kredit penuh bagi anggota tim)
+- [x] **Sertifikat beralasan**: snapshot kelayakan, nomor `CERT-ACT-YYYY-NNNNNN`,
+      pencabutan berjejak, dan **verifikasi publik tanpa data pribadi**
+- [x] **Portofolio & transkrip aktivitas**: dirakit ulang dari data asli, tautan
+      berbagi eksplisit, dan transkrip yang berbeda dari transkrip akademik
+- [x] **Integrasi lewat kontrak** (17): siswa, wali, pegawai, kehadiran, akademik,
+      LMS, keuangan, inventaris, aset, sarpras, event, transportasi, notifikasi,
+      sertifikat, dokumen, asrama, BK — setiap panggilan tercatat, kegagalan modul
+      tetangga tidak menjatuhkan alur
+- [x] **BK dibatasi secara desain**: hanya sinyal perkembangan; catatan konseling
+      tidak pernah melewati modul ini
+- [x] **Dasbor 4 peran** (pengelola, pembina, siswa, orang tua) + 13 laporan
+      operasional + jejak audit append-only
+- [x] **6 perintah**: `activity:generate-sessions`, `activity:session-reminders`,
+      `activity:expire-consents`, `activity:evaluate-completion`,
+      `activity:check-anomalies`, `activity:health` (terjadwal)
+- [x] Frontend: **7 halaman** (katalog, detail, aktivitas saya, ruang kerja pembina,
+      dasbor & laporan, aktivitas anak, verifikasi sertifikat) + grup menu
+      **Aktivitas Siswa**
+- [x] **55 tes / 184 asersi hijau**; `tsc -b` & `vite build` bersih; diverifikasi di
+      browser sungguhan: dasbor, katalog, ruang kerja pembina (daftar hadir & rekap),
+      dan verifikasi sertifikat `CERT-ACT-2026-000001` → **Valid tanpa PII**
+
+Perbaikan yang ikut terbawa:
+- [x] Persentase kehadiran memakai penyebut **pertemuan yang sudah berlangsung**
+      (hadir 1 dari 3 terbaca 33%, bukan 100%)
+- [x] Kelengkapan catatan kehadiran tidak lagi dapat melebihi 100% (catatan anggota
+      yang sudah berhenti tetap tersimpan, tetapi tidak dihitung sebagai cakupan)
+- [x] `RoomBooking` tidak tersedia sebagai model → pemesanan ruang lewat query
+      builder dengan kosakata status tabel yang ada (`approved`, `cancelled`)
+- [x] Status kehadiran cermin memakai nilai yang dikenal tabel absensi akademik
+
+Dokumen: [`docs/18-MODUL-AKTIVITAS-SISWA.md`](18-MODUL-AKTIVITAS-SISWA.md) ·
+[`docs/activity/01-PANDUAN-INTEGRASI.md`](activity/01-PANDUAN-INTEGRASI.md)

@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Modules\Activity\Domain\Enums;
+
+/**
+ * Enum ScoreStatus — nilai tersimpan sebagai `string` UPPER_SNAKE_CASE.
+ *
+ * Disimpan sebagai string di basis data supaya penambahan kasus baru tidak
+ * menuntut ALTER TABLE; keabsahan nilai ditegakkan aturan validasi yang membaca
+ * enum ini.
+ */
+enum ScoreStatus: string
+{
+    case DRAFT = 'DRAFT';
+    case SUBMITTED = 'SUBMITTED';
+    case LOCKED = 'LOCKED';
+    case VOID = 'VOID';
+
+    /** Label bahasa Indonesia untuk tampilan. */
+    public function label(): string
+    {
+        return match ($this) {
+            self::DRAFT => 'Draf',
+            self::SUBMITTED => 'Terkirim',
+            self::LOCKED => 'Terkunci',
+            self::VOID => 'Dibatalkan',
+        };
+    }
+
+    /** @return list<string> */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
+}

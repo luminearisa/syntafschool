@@ -15,6 +15,7 @@ import {
   Settings,
   Stethoscope,
   GitPullRequestArrow,
+  Trophy,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -27,6 +28,7 @@ import { assessmentsMenu } from '@/routes/domains/assessments';
 import { lmsMenu } from '@/routes/domains/lms';
 import { cbtMenu } from '@/routes/domains/cbt';
 import { clinicMenu } from '@/routes/domains/clinic';
+import { activityMenu } from '@/routes/domains/activity';
 import { workflowMenu } from '@/routes/domains/workflow';
 
 export interface MenuChild {
@@ -102,6 +104,18 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: GitPullRequestArrow,
     permission: 'workflow.view',
     children: workflowMenu,
+  },
+  /*
+   * Student Activity & Extracurricular — pengembangan diri siswa.
+   *
+   * Menu ini menampung seluruh kegiatan non-akademik: katalog, aktivitas yang
+   * diikuti, ruang kerja pembina, portal orang tua, dan verifikasi sertifikat.
+   */
+  {
+    label: 'Aktivitas Siswa',
+    icon: Trophy,
+    permission: 'activity.view',
+    children: activityMenu,
   },
   {
     label: 'Keuangan',

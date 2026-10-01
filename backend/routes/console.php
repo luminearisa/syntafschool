@@ -138,3 +138,18 @@ Schedule::command('workflow:check-sla')->everyFiveMinutes()->withoutOverlapping(
  * — keputusan lama tetap tersimpan, hanya statusnya yang ditutup dengan alasan.
  */
 Schedule::command('workflow:expire')->dailyAt('23:40');
+
+/*
+ * Modul Student Activity & Extracurricular.
+ *
+ * Sesi dibuat dari jadwal berulang setiap malam (idempoten, jadi menjalankan
+ * dua kali tidak menggandakan pertemuan). Pengingat dikirim sore hari supaya
+ * siswa dan orang tua punya waktu menyiapkan perlengkapan. Persetujuan orang
+ * tua yang tidak diputuskan akan kedaluwarsa, dan penyelesaian aktivitas
+ * dievaluasi ketika periode mendekati akhir.
+ */
+Schedule::command('activity:generate-sessions')->dailyAt('22:30')->withoutOverlapping();
+Schedule::command('activity:session-reminders')->dailyAt('17:00')->withoutOverlapping();
+Schedule::command('activity:expire-consents')->dailyAt('23:20')->withoutOverlapping();
+Schedule::command('activity:evaluate-completion')->weeklyOn(5, '21:00')->withoutOverlapping();
+Schedule::command('activity:check-anomalies')->weeklyOn(1, '07:30')->withoutOverlapping();

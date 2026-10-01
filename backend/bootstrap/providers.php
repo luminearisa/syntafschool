@@ -5,6 +5,7 @@ use App\Modules\Clinic\Providers\ClinicServiceProvider;
 use App\Modules\LMS\Providers\LmsServiceProvider;
 use App\Modules\Supervisi\Providers\SupServiceProvider;
 use App\Modules\UKS\Providers\UksServiceProvider;
+use App\Modules\Activity\Providers\ActivityServiceProvider;
 use App\Modules\Workflow\Providers\WorkflowServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -30,5 +31,11 @@ return [
     // resolver approver & aksi otomatis, kalender kerja, dan direktori
     // organisasi. Modul ERP lain menambah titik ekstensi lewat
     // WorkflowRegistrar tanpa menyentuh berkas modul ini.
+    // Modul Student Activity & Extracurricular: katalog, keanggotaan, sesi,
+    // penilaian perkembangan, kompetisi, prestasi, sertifikat, dan portofolio.
+    // Seluruh integrasi (siswa, wali, pegawai, fasilitas, inventaris, LMS,
+    // keuangan, asrama) lewat kontrak — modul lain tetap sumber kebenarannya.
+    ActivityServiceProvider::class,
+
     WorkflowServiceProvider::class,
 ];
