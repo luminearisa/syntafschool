@@ -1705,3 +1705,16 @@ punya peran modul.
 Belum: pemetaan ruang akademik, impor XLSX, integrasi RFID, definisi alur
 Workflow, modul Vendor/Pengadaan, tabel ringkasan laporan, otomasi masih
 sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
+
+---
+
+## Aplikasi Mobile (wali murid · siswa · karyawan) — `mobile/`
+- [x] Expo + React Native + TS + Expo Router (Android, iOS, export web)
+- [x] Satu akun multi-peran: `user_identities`, `GET /auth/contexts`, `POST /auth/switch-context`, token ber-ability `ctx:*`
+- [x] Penegakan konteks di server (`EnforceContext`, `RequireContext`); wali/siswa hanya `auth/*` + `mobile/*`
+- [x] Endpoint `/mobile/*`: beranda, anak, absensi, nilai, rapor, jadwal, keuangan, asrama, presensi pegawai, notifikasi
+- [x] Admin: tautkan identitas (`/users/{user}/identities`) + petunjuk kecocokan telepon/email
+- [x] UI: login, pemilih peran, Beranda, Akademik, Keuangan, Presensi, Kabar, Akun (verifikasi `tsc` + export web + tangkapan layar)
+- [ ] Tes backend `MobileContextTest` ditulis tetapi **belum dijalankan** (sandbox PHP 8.3, Laravel 13 butuh 8.4) — jalankan `php artisan test --filter=MobileContextTest`
+- [ ] Layar admin web untuk menautkan identitas (API sudah ada)
+- [ ] Push saat aplikasi tertutup (sengaja tanpa Firebase)
