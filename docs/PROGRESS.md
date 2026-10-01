@@ -1648,3 +1648,34 @@ Suite BK kini **69 tes, 285 asersi, HIJAU**. Akar masalahnya bukan satu, melaink
 
 - [ ] Suite backend **penuh** (1.718 tes) sedang dijalankan di latar belakang; hasil akhirnya dicatat
       pada pesan berikutnya. Modul yang sudah diverifikasi sendiri: Finance 33/33, BK 69/69.
+
+## Modul Asset & Sarpras — implementasi penuh (2026-12-17)
+
+Modul baru `App\Modules\Asset`: 232 berkas, 18.683 baris, 60 tabel, 44 enum,
+15 kontrak integrasi, 28 layanan, 17 controller (139 rute), 11 kebijakan,
+12 peran & 41 izin, 5 perintah otomasi.
+
+**Uji: `tests/Feature/Asset` — 47 tes, 166 asersi, HIJAU.**
+
+Yang ditegakkan (bukan sekadar niat, semuanya beruji): tanpa penghapusan aset ·
+pengakuan sebelum pencatatan (habis pakai ≠ aset) · 7 mesin keadaan ·
+**satu aset satu pinjaman** (dijaga kunci unik basis data) · pemulangan wajib
+periksa kondisi (rusak → laporan + pemeliharaan) · pemindahan wajib tujuan &
+konfirmasi penerima · riwayat pemegang tidak ditimpa · booking bebas benturan
+(kunci baris fasilitas) · penutupan fasilitas melaporkan booking terdampak ·
+stok opname tidak mengubah aset sebelum disetujui · suku cadang dari Persediaan
+(stok kurang → pekerjaan ditahan) · preventif idempoten · temuan inspeksi
+melahirkan pemeliharaan · penghapusan tanpa persetujuan ditolak · usulan
+penggantian hanya rekomendasi · pengunci versi · isolasi unit sekolah ·
+angka keuangan hanya untuk pemegang izinnya · QR publik bebas data keuangan ·
+jejak audit immutable · ekspor tercatat.
+
+Integrasi modul lain lewat 15 kontrak + outbox `asset_integration_outbox`:
+sekolah yang belum memasang Keuangan/Persediaan/Pengadaan tetap dapat memakai
+modul ini, dan niat integrasi tidak pernah hilang. **Tanpa mesin persetujuan,
+permintaan menunggu — tidak pernah disetujui diam-diam** (pilihan sadar).
+
+Belum ada: **antarmuka pengguna** (seluruh endpoint siap, layar belum),
+pemetaan ruang akademik, impor XLSX, integrasi pembaca RFID, definisi alur
+Workflow, modul Vendor/Pengadaan, dan pemecahan otomasi ke job antrean.
+Rinciannya pada `docs/22-MODUL-ASSET-SARPRAS.md`.

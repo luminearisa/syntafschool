@@ -7,6 +7,7 @@ use App\Modules\LMS\Providers\LmsServiceProvider;
 use App\Modules\Supervisi\Providers\SupServiceProvider;
 use App\Modules\UKS\Providers\UksServiceProvider;
 use App\Modules\Activity\Providers\ActivityServiceProvider;
+use App\Modules\Asset\Providers\AssetServiceProvider;
 use App\Modules\Workflow\Providers\WorkflowServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -43,6 +44,7 @@ return [
     // Seluruh integrasi (siswa, wali, pegawai, fasilitas, inventaris, LMS,
     // keuangan, asrama) lewat kontrak — modul lain tetap sumber kebenarannya.
     ActivityServiceProvider::class,
+    AssetServiceProvider::class,
 
     WorkflowServiceProvider::class,
 ];

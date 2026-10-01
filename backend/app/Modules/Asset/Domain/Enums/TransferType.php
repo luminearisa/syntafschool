@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Modules\Asset\Domain\Enums;
+
+enum TransferType: string
+{
+    case ROOM_TRANSFER = 'ROOM_TRANSFER';
+    case DEPARTMENT_TRANSFER = 'DEPARTMENT_TRANSFER';
+    case CUSTODIAN_TRANSFER = 'CUSTODIAN_TRANSFER';
+    case CAMPUS_TRANSFER = 'CAMPUS_TRANSFER';
+    case TEMPORARY_TRANSFER = 'TEMPORARY_TRANSFER';
+    case PERMANENT_TRANSFER = 'PERMANENT_TRANSFER';
+}
