@@ -1762,3 +1762,21 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 
 ### Mobile — Portal UKS
 - [x] Layar UKS wali/siswa + persetujuan rujukan + surat PDF, proyeksi aman (tanpa catatan internal) — [docs/29](./29-MOBILE-UKS.md); `MobileUksTest` belum dijalankan
+
+### School Operations — Fase 2: Transportation Management
+- [x] 51 tabel & 22 layanan: armada (kapasitas, perlengkapan, dokumen + peringatan kedaluwarsa, pemeliharaan, BBM),
+      pengemudi (SIM sesuai kendaraan, kualifikasi, ketersediaan, penugasan & pengganti), rute (halte berkoordinat, versi
+      non-destruktif, kapasitas, batasan, fondasi optimasi), permintaan → kapasitas → persetujuan → penugasan, daftar tunggu
+      dengan skor prioritas & tawaran kursi, jadwal + kalender akademik → trip harian, siklus trip penuh (dispatch bergerbang,
+      manifes, boarding/drop-off idempoten, keterlambatan, pembatalan, penutupan), insiden + eskalasi + alur mogok,
+      checklist pra/pasca-trip, biaya + integrasi keuangan, penutupan harian + penyesuaian beralasan, barang hilang,
+      analitik & laporan, perencanaan kapasitas
+- [x] 149 rute API `/api/v1/transportation/*`, 45 izin & 17 peran, isolasi wali/pengemudi/kampus, idempotensi ber-scope,
+      QR bertanda tangan, dukungan offline-first, event bus & audit
+- [x] UI React/TS: 12 halaman (dashboard, papan dispatch, trip & manifes, armada, pengemudi, rute, siswa, insiden,
+      barang hilang, laporan, aplikasi pengemudi, portal wali) + grup sidebar Transportasi
+- [x] Uji end-to-end `tests/Manual/transportation_smoke.php`: **213 pemeriksaan lulus, 0 gagal** dari basis data kosong;
+      uji UI browser desktop 1280×900 & ponsel 390×844 tanpa keluhan tata letak
+- [ ] Ditunda (batas fase §103): GPS real-time, optimasi rute/AI, prediksi ETA lanjutan, pemeliharaan prediktif,
+      protokol perangkat keras RFID/NFC, kanal notifikasi eksternal, impor CSV/Excel, pengarsipan terjadwal, suite PHPUnit
+- Detail: [docs/33](./33-MODUL-TRANSPORTASI-FASE-2.md)

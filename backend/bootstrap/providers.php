@@ -11,6 +11,7 @@ use App\Modules\Asset\Providers\AssetServiceProvider;
 use App\Modules\Workflow\Providers\WorkflowServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase2ServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase3ServiceProvider;
+use App\Modules\SchoolOperations\Transportation\Providers\TransportationServiceProvider;
 use App\Modules\Hrd\Providers\HrdServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -67,4 +68,11 @@ return [
     // forecasting, dan orkestrasi AI + agent HR. Membaca data Phase 1/2;
     // tidak menduplikasi employee, payroll, attendance, atau LMS.
     HrdPhase3ServiceProvider::class,
+
+    // Modul School Operations — Transportation Management (Phase 2): armada,
+    // pengemudi, rute, permintaan & penugasan siswa, jadwal, trip, manifes,
+    // boarding/drop-off, insiden, inspeksi, BBM, biaya, analitik, dan aplikasi
+    // pengemudi. Membaca Student/Parent/Employee/Asset/Maintenance/Attendance/
+    // Boarding/Finance dari modul yang sudah ada — tidak menduplikasi master.
+    TransportationServiceProvider::class,
 ];

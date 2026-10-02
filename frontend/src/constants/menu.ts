@@ -17,6 +17,7 @@ import {
   GitPullRequestArrow,
   Trophy,
   HeartHandshake,
+  Bus,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -33,6 +34,7 @@ import { activityMenu } from '@/routes/domains/activity';
 import { bkMenu } from '@/routes/domains/bk';
 import { workflowMenu } from '@/routes/domains/workflow';
 import { assetMenu } from '@/routes/domains/asset';
+import { transportationMenu } from '@/routes/domains/transportation';
 
 export interface MenuChild {
   label: string;
@@ -75,6 +77,11 @@ export const MENU_ITEMS: MenuItem[] = [
       { label: 'Jadwal Pelajaran', to: '/academics/schedules', permission: 'academic.view' },
       ...domainMenu,
     ],
+  },
+  {
+    label: 'Transportasi',
+    icon: Bus,
+    children: transportationMenu,
   },
   ...ppdbMenu,
   {
