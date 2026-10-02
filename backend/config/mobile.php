@@ -59,6 +59,10 @@ return [
             'library/opac',
             'library/opac/*',
             'library/members/me/card',
+            // CBT: jalur siswa saja; `attempts/*/void` dan lainnya butuh izin proktor/pengelola (tidak dimiliki siswa).
+            'cbt/my/sessions',
+            'cbt/sessions/*/start',
+            'cbt/attempts/*',
         ],
     ],
 ];

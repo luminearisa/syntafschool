@@ -1749,3 +1749,9 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [x] Backend: `POST mobile/assignments/{id}/submit` (identitas & waktu dari server, kelas aktif, aturan telat, tidak menimpa nilai), grup `mobile/library/*` (kepemilikan anggota, 404 untuk milik orang lain), allowlist siswa diperluas; detail: [docs/26](./26-MOBILE-FASE-3.md)
 - [ ] Kuis LMS & lampiran berkas (hanya teks), Tahfiz/Ekskul versi staf (Fase 4)
 - [ ] Tes `MobilePhase3Test` belum dijalankan (PHP 8.3 di sandbox)
+
+### Mobile — Fase 4
+- [x] Ujian CBT siswa (semua jenis soal, token, hitung mundur server, simpan otomatis, heartbeat, pelaporan keluar-aplikasi)
+- [x] Unduh rapor PDF (endpoint ber-pagar kepemilikan), dasbor manajemen karyawan
+- [ ] PPDB, Supervisi, cuti/gaji, pemindai kamera, UKS wali, Tahfiz/Ekskul staf, ulasan hasil CBT — detail: [docs/27](./27-MOBILE-FASE-4.md)
+- [ ] Tes `MobilePhase4Test` belum dijalankan (PHP 8.3 di sandbox)

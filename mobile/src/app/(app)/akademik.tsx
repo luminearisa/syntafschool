@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, EmptyState, ErrorNote, Loading, Pill, Row, Screen, Segmented, T } from '@/components/ui';
+import { Button, Card, EmptyState, ErrorNote, Loading, Pill, Row, Screen, Segmented, T } from '@/components/ui';
 import { ChildHeader, ChildPicker } from '@/components/ChildPicker';
 import { Hero } from '@/components/Hero';
 import {
   useChildAttendance, useChildReportCards, useChildSchedule, useChildScores, useChildren,
 } from '@/api/hooks';
 import { errorMessage } from '@/api/client';
+import { Alert } from '@/lib/dialog';
+import { downloadAuthed } from '@/lib/download';
 import { colors } from '@/theme';
 import { DAYS, dateShort, monthLabel, shiftMonth, timeHM } from '@/lib/format';
 import dayjs from 'dayjs';
@@ -132,6 +134,7 @@ function ScheduleTab({ id }: { id: number }) {
 
 function ReportsTab({ id }: { id: number }) {
   const q = useChildReportCards(id);
+  const [busy, setBusy] = useState<number | null>(null);
   if (q.isLoading) return <Loading />;
   if (!q.data || q.data.length === 0) return <EmptyState icon="document-text-outline" title="Belum ada rapor terbit" />;
   return (
@@ -143,6 +146,8 @@ function ReportsTab({ id }: { id: number }) {
             <Row key={i} left={<Text style={T.body}>{it.subject}</Text>} right={<Text style={{ fontWeight: '800', color: colors.ink }}>{it.score ? Number(it.score) : '–'} {it.grade ?? ''}</Text>} />
           ))}
           {r.homeroom_note ? <Text style={[T.body, { fontStyle: 'italic', marginTop: 6 }]}>“{r.homeroom_note}”</Text> : null}
+          <Button label={busy === r.id ? 'Mengunduh…' : 'Unduh PDF'} variant="ghost" icon="download-outline" loading={busy === r.id}
+            onPress={() => { setBusy(r.id); downloadAuthed(`/mobile/children/${id}/report-cards/${r.id}/pdf`, `rapor-${r.semester ?? r.id}.pdf`).catch((e) => Alert.alert('Gagal mengunduh', errorMessage(e))).finally(() => setBusy(null)); }} />
         </Card>
       ))}
     </>

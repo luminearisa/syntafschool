@@ -39,6 +39,7 @@ export const FEATURES: Feature[] = [
   { key: 'presensi', title: 'Presensi', hint: 'Check-in & riwayat', icon: 'finger-print', tint: '#116149', category: 'Pekerjaan', roles: e, route: '/presensi' },
 
   // ---- Fase 1: karyawan ----
+  { key: 'dasbor', title: 'Dasbor', hint: 'Ringkasan siswa, absensi, keuangan', icon: 'stats-chart', tint: '#8E4EC6', category: 'Pekerjaan', roles: e, route: '/dasbor', perms: ['student.view', 'academic.view', 'finance.view', 'finance.payment.view', 'finance.invoice.view'] },
   { key: 'persetujuan', title: 'Persetujuan', hint: 'Approval & pengajuan', icon: 'checkmark-done-circle', tint: '#2F6FB2', category: 'Pekerjaan', roles: e, route: '/persetujuan', perms: ['workflow.approval.view', 'workflow.request.view'] },
   { key: 'jurnal', title: 'Jurnal & RPP', hint: 'Jurnal mengajar, RPP', icon: 'create', tint: '#116149', category: 'Pekerjaan', roles: e, route: '/jurnal', perms: ['academic.attendance', 'academic.approve'] },
   { key: 'absen-siswa', title: 'Absensi Siswa', hint: 'Input kehadiran kelas', icon: 'people', tint: '#B8892B', category: 'Pekerjaan', roles: e, route: '/absen-siswa', perms: ['academic.attendance'] },
@@ -64,7 +65,7 @@ export const FEATURES: Feature[] = [
   { key: 'perpus', title: 'Perpustakaan', hint: 'Katalog, pinjaman, kartu', icon: 'library', tint: '#116149', category: 'Belajar', roles: [...s, ...e], route: '/perpustakaan' },
 
   // ---- Fase 4 ----
-  { key: 'cbt', title: 'Ujian', hint: 'Ujian berbasis komputer', icon: 'school', tint: '#C8423B', category: 'Belajar', roles: [...s, ...e], phase: 4 },
+  { key: 'cbt', title: 'Ujian', hint: 'Ujian berbasis komputer', icon: 'school', tint: '#C8423B', category: 'Belajar', roles: s, route: '/ujian' },
 ];
 
 /**

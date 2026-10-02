@@ -21,6 +21,7 @@ Route::prefix('mobile')->name('mobile.')->group(function (): void {
         Route::get('children/{student}/attendance', [MobileController::class, 'attendance'])->name('children.attendance');
         Route::get('children/{student}/scores', [MobileController::class, 'scores'])->name('children.scores');
         Route::get('children/{student}/report-cards', [MobileController::class, 'reportCards'])->name('children.report-cards');
+        Route::get('children/{student}/report-cards/{reportCard}/pdf', [MobileController::class, 'reportCardPdf'])->name('children.report-cards.pdf');
         Route::get('children/{student}/schedule', [MobileController::class, 'schedule'])->name('children.schedule');
         Route::get('children/{student}/finance', [MobileController::class, 'finance'])->name('children.finance');
         Route::get('children/{student}/boarding', [MobileController::class, 'boarding'])->name('children.boarding');

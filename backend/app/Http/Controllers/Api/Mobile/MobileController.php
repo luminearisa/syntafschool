@@ -7,6 +7,8 @@ use App\Models\AttendanceStatus;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
 use App\Models\ReportCard;
+use App\Models\School;
+use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Student;
 use App\Models\TahfizNotification;
 use App\Support\ContextState;
@@ -114,6 +116,25 @@ class MobileController extends BaseApiController
     }
 
     /** Rapor yang sudah diterbitkan. */
+    /** Unduh rapor terbit (PDF) — hanya milik anak sendiri dan hanya yang sudah diterbitkan. */
+    public function reportCardPdf(Request $request, Student $student, ReportCard $reportCard)
+    {
+        $id = $this->assertChild($request, $student->id);
+
+        abort_unless(
+            (int) $reportCard->student_id === (int) $id && $reportCard->status === 'published',
+            404,
+            'Rapor tidak ditemukan.'
+        );
+
+        $reportCard->load(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject']);
+        $school = School::query()->where('is_active', true)->orderBy('id')->first();
+
+        return Pdf::loadView('pdf.academic-report-card', compact('reportCard', 'school'))
+            ->setPaper('a4')
+            ->download('rapor-'.$reportCard->student?->nis.'-'.$reportCard->semester?->name.'.pdf');
+    }
+
     public function reportCards(Request $request, Student $student): JsonResponse
     {
         $id = $this->assertChild($request, $student->id);
