@@ -18,14 +18,17 @@ use Illuminate\Support\Str;
  * config/events.php. Dengan begitu aturan siklus hidup hanya punya satu
  * sumber kebenaran, dan menambah status tidak menuntut perubahan di kelas ini.
  *
- * Layanan ini hanya menyentuh tabel `events`. Penulisan jejak audit dan
- * penyiaran domain event belum disambungkan di sini karena skema
- * `event_audit_logs` dan `event_domain_events` perlu diverifikasi lebih dulu —
- * menyambungkannya dengan nama kolom tebakan akan gagal senyap.
+ * Setiap perubahan status meninggalkan dua jejak: baris audit di
+ * `event_audit_logs` (append-only) dan peristiwa domain di
+ * `event_domain_events` yang diteruskan ke listener modul lain.
  */
 class EventService
 {
-    public function __construct(private readonly EventContext $context) {}
+    public function __construct(
+        private readonly EventContext $context,
+        private readonly EventAuditService $audit,
+        private readonly EventDomainEventBus $bus,
+    ) {}
 
     /**
      * Buat event baru berstatus awal.
@@ -54,7 +57,24 @@ class EventService
             $event->version_number = 1;
             $event->save();
 
-            return $event->refresh();
+            $created = $event->refresh();
+
+            $this->audit->record(
+                action: 'event.created',
+                entityType: Event::class,
+                entityId: $created->id,
+                new: ['code' => $created->code, 'name' => $created->name, 'status' => $created->status],
+                eventId: $created->id,
+                campusId: $created->campus_id !== null ? (int) $created->campus_id : null,
+            );
+
+            $this->bus->publish('event.created', Event::class, $created->id, [
+                'code' => $created->code,
+                'name' => $created->name,
+                'status' => $created->status,
+            ], $created->id);
+
+            return $created;
         });
     }
 
@@ -85,8 +105,10 @@ class EventService
         EventStatus::assertTransition($from, $to, "event#{$event->id}");
 
         return DB::transaction(function () use ($event, $to, $reason, $meta, $from): Event {
+            $versionBefore = (int) $event->version_number;
+
             $event->status = $to;
-            $event->version_number = (int) $event->version_number + 1;
+            $event->version_number = $versionBefore + 1;
 
             // Cap waktu tahapan ditulis hanya sekali, agar riwayat tidak
             // tertimpa bila transisi yang sama diulang.
@@ -108,7 +130,27 @@ class EventService
 
             $event->save();
 
-            return $event->refresh();
+            $updated = $event->refresh();
+
+            $this->audit->record(
+                action: 'event.status.changed',
+                entityType: Event::class,
+                entityId: $updated->id,
+                old: ['status' => $from, 'version_number' => $versionBefore],
+                new: ['status' => $updated->status, 'version_number' => $updated->version_number],
+                reason: $reason,
+                eventId: $updated->id,
+                campusId: $updated->campus_id !== null ? (int) $updated->campus_id : null,
+            );
+
+            $this->bus->publish('event.status.changed', Event::class, $updated->id, [
+                'from' => $from,
+                'to' => $updated->status,
+                'reason' => $reason,
+                'version_number' => $updated->version_number,
+            ], $updated->id);
+
+            return $updated;
         });
     }
 
