@@ -12,6 +12,7 @@ use App\Modules\Workflow\Providers\WorkflowServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase2ServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase3ServiceProvider;
 use App\Modules\SchoolOperations\Transportation\Providers\TransportationServiceProvider;
+use App\Modules\SchoolOperations\Religious\Providers\ReligiousServiceProvider;
 use App\Modules\Hrd\Providers\HrdServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -75,4 +76,13 @@ return [
     // pengemudi. Membaca Student/Parent/Employee/Asset/Maintenance/Attendance/
     // Boarding/Finance dari modul yang sudah ada — tidak menduplikasi master.
     TransportationServiceProvider::class,
+
+    // Modul School Operations — Religious & Mosque Management (Phase 3):
+    // masjid, area, jadwal shalat (multi-sumber), imam/muadzin/khatib, shalat
+    // Jumat & khutbah, kegiatan keagamaan, kajian, presensi shalat, roster
+    // tugas, Ramadan, hari raya & qurban, prestasi keagamaan, analitik, dan
+    // mode layar masjid. Membaca Student/Parent/HRD/Boarding/Attendance/Tahfidz
+    // /Activity/LMS/Facility/Asset/Inventory/Finance/Workflow dari modul yang
+    // sudah ada — tidak menduplikasi master mana pun.
+    ReligiousServiceProvider::class,
 ];
