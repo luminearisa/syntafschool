@@ -482,7 +482,7 @@ class BkAccessService
         }
 
         $studentId = $this->studentIdForUser($user);
-        $guardianIds = \App\Models\Guardian::query()->where('user_id', $user->id)->pluck('id')->all();
+        $guardianIds = app(\App\Services\Mobile\ContextService::class)->identityIds($user, 'guardian');
 
         // Wali dan siswa hanya melihat konferensi yang MENGUNDANG mereka.
         //

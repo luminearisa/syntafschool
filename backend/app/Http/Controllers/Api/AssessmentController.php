@@ -245,6 +245,10 @@ class AssessmentController extends BaseApiController
      */
     public function submit(Request $request, Assessment $assessment): JsonResponse
     {
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayGrade($request->user(), $assessment)) {
+            abort(403, 'Anda bukan pengampu penilaian ini.');
+        }
+
         if ($assessment->status !== Assessment::STATUS_DRAFT) {
             throw ValidationException::withMessages([
                 'status' => "Penilaian ini sudah berstatus {$assessment->status} dan tidak perlu diserahkan lagi.",

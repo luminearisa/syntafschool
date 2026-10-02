@@ -184,6 +184,87 @@ class BoardingPortalController extends BaseApiController
         );
     }
 
+    // ------------------------------------------------------------------
+    // Pengajuan oleh orang tua
+    //
+    // Layanan domain dipanggil dengan actor = null (lingkup pengasuh tidak
+    // berlaku bagi orang tua) setelah kepemilikan anak terbukti. `requested_by`
+    // diisi akun orang tua sesudahnya, dan pembatalan hanya boleh atas
+    // pengajuan yang ia buat sendiri.
+    // ------------------------------------------------------------------
+
+    public function storePermission(Request $request, Student $student): JsonResponse
+    {
+        $childId = $this->portal->assertChild($request->user(), $student->id);
+
+        $data = $request->validate([
+            'permission_type' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Models\BoardingPermission::TYPES)],
+            'destination' => ['nullable', 'string', 'max:150'],
+            'reason' => ['required', 'string', 'max:500'],
+            'start_at' => ['required', 'date', 'after_or_equal:today'],
+            'expected_return_at' => ['required', 'date', 'after:start_at'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $permission = $this->permissions->create($data + ['student_id' => $childId], null, true);
+        $permission->forceFill(['requested_by' => $request->user()->id])->save();
+
+        return $this->createdResponse(
+            new \App\Http\Resources\BoardingPermissionResource($this->permissions->withDetails($permission->refresh())),
+            'Pengajuan izin keluar dikirim untuk persetujuan',
+        );
+    }
+
+    public function cancelPermission(Request $request, Student $student, \App\Models\BoardingPermission $permission): JsonResponse
+    {
+        $childId = $this->portal->assertChild($request->user(), $student->id);
+
+        abort_unless((int) $permission->student_id === $childId && (int) $permission->requested_by === (int) $request->user()->id, 404, 'Pengajuan tidak ditemukan pada akun Anda.');
+
+        $note = $request->validate(['note' => ['nullable', 'string', 'max:200']])['note'] ?? 'Dibatalkan oleh orang tua';
+
+        return $this->successResponse(
+            new \App\Http\Resources\BoardingPermissionResource($this->permissions->cancel($permission, null, $note)),
+            'Pengajuan izin dibatalkan',
+        );
+    }
+
+    public function storeHomecoming(Request $request, Student $student): JsonResponse
+    {
+        $childId = $this->portal->assertChild($request->user(), $student->id);
+
+        $data = $request->validate([
+            'type' => ['required', 'string', \Illuminate\Validation\Rule::in(\App\Models\BoardingHomecoming::TYPES)],
+            'home_date' => ['required', 'date', 'after_or_equal:today'],
+            'return_date' => ['required', 'date', 'after_or_equal:home_date'],
+            'transport' => ['nullable', 'string', 'max:100'],
+            'picked_up_by' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $homecoming = $this->homecomings->create($data + ['student_id' => $childId], null, true);
+        $homecoming->forceFill(['requested_by' => $request->user()->id])->save();
+
+        return $this->createdResponse(
+            new \App\Http\Resources\BoardingHomecomingResource($homecoming->refresh()),
+            'Pengajuan kepulangan dikirim untuk persetujuan',
+        );
+    }
+
+    public function cancelHomecoming(Request $request, Student $student, \App\Models\BoardingHomecoming $homecoming): JsonResponse
+    {
+        $childId = $this->portal->assertChild($request->user(), $student->id);
+
+        abort_unless((int) $homecoming->student_id === $childId && (int) $homecoming->requested_by === (int) $request->user()->id, 404, 'Pengajuan tidak ditemukan pada akun Anda.');
+
+        $note = $request->validate(['note' => ['nullable', 'string', 'max:200']])['note'] ?? 'Dibatalkan oleh orang tua';
+
+        return $this->successResponse(
+            new \App\Http\Resources\BoardingHomecomingResource($this->homecomings->cancel($homecoming, null, $note)),
+            'Pengajuan kepulangan dibatalkan',
+        );
+    }
+
     /**
      * Salinan request dengan student_id terkunci ke anak yang sudah diverifikasi
      * — klien tidak boleh memilih santri orang lain lewat query string.

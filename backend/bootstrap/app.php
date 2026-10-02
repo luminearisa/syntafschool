@@ -48,7 +48,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
+            'ctx' => \App\Http\Middleware\RequireContext::class,
+            'student.family' => \App\Http\Middleware\RestrictFamilyStudentAccess::class,
         ]);
+
+        // Menegakkan konteks token mobile (wali/siswa dibatasi ke auth/* & mobile/*).
+        $middleware->appendToGroup('api', \App\Http\Middleware\EnforceContext::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

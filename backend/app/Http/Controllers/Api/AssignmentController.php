@@ -81,6 +81,11 @@ class AssignmentController extends BaseApiController
     public function store(AssignmentRequest $request): JsonResponse
     {
         $data = $request->validated();
+
+        if (! $this->access()->mayCreateAssignmentFor($request->user(), (int) $data['teacher_id'])) {
+            abort(403, 'Anda hanya boleh membuat tugas atas nama sendiri.');
+        }
+
         $data['created_by'] = $request->user()?->id;
         $data['status'] = $data['status'] ?? Assignment::STATUS_DRAFT;
 
@@ -106,7 +111,14 @@ class AssignmentController extends BaseApiController
 
     public function update(AssignmentRequest $request, Assignment $assignment): JsonResponse
     {
+        $this->assertMayManage($request, $assignment);
+
         $data = $request->validated();
+
+        if (! $this->access()->mayCreateAssignmentFor($request->user(), (int) $data['teacher_id'])) {
+            abort(403, 'Anda tidak boleh mengalihkan tugas ke guru lain.');
+        }
+
 
         if (($data['status'] ?? $assignment->status) === Assignment::STATUS_PUBLISHED) {
             $data['published_at'] = $assignment->published_at ?? now();
@@ -132,8 +144,10 @@ class AssignmentController extends BaseApiController
     /**
      * Publikasikan tugas sehingga siswa boleh mengumpulkan.
      */
-    public function publish(Assignment $assignment): JsonResponse
+    public function publish(Request $request, Assignment $assignment): JsonResponse
     {
+        $this->assertMayManage($request, $assignment);
+
         $assignment->update([
             'status' => Assignment::STATUS_PUBLISHED,
             'published_at' => now(),
@@ -148,8 +162,10 @@ class AssignmentController extends BaseApiController
     /**
      * Tutup tugas. Pengumpulan yang sudah ada tetap tersimpan.
      */
-    public function close(Assignment $assignment): JsonResponse
+    public function close(Request $request, Assignment $assignment): JsonResponse
     {
+        $this->assertMayManage($request, $assignment);
+
         $assignment->update(['status' => Assignment::STATUS_CLOSED]);
 
         return $this->successResponse(
@@ -275,5 +291,18 @@ class AssignmentController extends BaseApiController
             'submissions',
             'submissions as graded_count' => fn ($q) => $q->where('status', AssignmentSubmission::STATUS_GRADED),
         ]);
+    }
+
+    protected function access(): \App\Services\Academic\TeachingAccess
+    {
+        return app(\App\Services\Academic\TeachingAccess::class);
+    }
+
+    /** Guru hanya mengelola tugasnya sendiri (lihat TeachingAccess). */
+    protected function assertMayManage(Request $request, Assignment $assignment): void
+    {
+        if (! $this->access()->mayManageAssignment($request->user(), $assignment)) {
+            abort(403, 'Anda hanya boleh mengelola tugas milik sendiri.');
+        }
     }
 }

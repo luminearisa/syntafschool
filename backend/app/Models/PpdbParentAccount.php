@@ -77,26 +77,9 @@ class PpdbParentAccount extends BaseModel
      */
     public static function childStudentIds(User $user): array
     {
-        $guardianIds = static::query()
-            ->where('user_id', $user->id)
-            ->whereNotNull('guardian_id')
-            ->pluck('guardian_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        if ($guardianIds === []) {
-            return [];
-        }
-
-        return DB::table('student_guardians')
-            ->whereIn('guardian_id', $guardianIds)
-            ->pluck('student_id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+        // Sumber tunggal: ContextService (userable + user_identities + akun PPDB),
+        // peka terhadap peran aktif token mobile.
+        return app(\App\Services\Mobile\ContextService::class)->childStudentIds($user);
     }
 
     public function activityEventPrefix(): string

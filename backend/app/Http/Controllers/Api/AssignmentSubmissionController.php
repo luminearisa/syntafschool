@@ -119,6 +119,10 @@ class AssignmentSubmissionController extends BaseApiController
     {
         $this->assertBelongsToAssignment($assignment, $submission);
 
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayManageAssignment($request->user(), $assignment)) {
+            abort(403, 'Anda hanya boleh menilai tugas milik sendiri.');
+        }
+
         // Hanya pengumpulan yang benar-benar sudah dikumpulkan yang bisa dinilai.
         if (! $submission->hasSubmitted()) {
             throw ValidationException::withMessages([

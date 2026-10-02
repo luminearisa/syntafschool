@@ -717,6 +717,8 @@ Route::prefix('finance')->name('finance.')->group(function (): void {
         Route::get('children/{student}/receipts', [FinancePortalController::class, 'receipts'])->name('children.receipts');
         Route::get('children/{student}/receivables', [FinancePortalController::class, 'receivables'])->name('children.receivables');
         Route::get('children/{student}/payment-plans', [FinancePortalController::class, 'paymentPlans'])->name('children.payment-plans');
+        Route::post('children/{student}/invoices/{invoice}/pay', [FinancePortalController::class, 'pay'])
+            ->middleware('throttle:10,1')->name('children.invoices.pay');
     });
 
     // --------------------------------------------------------------------

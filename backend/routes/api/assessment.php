@@ -153,4 +153,4 @@ Route::get('gradebook/overview', [GradebookController::class, 'overview'])
 // `assessment.view` dipakai — bukan `student.view` — karena role `siswa` memiliki
 // permission ini tetapi tidak memiliki `student.view`.
 Route::get('students/{student}/scores', [ScoreController::class, 'studentScores'])
-    ->middleware('permission:assessment.view')->name('students.scores.index');
+    ->middleware(['permission:assessment.view', 'student.family'])->name('students.scores.index');

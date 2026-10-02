@@ -76,6 +76,23 @@ class AssetPermissionSeeder extends Seeder
         'ERP_ADMIN' => ['asset.view', 'asset.admin'],
     ];
 
+    /**
+     * Peran pegawai biasa (guru, staf, …) mendapat hak "warga sekolah": melapor
+     * kerusakan dan memesan fasilitas. Tanpa `asset.view` — daftar aset tetap
+     * hanya untuk peran sarpras; aset ditemukan lewat pindai label QR publik.
+     * Daftar booking sudah disaring pemilik di controller (bukan pengelola →
+     * hanya miliknya).
+     *
+     * @var list<string>
+     */
+    public const EMPLOYEE_ROLES = [
+        'guru', 'wali-kelas', 'staf', 'kepala-unit', 'kepala-asrama', 'musyrif', 'pustakawan',
+        'petugas-absensi', 'petugas-kedisiplinan', 'petugas-kesehatan', 'petugas-perizinan',
+    ];
+
+    /** @var list<string> */
+    public const EMPLOYEE_GRANTS = ['asset.maintenance.request', 'facility.view', 'facility.book', 'location.view'];
+
     public function run(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -88,6 +105,12 @@ class AssetPermissionSeeder extends Seeder
             $model = Role::findOrCreate($role, 'web');
 
             $model->givePermissionTo($permissions === ['*'] ? self::PERMISSIONS : $permissions);
+        }
+
+        foreach (self::EMPLOYEE_ROLES as $roleName) {
+            $role = Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
+
+            $role?->givePermissionTo(self::EMPLOYEE_GRANTS);
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();

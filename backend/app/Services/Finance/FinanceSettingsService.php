@@ -123,6 +123,11 @@ class FinanceSettingsService
         // kedaluwarsanya sendiri; kunci ini dipakai bila ia tidak mengirim, dan
         // menjadi dasar scheduler menutup `pending` yang kanalnya sudah mati —
         // tanpa itu tagihan terbaca "sedang dibayar" selamanya.
+        // Pembayaran online oleh orang tua dari aplikasi mobile/portal. Mati secara
+        // bawaan: sekolah harus memilih rekening bank tujuan (akun COA yang menerima
+        // dana gateway) sebelum tombol "Bayar" berfungsi.
+        'portal_payment_enabled' => [self::TYPE_BOOLEAN, false, 'Izinkan orang tua membayar tagihan anak lewat payment gateway dari aplikasi'],
+        'portal_payment_bank_account_id' => [self::TYPE_INTEGER, 0, 'ID rekening bank sekolah (finance_bank_accounts) tujuan pembayaran gateway orang tua; 0 = belum dipilih'],
         'gateway_payment_ttl_hours' => [self::TYPE_INTEGER, 24, 'Jam sebuah pembayaran gateway/VA menunggu sebelum dianggap kedaluwarsa bila provider tidak mengirim batas waktunya'],
         // Kebijakan kelebihan bayar (§19 Phase 2) — jangan diam-diam negatifkan invoice.
         'overpayment_policy' => [self::TYPE_STRING, 'reject', 'Kebijakan pembayaran melebihi sisa tagihan: reject|credit_balance|unallocated|refund'],

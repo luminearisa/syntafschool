@@ -1705,3 +1705,60 @@ punya peran modul.
 Belum: pemetaan ruang akademik, impor XLSX, integrasi RFID, definisi alur
 Workflow, modul Vendor/Pengadaan, tabel ringkasan laporan, otomasi masih
 sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
+
+---
+
+## Aplikasi Mobile (wali murid · siswa · karyawan) — `mobile/`
+- [x] Expo + React Native + TS + Expo Router (Android, iOS, export web)
+- [x] Satu akun multi-peran: `user_identities`, `GET /auth/contexts`, `POST /auth/switch-context`, token ber-ability `ctx:*`
+- [x] Penegakan konteks di server (`EnforceContext`, `RequireContext`); wali/siswa hanya `auth/*` + `mobile/*`
+- [x] Endpoint `/mobile/*`: beranda, anak, absensi, nilai, rapor, jadwal, keuangan, asrama, presensi pegawai, notifikasi
+- [x] Admin: tautkan identitas (`/users/{user}/identities`) + petunjuk kecocokan telepon/email
+- [x] UI: login, pemilih peran, Beranda, Akademik, Keuangan, Presensi, Kabar, Akun (verifikasi `tsc` + export web + tangkapan layar)
+- [ ] Tes backend `MobileContextTest` ditulis tetapi **belum dijalankan** (sandbox PHP 8.3, Laravel 13 butuh 8.4) — jalankan `php artisan test --filter=MobileContextTest`
+- [ ] Layar admin web untuk menautkan identitas (API sudah ada)
+- [ ] Push saat aplikasi tertutup (sengaja tanpa Firebase)
+
+### Mobile — Fase 0 (fondasi lintas modul)
+- [x] Resolver identitas tunggal `ContextService` (userable + `user_identities` + akun PPDB); `PpdbParentAccount::childStudentIds` (Keuangan, Asrama) kini mendelegasikan ke sana
+- [x] Peran aktif per request (`ContextState`): `userable` ditimpa di memori sehingga modul Aktivitas/Klinik/UKS/LMS melihat identitas peran aktif tanpa diubah satu per satu
+- [x] Role & permission per peran aktif (`User::hasPermissionTo/hasRole/getRoleNames/getAllPermissions` + `ContextPermissions`)
+- [x] Allowlist path per peran wali/siswa di `config/mobile.php`; identitas dicek ulang tiap request (tautan dicabut → 401)
+- [x] Agregator notifikasi: tabel Laravel (UKS, Aktivitas, LMS, Aset, Keuangan, Perpustakaan) + inbox Tahfiz, disaring per peran
+- [x] Perbaikan bug: Tahfiz `DashboardService` dan BK `BkAccessService` memakai kolom `guardians.user_id` yang tidak ada
+- [x] Mobile: registry fitur (`src/lib/features.ts`), tab Layanan, Akses cepat di Beranda, tombol kembali
+- [ ] Tes backend (`MobileContextTest`, 10 skenario) **belum dijalankan** — sandbox PHP 8.3, Laravel 13 butuh 8.4
+
+### Mobile — Fase 1 (karyawan)
+- [x] Persetujuan (inbox, keputusan ber-Idempotency-Key, pengajuan saya, batal/kirim ulang, komentar)
+- [x] Jurnal mengajar & RPP (buat/ajukan/setujui/tolak)
+- [x] Absensi siswa (lembar kelas, simpan massal), Input nilai (buat penilaian, input, serahkan), Tugas (buat/terbit/nilai)
+- [x] Aset & Sarpras: lapor kerusakan via kode, booking fasilitas
+- [x] Backend: FK `recorded_by`, pagar kepemilikan siswa, batas kewenangan guru, hak Workflow/Aset pegawai — lihat [docs/24](./24-MOBILE-FASE-1.md)
+- [ ] Supervisi; ajukan cuti; pemindai kamera
+- [ ] Tes backend `MobilePhase1Test` + `MobileContextTest` **belum dijalankan** (PHP 8.3 di sandbox; Laravel 13 butuh 8.4)
+
+### Mobile — Fase 2 (wali murid)
+- [x] Keuangan lengkap + bayar online (default mati; perlu `portal_payment_enabled` & rekening tujuan), Asrama + pengajuan izin/kepulangan, Tahfiz, Ekskul + persetujuan, Kesehatan, Konseling BK, Dompet + top up gateway
+- [x] Backend: endpoint bayar portal, pengajuan asrama oleh orang tua, portal dompet; detail: [docs/25](./25-MOBILE-FASE-2.md)
+- [ ] UKS untuk wali, top up manual (unggah bukti), Resource khusus portal BK/Keuangan
+- [ ] Tes `MobilePhase2Test` belum dijalankan (PHP 8.3 di sandbox)
+
+### Mobile — Fase 3 (siswa)
+- [x] Tugas: daftar & kumpul teks (siswa), pantau (wali); Kelas Digital LMS (kelas, materi, tandai selesai, tugas teks, tenggat, nilai, siaran langsung, sertifikat); Perpustakaan (pinjaman, perpanjang, reservasi, denda, katalog); Tahfiz & Ekskul versi siswa (daftar ekskul ber-Idempotency-Key)
+- [x] Backend: `POST mobile/assignments/{id}/submit` (identitas & waktu dari server, kelas aktif, aturan telat, tidak menimpa nilai), grup `mobile/library/*` (kepemilikan anggota, 404 untuk milik orang lain), allowlist siswa diperluas; detail: [docs/26](./26-MOBILE-FASE-3.md)
+- [ ] Kuis LMS & lampiran berkas (hanya teks), Tahfiz/Ekskul versi staf (Fase 4)
+- [ ] Tes `MobilePhase3Test` belum dijalankan (PHP 8.3 di sandbox)
+
+### Mobile — Fase 4
+- [x] Ujian CBT siswa (semua jenis soal, token, hitung mundur server, simpan otomatis, heartbeat, pelaporan keluar-aplikasi)
+- [x] Unduh rapor PDF (endpoint ber-pagar kepemilikan), dasbor manajemen karyawan
+- [ ] PPDB, Supervisi, cuti/gaji, pemindai kamera, UKS wali, Tahfiz/Ekskul staf, ulasan hasil CBT — detail: [docs/27](./27-MOBILE-FASE-4.md)
+- [ ] Tes `MobilePhase4Test` belum dijalankan (PHP 8.3 di sandbox)
+
+### Mobile — Fase 5
+- [x] Supervisi karyawan (isi formulir, kirim, hasil, tandai baca), pembahasan CBT siswa — [docs/28](./28-MOBILE-FASE-5.md)
+- [ ] Ditunda: UKS wali (butuh portal backend), PPDB (akun terpisah), pemindai kamera, cuti/gaji, Tahfiz/Ekskul staf, lampiran
+
+### Mobile — Portal UKS
+- [x] Layar UKS wali/siswa + persetujuan rujukan + surat PDF, proyeksi aman (tanpa catatan internal) — [docs/29](./29-MOBILE-UKS.md); `MobileUksTest` belum dijalankan
