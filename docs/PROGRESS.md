@@ -1759,3 +1759,6 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 ### Mobile — Fase 5
 - [x] Supervisi karyawan (isi formulir, kirim, hasil, tandai baca), pembahasan CBT siswa — [docs/28](./28-MOBILE-FASE-5.md)
 - [ ] Ditunda: UKS wali (butuh portal backend), PPDB (akun terpisah), pemindai kamera, cuti/gaji, Tahfiz/Ekskul staf, lampiran
+
+### Mobile — Portal UKS
+- [x] Layar UKS wali/siswa + persetujuan rujukan + surat PDF, proyeksi aman (tanpa catatan internal) — [docs/29](./29-MOBILE-UKS.md); `MobileUksTest` belum dijalankan

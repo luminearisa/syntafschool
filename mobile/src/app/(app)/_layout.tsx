@@ -67,6 +67,7 @@ export default function AppTabs() {
       <Tabs.Screen name="ujian" options={{ href: null }} />
       <Tabs.Screen name="dasbor" options={{ href: null }} />
       <Tabs.Screen name="supervisi" options={{ href: null }} />
+      <Tabs.Screen name="uks" options={{ href: null }} />
       <Tabs.Screen name="kelas" options={{ href: null }} />
       <Tabs.Screen name="perpustakaan" options={{ href: null }} />
     </Tabs>

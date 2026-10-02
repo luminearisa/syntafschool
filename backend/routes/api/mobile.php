@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Mobile\MobileController;
 use App\Http\Controllers\Api\Mobile\MobileLibraryController;
 use App\Http\Controllers\Api\Mobile\MobileStudentController;
+use App\Http\Controllers\Api\Mobile\MobileUksController;
 use App\Http\Controllers\Api\Mobile\MobileWalletController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,10 @@ Route::prefix('mobile')->name('mobile.')->group(function (): void {
         Route::get('children/{student}/wallet', [MobileWalletController::class, 'show'])->name('children.wallet');
         Route::post('children/{student}/wallet/topups', [MobileWalletController::class, 'topup'])
             ->middleware('throttle:10,1')->name('children.wallet.topup');
+        Route::get('children/{student}/uks', [MobileUksController::class, 'overview'])->name('children.uks');
+        Route::get('uks/letters/{letter}/pdf', [MobileUksController::class, 'letterPdf'])->name('uks.letters.pdf');
+        Route::post('uks/visits/{visit}/consent', [MobileUksController::class, 'consent'])
+            ->middleware(['permission:uks.consent.create', 'throttle:20,1'])->name('uks.consent');
     });
 
     // Siswa

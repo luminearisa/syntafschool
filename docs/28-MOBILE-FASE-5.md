@@ -6,7 +6,9 @@
 - Tanpa perubahan backend: modul Supervisi sudah berbasis izin (`supervisi.*`) dan identitas pegawai dari peran aktif.
 
 ## Sengaja ditunda (butuh keputusan/desain backend)
-- **UKS untuk wali/siswa** — modul UKS tidak punya portal; memberi izin `uks.*` ke wali-murid akan membuka data siswa lain. Perlu endpoint portal ber-pagar kepemilikan seperti Klinik.
 - **PPDB** — memakai akun orang tua PPDB dengan login terpisah (bukan akun terpadu); perlu keputusan apakah ditautkan ke satu akun.
 - **Pemindai kamera, cuti & slip gaji, Tahfiz/Ekskul staf, lampiran bukti Supervisi/tugas** — belum dikerjakan.
 - Tes backend Fase 4 & 5 belum dijalankan (PHP 8.3 di sandbox).
+
+## Koreksi & tambahan: portal UKS (dikerjakan setelahnya)
+Catatan awal "UKS tidak punya portal" keliru: modul UKS sudah memberi izin ke wali-murid/siswa dan membatasi baris per anak lewat `UksAccessService`. Yang kurang adalah proyeksi aman untuk mobile, karena endpoint mentah mengembalikan catatan internal petugas, nama petugas, dan saksi kejadian (siswa lain). Lihat [docs/29](./29-MOBILE-UKS.md).

@@ -55,6 +55,7 @@ export const FEATURES: Feature[] = [
   { key: 'aktivitas', title: 'Ekstrakurikuler', hint: 'Kegiatan, prestasi, izin', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: [...g, ...s], route: '/ekskul' },
   { key: 'aktivitas-staf', title: 'Ekstrakurikuler', hint: 'Pembina & kehadiran', icon: 'trophy', tint: '#B8892B', category: 'Kesiswaan', roles: e, phase: 4 },
   { key: 'kesehatan', title: 'Kesehatan', hint: 'Klinik sekolah', icon: 'medkit', tint: '#C8423B', category: 'Kesehatan & Konseling', roles: gs, route: '/kesehatan' },
+  { key: 'uks', title: 'UKS Sekolah', hint: 'Kunjungan, pemeriksaan, imunisasi', icon: 'fitness', tint: '#C8423B', category: 'Kesehatan & Konseling', roles: gs, route: '/uks' },
   { key: 'bk', title: 'Konseling', hint: 'Bimbingan & konseling', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: gs, route: '/konseling' },
   { key: 'bk-staf', title: 'Konseling', hint: 'Kasus & janji temu', icon: 'chatbubbles', tint: '#8E4EC6', category: 'Kesehatan & Konseling', roles: e, phase: 3 },
   { key: 'dompet', title: 'Dompet', hint: 'Saldo & top-up', icon: 'card', tint: '#B8892B', category: 'Keuangan', roles: gs, route: '/dompet' },
