@@ -9,6 +9,9 @@ use App\Modules\UKS\Providers\UksServiceProvider;
 use App\Modules\Activity\Providers\ActivityServiceProvider;
 use App\Modules\Asset\Providers\AssetServiceProvider;
 use App\Modules\Workflow\Providers\WorkflowServiceProvider;
+use App\Modules\Hrd\Providers\HrdPhase2ServiceProvider;
+use App\Modules\Hrd\Providers\HrdPhase3ServiceProvider;
+use App\Modules\Hrd\Providers\HrdServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -47,4 +50,21 @@ return [
     AssetServiceProvider::class,
 
     WorkflowServiceProvider::class,
+
+    // Modul HRD / Kepegawaian: sumber kebenaran data SDM (pegawai, organisasi,
+    // posisi, penugasan, kontrak, dokumen, transaksi siklus hidup). Modul lain
+    // membacanya lewat kontrak di `Domain/Contracts`, dan seluruh perubahan
+    // organisasi melewati mesin transaksi + Workflow Engine yang sudah ada.
+    HrdServiceProvider::class,
+
+    // Modul HRD Phase 2: workforce (jadwal, presensi, lembur, timesheet),
+    // cuti, payroll, benefit, kinerja, pembelajaran, karier, dan talenta.
+    // Seluruh kontrak domain dan penyedia luar didaftarkan di sini.
+    HrdPhase2ServiceProvider::class,
+
+    // Modul HRD Phase 3 (“System of Intelligence”): perencanaan tenaga kerja
+    // strategis, skills/talent/succession intelligence, people analytics,
+    // forecasting, dan orkestrasi AI + agent HR. Membaca data Phase 1/2;
+    // tidak menduplikasi employee, payroll, attendance, atau LMS.
+    HrdPhase3ServiceProvider::class,
 ];

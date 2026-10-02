@@ -17,6 +17,8 @@ use App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder;
 use App\Modules\Asset\Database\Seeders\AssetMasterSeeder;
 use App\Modules\Asset\Database\Seeders\AssetPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowPermissionSeeder;
+use App\Modules\Hrd\Database\Seeders\HrdMasterSeeder;
+use App\Modules\Hrd\Database\Seeders\HrdPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowReferenceSeeder;
 use App\Modules\Bk\Database\Seeders\BkEarlyWarningRuleSeeder;
 use App\Modules\Bk\Database\Seeders\BkMasterSeeder;
@@ -32,6 +34,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(FinanceStandardSeeder::class);
         $this->call([
+            \App\Modules\Hrd\Database\Seeders\HrdPhase2PermissionSeeder::class,
+            \App\Modules\Hrd\Database\Seeders\HrdPhase2MasterSeeder::class,
+            \App\Modules\Hrd\Strategic\Database\Seeders\HrdPhase3MasterSeeder::class,
             // --- Fondasi referensi -------------------------------------
             RolePermissionSeeder::class,
             // Modul LMS: permission granular lms.* (§35).
@@ -53,6 +58,14 @@ class DatabaseSeeder extends Seeder
             ActivityPermissionSeeder::class,
             // Modul Workflow: permission granular workflow.* + peran approver.
             WorkflowPermissionSeeder::class,
+            // Modul HRD: izin granular hr.* + 13 peran (HR_ADMIN, HR_MANAGER,
+            // HR_OFFICER, HR_AUDITOR, DOCUMENT_VERIFIER, EMPLOYEE, ...) dan master
+            // bawaan (jenis organisasi, worker type, jenis dokumen, jenis transaksi,
+            // aturan validasi, template onboarding/offboarding). Tanpa ini, layar
+            // kepegawaian tidak dapat dibuka siapa pun dan aturan kualitas data
+            // tidak memiliki pemeriksa yang terdaftar.
+            HrdPermissionSeeder::class,
+            HrdMasterSeeder::class,
             // Modul Bimbingan & Konseling: permission granular bk.* + peran
             // BK_ADMIN/BK_COORDINATOR/COUNSELOR. Aditif: izin modul lain pada
             // peran yang sama tidak pernah dihapus.
