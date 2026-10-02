@@ -1755,3 +1755,7 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [x] Unduh rapor PDF (endpoint ber-pagar kepemilikan), dasbor manajemen karyawan
 - [ ] PPDB, Supervisi, cuti/gaji, pemindai kamera, UKS wali, Tahfiz/Ekskul staf, ulasan hasil CBT — detail: [docs/27](./27-MOBILE-FASE-4.md)
 - [ ] Tes `MobilePhase4Test` belum dijalankan (PHP 8.3 di sandbox)
+
+### Mobile — Fase 5
+- [x] Supervisi karyawan (isi formulir, kirim, hasil, tandai baca), pembahasan CBT siswa — [docs/28](./28-MOBILE-FASE-5.md)
+- [ ] Ditunda: UKS wali (butuh portal backend), PPDB (akun terpisah), pemindai kamera, cuti/gaji, Tahfiz/Ekskul staf, lampiran

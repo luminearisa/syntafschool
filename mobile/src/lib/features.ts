@@ -46,7 +46,7 @@ export const FEATURES: Feature[] = [
   { key: 'nilai', title: 'Input Nilai', hint: 'Penilaian & rapor', icon: 'ribbon', tint: '#8E4EC6', category: 'Pekerjaan', roles: e, route: '/nilai', perms: ['academic.grade'] },
   { key: 'tugas-guru', title: 'Tugas', hint: 'Buat & nilai tugas', icon: 'document-text', tint: '#2F6FB2', category: 'Pekerjaan', roles: e, route: '/tugas-guru', perms: ['academic.grade'] },
   { key: 'aset', title: 'Aset & Sarpras', hint: 'Booking fasilitas, lapor rusak', icon: 'construct', tint: '#C8423B', category: 'Sarana', roles: e, route: '/aset', perms: ['asset.maintenance.request', 'facility.book'] },
-  { key: 'supervisi', title: 'Supervisi', hint: 'Kunjungan & tindak lanjut', icon: 'eye', tint: '#116149', category: 'Pekerjaan', roles: e, phase: 1 },
+  { key: 'supervisi', title: 'Supervisi', hint: 'Kunjungan & tindak lanjut', icon: 'eye', tint: '#116149', category: 'Pekerjaan', roles: e, route: '/supervisi', perms: ['supervisi.visit.view'] },
 
   // ---- Fase 2: wali ----
   { key: 'asrama', title: 'Asrama', hint: 'Poin, izin, kepulangan', icon: 'bed', tint: '#2F6FB2', category: 'Kesiswaan', roles: g, route: '/asrama' },

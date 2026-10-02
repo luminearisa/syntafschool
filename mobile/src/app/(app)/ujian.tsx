@@ -7,7 +7,8 @@ import { Button, Card, EmptyState, ErrorNote, Loading, Pill, Row, Screen, T } fr
 import { Sheet } from '@/components/forms';
 import { Hero } from '@/components/Hero';
 import { cbtHeartbeat, cbtIncident, cbtLoad, cbtSave, cbtStart, cbtSubmit, useCbtSessions, useInvalidateCbt, type CbtCard, type CbtPlayer, type CbtQuestion } from '@/api/cbt';
-import { errorMessage } from '@/api/client';
+import { errorMessage, get } from '@/api/client';
+import { useQuery } from '@tanstack/react-query';
 import { colors } from '@/theme';
 
 type R = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -25,6 +26,7 @@ export default function Ujian() {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [initial, setInitial] = useState<CbtPlayer | null>(null);
+  const [review, setReview] = useState<number | null>(null);
 
   const begin = async (s: CbtCard) => {
     setBusy(true);
@@ -58,6 +60,7 @@ export default function Ujian() {
                 {s.attempt.percentage !== null ? ` · nilai ${Math.round(Number(s.attempt.percentage))}%${s.attempt.passed === null ? '' : s.attempt.passed ? ' (lulus)' : ' (belum lulus)'}` : ''}
               </Text>
             ) : null}
+            {s.attempt && s.attempt.percentage !== null && ['submitted', 'graded', 'expired'].includes(s.attempt.status) ? <Button label="Lihat pembahasan" variant="ghost" icon="document-text-outline" onPress={() => setReview(s.attempt!.id)} /> : null}
             {inProgress ? <Button label="Lanjutkan ujian" icon="play" onPress={() => resume(s.attempt!.id)} loading={busy} /> : null}
             {!inProgress && canStart ? <Button label="Mulai ujian" icon="play" onPress={() => setStarting(s)} /> : null}
             {s.status === 'scheduled' ? <Text style={T.small}>Ujian dibuka oleh pengawas pada waktunya.</Text> : null}
@@ -81,8 +84,29 @@ export default function Ujian() {
         </Sheet>
       ) : null}
 
+      {review ? <Review id={review} onClose={() => setReview(null)} /> : null}
       {attemptId && initial ? <Player initial={initial} onExit={() => { setAttemptId(null); setInitial(null); refresh(); }} /> : null}
     </Screen>
+  );
+}
+
+function Review({ id, onClose }: { id: number; onClose: () => void }) {
+  const q = useQuery({ queryKey: ['cbt', 'review', id], queryFn: () => get<R>(`/cbt/attempts/${id}/review`) });
+  const d = q.data;
+  const show = (r: R | null) => (r ? Object.values(r).map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ') : '–');
+  return (
+    <Sheet visible title="Pembahasan" onClose={onClose}>
+      {q.isLoading ? <Loading /> : q.error ? <ErrorNote message={errorMessage(q.error)} onRetry={() => q.refetch()} /> : null}
+      {d ? <Card><Row left={<Text style={T.title}>Nilai</Text>} right={<Text style={{ fontSize: 22, fontWeight: '800', color: colors.primary }}>{d.attempt.percentage !== null ? `${Math.round(Number(d.attempt.percentage))}%` : '–'}</Text>} /></Card> : null}
+      {(d?.answers ?? []).map((a: R, i: number) => (
+        <Card key={a.id}>
+          <Row left={<Text style={T.small}>Soal {i + 1}</Text>} right={a.is_correct === null || a.is_correct === undefined ? <Pill label={a.awarded === null ? 'Menunggu nilai' : `${a.awarded}/${a.max_points}`} color={colors.info} /> : <Pill label={a.is_correct ? 'Benar' : 'Kurang tepat'} color={a.is_correct ? colors.success : colors.danger} />} />
+          <Text style={T.body}>{a.stem}</Text>
+          <Text style={T.small}>Jawaban Anda: {show(a.response)}</Text>
+          {a.explanation ? <Text style={[T.body, { fontStyle: 'italic' }]}>{a.explanation}</Text> : null}
+        </Card>
+      ))}
+    </Sheet>
   );
 }
 
