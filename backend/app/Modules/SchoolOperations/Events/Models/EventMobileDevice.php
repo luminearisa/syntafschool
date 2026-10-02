@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\SchoolOperations\Events\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+/**
+ * EventMobileDevice — tabel `event_mobile_devices`.
+ *
+ * Relasi hanya dibentuk untuk rujukan di dalam modul Event. Kolom yang
+ * menunjuk modul lain diakses lewat kontrak/gateway, bukan relasi Eloquent.
+ */
+class EventMobileDevice extends Model
+{
+    use SoftDeletes;
+
+    /** Tabel yang dipetakan (disebut eksplisit agar aman terhadap bentuk jamak tak beraturan). */
+    protected $table = 'event_mobile_devices';
+    use SoftDeletes;
+    /** Kolom yang boleh diisi massal. */
+    protected $guarded = ['id'];
+
+    protected function casts(): array
+    {
+        return [
+            'event_id' => 'integer',
+            'user_id' => 'integer',
+            'offline_enabled' => 'boolean',
+            'last_sync_at' => 'datetime',
+            'pending_sync_count' => 'integer',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'deleted_at' => 'datetime',
+        ];
+    }
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class, 'event_id');
+    }
+}
