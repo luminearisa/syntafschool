@@ -12,6 +12,7 @@ use App\Modules\Workflow\Providers\WorkflowServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase2ServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase3ServiceProvider;
 use App\Modules\SchoolOperations\Transportation\Providers\TransportationServiceProvider;
+use App\Modules\SchoolOperations\Laundry\Providers\LaundryServiceProvider;
 use App\Modules\SchoolOperations\Religious\Providers\ReligiousServiceProvider;
 use App\Modules\SchoolOperations\Competitions\Providers\CompetitionServiceProvider;
 use App\Modules\Hrd\Providers\HrdServiceProvider;
@@ -88,4 +89,13 @@ return [
     ReligiousServiceProvider::class,
     // Competition Management domain engine (School Operations Phase 5).
     CompetitionServiceProvider::class,
+
+    // Modul School Operations — Laundry Management: layanan & harga laundry,
+    // policy jatah gratis berversi, entitlement per periode + carry-over +
+    // ledger, order dengan split free/paid tersnapshot, pembayaran Wallet/RFID
+    // idempoten + refund, batch processing, QC, insiden & kompensasi,
+    // pickup/delivery terverifikasi, portal santri & wali, notifikasi,
+    // laporan, dan audit. Wallet/Student/Parent/Boarding/Finance/Notification
+    // tetap milik modulnya masing-masing — laundry hanya memakai provider.
+    LaundryServiceProvider::class,
 ];
