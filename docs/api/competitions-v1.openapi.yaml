@@ -1,0 +1,442 @@
+openapi: 3.1.0
+info:
+  title: Syntaf School ERP — Competition Management API
+  version: 1.0.0
+  description: >-
+    Competition domain API. Competition owns competition-specific state and references
+    Student, Parent, HRD, Finance, Facility, Certificate and Achievement data through providers.
+servers:
+  - url: /api/v1
+security:
+  - sanctumBearer: []
+tags:
+  - name: Competitions
+  - name: Editions
+  - name: Registrations
+  - name: Operations
+  - name: Scoring
+  - name: Results
+  - name: Public
+paths:
+  /competitions:
+    get:
+      tags: [Competitions]
+      summary: List competitions in the caller's campus/organization scope
+      x-permission: competition.view
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: domain
+          in: query
+          schema: { type: integer }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedSuccess' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Competitions]
+      summary: Create a competition master
+      x-permission: competition.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompetitionCreate' }
+      responses:
+        '201': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competitions/{competition}:
+    parameters:
+      - $ref: '#/components/parameters/CompetitionId'
+    get:
+      tags: [Competitions]
+      summary: Competition master, type/domain and edition summaries
+      x-permission: competition.view
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Competitions]
+      summary: Update a draft/planning competition master
+      x-permission: competition.update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CompetitionCreate' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Competitions]
+      summary: Soft-delete a draft master without editions
+      x-permission: competition.delete
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-templates:
+    get:
+      tags: [Competitions]
+      summary: List active competition templates
+      x-permission: competition.view
+      parameters:
+        - name: type_id
+          in: query
+          schema: { type: integer }
+        - name: domain_id
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedSuccess' }
+  /competitions/{competition}/editions/from-template:
+    post:
+      tags: [Editions]
+      summary: Create a clean edition structure from a template
+      x-permission: competition.update
+      parameters:
+        - $ref: '#/components/parameters/CompetitionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template_id, year]
+              properties:
+                template_id: { type: integer, minimum: 1 }
+                year: { type: integer, minimum: 2000, maximum: 2200 }
+                name: { type: string, maxLength: 200 }
+                starts_on: { type: string, format: date }
+                ends_on: { type: string, format: date }
+                registration_opens: { type: string, format: date-time }
+                registration_closes: { type: string, format: date-time }
+      responses:
+        '201': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-discover:
+    get:
+      tags: [Registrations]
+      summary: Discover open, published internal competitions in scope
+      x-permission: registration.create
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedSuccess' }
+  /competition-editions/{edition}/registrations:
+    parameters:
+      - $ref: '#/components/parameters/EditionId'
+    get:
+      tags: [Registrations]
+      summary: List edition registrations
+      x-permission: registration.view
+      parameters:
+        - name: category_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { $ref: '#/components/responses/PaginatedSuccess' }
+    post:
+      tags: [Registrations]
+      summary: Create an idempotent registration draft
+      x-permission: registration.create
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, maxLength: 120 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category_id]
+              properties:
+                category_id: { type: integer }
+                participant_type: { type: string, enum: [STUDENT, TEAM, EMPLOYEE, TEACHER, EXTERNAL, ORGANIZATION] }
+                student_id: { type: integer }
+                team_id: { type: integer }
+                external_participant_name: { type: string, maxLength: 200 }
+                institution_name: { type: string, maxLength: 200 }
+                idempotency_key: { type: string, maxLength: 120 }
+                metadata: { type: object }
+      responses:
+        '201': { $ref: '#/components/responses/Success' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-registrations/{registration}/submit:
+    post:
+      tags: [Registrations]
+      summary: Evaluate eligibility and submit a registration
+      x-permission: registration.create
+      parameters:
+        - $ref: '#/components/parameters/RegistrationId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                values: { type: object }
+                consent: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-registrations/{registration}/approve:
+    post:
+      tags: [Registrations]
+      summary: Approve an eligible registration after mandatory gates pass
+      x-permission: registration.approve
+      parameters:
+        - $ref: '#/components/parameters/RegistrationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision: { type: string, enum: [APPROVED] }
+                reason: { type: string, maxLength: 2000 }
+                override: { type: boolean, default: false }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-rounds/{round}/generate-fixtures:
+    post:
+      tags: [Operations]
+      summary: Generate knockout, round-robin, or Swiss first-round fixtures
+      x-permission: schedule.manage
+      parameters:
+        - name: round
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format: { type: string, enum: [KNOCKOUT, BRACKET, ROUND_ROBIN, GROUP, SWISS] }
+                bracket_size: { type: integer, minimum: 2 }
+                home_away: { type: boolean }
+                qualification_count: { type: integer, minimum: 1 }
+      responses:
+        '201': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-matches/{match}/scorecards:
+    post:
+      tags: [Scoring]
+      summary: Save or submit a judge rubric scorecard
+      x-permission: score.enter
+      parameters:
+        - name: match
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [participant_id, scores]
+              properties:
+                participant_id: { type: integer }
+                rubric_id: { type: integer }
+                idempotency_key: { type: string }
+                submit: { type: boolean }
+                scores:
+                  type: array
+                  items:
+                    type: object
+                    required: [criterion_id, score]
+                    properties:
+                      criterion_id: { type: integer }
+                      score: { type: number }
+                      comment: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-scorecards/{scorecard}/finalize:
+    post:
+      tags: [Scoring]
+      summary: Lock a submitted scorecard and persist its version snapshot
+      x-permission: score.finalize
+      parameters:
+        - name: scorecard
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                review_note: { type: string, maxLength: 2000 }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-editions/{edition}/results/finalize:
+    post:
+      tags: [Results]
+      summary: Aggregate finalized scorecards into locked category results and rankings
+      x-permission: result.finalize
+      parameters:
+        - $ref: '#/components/parameters/EditionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [category_id]
+              properties:
+                category_id: { type: integer }
+                round_id: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /competition-editions/{edition}/results/publish:
+    post:
+      tags: [Results]
+      summary: Publish finalized results for public/private scoreboard consumers
+      x-permission: result.publish
+      parameters:
+        - $ref: '#/components/parameters/EditionId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category_id: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /public/competitions/{slug}:
+    get:
+      tags: [Public]
+      summary: Published public competition page and published results only
+      security: []
+      servers:
+        - url: /api/v1
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    sanctumBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  parameters:
+    CompetitionId:
+      name: competition
+      in: path
+      required: true
+      schema: { type: integer }
+    EditionId:
+      name: edition
+      in: path
+      required: true
+      schema: { type: integer }
+    RegistrationId:
+      name: registration
+      in: path
+      required: true
+      schema: { type: integer }
+    Search:
+      name: search
+      in: query
+      schema: { type: string, maxLength: 120 }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  schemas:
+    CompetitionCreate:
+      type: object
+      required: [competition_type_id, name]
+      properties:
+        competition_type_id: { type: integer }
+        competition_domain_id: { type: integer }
+        name: { type: string, maxLength: 200 }
+        code: { type: string, maxLength: 60 }
+        slug: { type: string, maxLength: 220 }
+        description: { type: string }
+        organizer_name: { type: string, maxLength: 200 }
+        campus_id: { type: integer }
+        organization_id: { type: integer }
+        default_visibility: { type: string, enum: [INTERNAL, PRIVATE, PUBLIC] }
+        default_participant_mode: { type: string, enum: [INDIVIDUAL, TEAM, MIXED, ORGANIZATION] }
+        settings: { type: object }
+    SuccessEnvelope:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, const: true }
+        message: { type: string }
+        data: {}
+    ErrorEnvelope:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, const: false }
+        message: { type: string }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    Success:
+      description: Successful operation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+    PaginatedSuccess:
+      description: Successful paginated query
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+    ValidationError:
+      description: Validation/business-rule failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Permission or scope denied
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Resource not found in caller scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }

@@ -23,6 +23,8 @@ class CompetitionIdempotencyKey extends Model
 
     protected $table = 'competition_idempotency_keys';
 
+    public $timestamps = false;
+
     /** Kolom `id` dijaga; sisanya diisi lewat layanan yang tervalidasi. */
     protected $guarded = [];
 

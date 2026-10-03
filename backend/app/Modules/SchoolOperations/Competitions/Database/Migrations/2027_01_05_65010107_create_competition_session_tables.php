@@ -60,7 +60,7 @@ return new class extends Migration
             $t->unsignedBigInteger('away_team_id')->nullable()->index();
             $t->string('venue_name', 150)->nullable();
             $t->unsignedBigInteger('room_id')->nullable()->index();
-            $t->dateTime('scheduled_at')->index();
+            $t->dateTime('scheduled_at')->nullable()->index();
             $t->dateTime('scheduled_end_at')->nullable();
             $t->dateTime('started_at')->nullable();
             $t->dateTime('ended_at')->nullable();

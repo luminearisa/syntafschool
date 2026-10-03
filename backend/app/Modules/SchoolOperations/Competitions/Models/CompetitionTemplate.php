@@ -41,12 +41,12 @@ class CompetitionTemplate extends Model
 
     public function competitionDomain(): BelongsTo
     {
-        return $this->belongsTo(CompetitionDomain::class);
+        return $this->belongsTo(CompetitionDomain::class, 'competition_domain_id');
     }
 
     public function competitionFormat(): BelongsTo
     {
-        return $this->belongsTo(CompetitionFormat::class);
+        return $this->belongsTo(CompetitionFormat::class, 'format_id');
     }
 
     public function competitionType(): BelongsTo
@@ -58,16 +58,16 @@ class CompetitionTemplate extends Model
 
     public function competitionTemplateCategorys(): HasMany
     {
-        return $this->hasMany(CompetitionTemplateCategory::class);
+        return $this->hasMany(CompetitionTemplateCategory::class, 'template_id');
     }
 
     public function competitionTemplateRules(): HasMany
     {
-        return $this->hasMany(CompetitionTemplateRule::class);
+        return $this->hasMany(CompetitionTemplateRule::class, 'template_id');
     }
 
     public function competitionTemplateRounds(): HasMany
     {
-        return $this->hasMany(CompetitionTemplateRound::class);
+        return $this->hasMany(CompetitionTemplateRound::class, 'template_id');
     }
 }

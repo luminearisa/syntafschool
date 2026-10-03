@@ -39,6 +39,6 @@ class CompetitionAwardRecipient extends Model
 
     public function competitionAward(): BelongsTo
     {
-        return $this->belongsTo(CompetitionAward::class);
+        return $this->belongsTo(CompetitionAward::class, 'award_id');
     }
 }

@@ -40,31 +40,31 @@ class CompetitionJudgeAssignment extends Model
 
     public function competitionCategory(): BelongsTo
     {
-        return $this->belongsTo(CompetitionCategory::class);
+        return $this->belongsTo(CompetitionCategory::class, 'category_id');
     }
 
     public function competitionEdition(): BelongsTo
     {
-        return $this->belongsTo(CompetitionEdition::class);
+        return $this->belongsTo(CompetitionEdition::class, 'edition_id');
     }
 
     public function competitionJudge(): BelongsTo
     {
-        return $this->belongsTo(CompetitionJudge::class);
+        return $this->belongsTo(CompetitionJudge::class, 'judge_id');
     }
 
     public function competitionMatch(): BelongsTo
     {
-        return $this->belongsTo(CompetitionMatch::class);
+        return $this->belongsTo(CompetitionMatch::class, 'match_id');
     }
 
     public function competitionRound(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRound::class);
+        return $this->belongsTo(CompetitionRound::class, 'round_id');
     }
 
     public function competitionSession(): BelongsTo
     {
-        return $this->belongsTo(CompetitionSession::class);
+        return $this->belongsTo(CompetitionSession::class, 'session_id');
     }
 }

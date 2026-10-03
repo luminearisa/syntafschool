@@ -41,6 +41,6 @@ class CompetitionTeamMember extends Model
 
     public function competitionTeam(): BelongsTo
     {
-        return $this->belongsTo(CompetitionTeam::class);
+        return $this->belongsTo(CompetitionTeam::class, 'team_id');
     }
 }

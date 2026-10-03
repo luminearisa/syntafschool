@@ -44,13 +44,13 @@ class CompetitionRubricCriterion extends Model
 
     public function competitionRubric(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRubric::class);
+        return $this->belongsTo(CompetitionRubric::class, 'rubric_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
 
     public function competitionScores(): HasMany
     {
-        return $this->hasMany(CompetitionScore::class);
+        return $this->hasMany(CompetitionScore::class, 'criterion_id');
     }
 }

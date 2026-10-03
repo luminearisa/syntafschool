@@ -41,6 +41,6 @@ class CompetitionFormat extends Model
 
     public function competitionTemplates(): HasMany
     {
-        return $this->hasMany(CompetitionTemplate::class);
+        return $this->hasMany(CompetitionTemplate::class, 'format_id');
     }
 }

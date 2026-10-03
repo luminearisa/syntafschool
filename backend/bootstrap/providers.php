@@ -13,6 +13,7 @@ use App\Modules\Hrd\Providers\HrdPhase2ServiceProvider;
 use App\Modules\Hrd\Providers\HrdPhase3ServiceProvider;
 use App\Modules\SchoolOperations\Transportation\Providers\TransportationServiceProvider;
 use App\Modules\SchoolOperations\Religious\Providers\ReligiousServiceProvider;
+use App\Modules\SchoolOperations\Competitions\Providers\CompetitionServiceProvider;
 use App\Modules\Hrd\Providers\HrdServiceProvider;
 use App\Providers\AppServiceProvider;
 
@@ -85,4 +86,6 @@ return [
     // /Activity/LMS/Facility/Asset/Inventory/Finance/Workflow dari modul yang
     // sudah ada — tidak menduplikasi master mana pun.
     ReligiousServiceProvider::class,
+    // Competition Management domain engine (School Operations Phase 5).
+    CompetitionServiceProvider::class,
 ];

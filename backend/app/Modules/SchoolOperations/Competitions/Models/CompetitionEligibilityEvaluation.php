@@ -41,13 +41,13 @@ class CompetitionEligibilityEvaluation extends Model
 
     public function competitionRegistration(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistration::class);
+        return $this->belongsTo(CompetitionRegistration::class, 'registration_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
 
     public function competitionEligibilityRuleResults(): HasMany
     {
-        return $this->hasMany(CompetitionEligibilityRuleResult::class);
+        return $this->hasMany(CompetitionEligibilityRuleResult::class, 'evaluation_id');
     }
 }

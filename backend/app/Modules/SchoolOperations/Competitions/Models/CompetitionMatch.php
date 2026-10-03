@@ -45,28 +45,28 @@ class CompetitionMatch extends Model
 
     public function competitionCategory(): BelongsTo
     {
-        return $this->belongsTo(CompetitionCategory::class);
+        return $this->belongsTo(CompetitionCategory::class, 'category_id');
     }
 
     public function competitionGroup(): BelongsTo
     {
-        return $this->belongsTo(CompetitionGroup::class);
+        return $this->belongsTo(CompetitionGroup::class, 'group_id');
     }
 
     public function competitionRound(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRound::class);
+        return $this->belongsTo(CompetitionRound::class, 'round_id');
     }
 
     public function competitionSession(): BelongsTo
     {
-        return $this->belongsTo(CompetitionSession::class);
+        return $this->belongsTo(CompetitionSession::class, 'session_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
 
     public function competitionJudgeAssignments(): HasMany
     {
-        return $this->hasMany(CompetitionJudgeAssignment::class);
+        return $this->hasMany(CompetitionJudgeAssignment::class, 'match_id');
     }
 }

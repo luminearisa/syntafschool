@@ -14,6 +14,8 @@ use App\Modules\Supervisi\Database\Seeders\SupPermissionSeeder;
 use App\Modules\UKS\Database\Seeders\UksPermissionSeeder;
 use App\Modules\Activity\Database\Seeders\ActivityMasterSeeder;
 use App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder;
+use App\Modules\SchoolOperations\Competitions\Database\Seeders\CompetitionMasterSeeder;
+use App\Modules\SchoolOperations\Competitions\Database\Seeders\CompetitionPermissionSeeder;
 use App\Modules\Asset\Database\Seeders\AssetMasterSeeder;
 use App\Modules\Asset\Database\Seeders\AssetPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowPermissionSeeder;
@@ -56,6 +58,7 @@ class DatabaseSeeder extends Seeder
             AssetPermissionSeeder::class,
             AssetMasterSeeder::class,
             ActivityPermissionSeeder::class,
+            CompetitionPermissionSeeder::class,
             // Modul Workflow: permission granular workflow.* + peran approver.
             WorkflowPermissionSeeder::class,
             // Modul HRD: izin granular hr.* + 13 peran (HR_ADMIN, HR_MANAGER,
@@ -73,6 +76,7 @@ class DatabaseSeeder extends Seeder
             SupInstrumentSeeder::class,
             // Master aktivitas: kategori, keterampilan, tujuan, periode bawaan.
             ActivityMasterSeeder::class,
+            CompetitionMasterSeeder::class,
             // Master BK: label kasus + template asesmen bawaan.
             BkEarlyWarningRuleSeeder::class,
             BkSlaPolicySeeder::class,

@@ -40,6 +40,6 @@ class CompetitionEligibilityRuleResult extends Model
 
     public function competitionEligibilityEvaluation(): BelongsTo
     {
-        return $this->belongsTo(CompetitionEligibilityEvaluation::class);
+        return $this->belongsTo(CompetitionEligibilityEvaluation::class, 'evaluation_id');
     }
 }

@@ -38,18 +38,18 @@ class CompetitionAward extends Model
 
     public function competitionCategory(): BelongsTo
     {
-        return $this->belongsTo(CompetitionCategory::class);
+        return $this->belongsTo(CompetitionCategory::class, 'category_id');
     }
 
     public function competitionEdition(): BelongsTo
     {
-        return $this->belongsTo(CompetitionEdition::class);
+        return $this->belongsTo(CompetitionEdition::class, 'edition_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
 
     public function competitionAwardRecipients(): HasMany
     {
-        return $this->hasMany(CompetitionAwardRecipient::class);
+        return $this->hasMany(CompetitionAwardRecipient::class, 'award_id');
     }
 }

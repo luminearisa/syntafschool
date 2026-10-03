@@ -42,58 +42,58 @@ class CompetitionRound extends Model
 
     public function competitionCategory(): BelongsTo
     {
-        return $this->belongsTo(CompetitionCategory::class);
+        return $this->belongsTo(CompetitionCategory::class, 'category_id');
     }
 
     public function competitionEdition(): BelongsTo
     {
-        return $this->belongsTo(CompetitionEdition::class);
+        return $this->belongsTo(CompetitionEdition::class, 'edition_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
 
     public function competitionGroups(): HasMany
     {
-        return $this->hasMany(CompetitionGroup::class);
+        return $this->hasMany(CompetitionGroup::class, 'round_id');
     }
 
     public function competitionBrackets(): HasMany
     {
-        return $this->hasMany(CompetitionBracket::class);
+        return $this->hasMany(CompetitionBracket::class, 'round_id');
     }
 
     public function competitionAdvancements(): HasMany
     {
-        return $this->hasMany(CompetitionAdvancement::class);
+        return $this->hasMany(CompetitionAdvancement::class, 'round_id');
     }
 
     public function competitionSessions(): HasMany
     {
-        return $this->hasMany(CompetitionSession::class);
+        return $this->hasMany(CompetitionSession::class, 'round_id');
     }
 
     public function competitionMatchs(): HasMany
     {
-        return $this->hasMany(CompetitionMatch::class);
+        return $this->hasMany(CompetitionMatch::class, 'round_id');
     }
 
     public function competitionJudgeAssignments(): HasMany
     {
-        return $this->hasMany(CompetitionJudgeAssignment::class);
+        return $this->hasMany(CompetitionJudgeAssignment::class, 'round_id');
     }
 
     public function competitionTieBreaks(): HasMany
     {
-        return $this->hasMany(CompetitionTieBreak::class);
+        return $this->hasMany(CompetitionTieBreak::class, 'round_id');
     }
 
     public function competitionResults(): HasMany
     {
-        return $this->hasMany(CompetitionResult::class);
+        return $this->hasMany(CompetitionResult::class, 'round_id');
     }
 
     public function competitionRankings(): HasMany
     {
-        return $this->hasMany(CompetitionRanking::class);
+        return $this->hasMany(CompetitionRanking::class, 'round_id');
     }
 }

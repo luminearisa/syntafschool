@@ -40,11 +40,11 @@ class CompetitionWaitlist extends Model
 
     public function competitionCategory(): BelongsTo
     {
-        return $this->belongsTo(CompetitionCategory::class);
+        return $this->belongsTo(CompetitionCategory::class, 'category_id');
     }
 
     public function competitionRegistration(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistration::class);
+        return $this->belongsTo(CompetitionRegistration::class, 'registration_id');
     }
 }

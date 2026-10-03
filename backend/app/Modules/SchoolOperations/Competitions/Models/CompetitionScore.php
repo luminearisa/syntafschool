@@ -41,11 +41,11 @@ class CompetitionScore extends Model
 
     public function competitionRubricCriterion(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRubricCriterion::class);
+        return $this->belongsTo(CompetitionRubricCriterion::class, 'criterion_id');
     }
 
     public function competitionScorecard(): BelongsTo
     {
-        return $this->belongsTo(CompetitionScorecard::class);
+        return $this->belongsTo(CompetitionScorecard::class, 'scorecard_id');
     }
 }

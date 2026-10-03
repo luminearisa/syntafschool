@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -53,7 +53,7 @@ function usePageContext(): PageContext {
   return { title, section };
 }
 
-export function AppLayout() {
+export function AppLayout({ children }: { children?: ReactNode } = {}) {
   const sidebarOpen = useUiStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
   const location = useLocation();
@@ -101,7 +101,7 @@ export function AppLayout() {
         <Header title={title} section={section} />
         <main id="main-content" className="app-main" tabIndex={-1}>
           <div className="app-page-content">
-            <Outlet />
+            {children ?? <Outlet />}
           </div>
         </main>
       </div>

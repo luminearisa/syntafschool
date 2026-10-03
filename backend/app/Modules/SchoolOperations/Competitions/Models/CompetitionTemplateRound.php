@@ -37,6 +37,6 @@ class CompetitionTemplateRound extends Model
 
     public function competitionTemplate(): BelongsTo
     {
-        return $this->belongsTo(CompetitionTemplate::class);
+        return $this->belongsTo(CompetitionTemplate::class, 'template_id');
     }
 }

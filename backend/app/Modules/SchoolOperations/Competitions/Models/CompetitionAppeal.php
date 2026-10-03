@@ -43,11 +43,11 @@ class CompetitionAppeal extends Model
 
     public function competitionEdition(): BelongsTo
     {
-        return $this->belongsTo(CompetitionEdition::class);
+        return $this->belongsTo(CompetitionEdition::class, 'edition_id');
     }
 
     public function competitionProtest(): BelongsTo
     {
-        return $this->belongsTo(CompetitionProtest::class);
+        return $this->belongsTo(CompetitionProtest::class, 'protest_id');
     }
 }

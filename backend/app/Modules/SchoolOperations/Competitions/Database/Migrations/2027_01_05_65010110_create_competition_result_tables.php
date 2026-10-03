@@ -146,11 +146,11 @@ return new class extends Migration
             $t->unsignedBigInteger('team_id')->nullable()->index();
             $t->unsignedBigInteger('student_id')->nullable()->index();
             $t->unsignedBigInteger('employee_id')->nullable()->index();
-            $t->string('certificate_number', 80)->unique();
+            $t->string('certificate_number', 80)->nullable()->unique();
             $t->string('certificate_type', 40)->index()->default('PARTICIPANT');
             $t->string('holder_name', 200);
             $t->date('issued_on')->nullable()->index();
-            $t->string('verification_code', 80)->unique();
+            $t->string('verification_code', 80)->nullable()->unique();
             $t->text('qr_payload')->nullable();
             $t->string('template_code', 60)->nullable();
             $t->string('file_path', 255)->nullable();

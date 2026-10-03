@@ -46,23 +46,23 @@ class CompetitionScorecard extends Model
 
     public function competitionRubric(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRubric::class);
+        return $this->belongsTo(CompetitionRubric::class, 'rubric_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
 
     public function competitionScores(): HasMany
     {
-        return $this->hasMany(CompetitionScore::class);
+        return $this->hasMany(CompetitionScore::class, 'scorecard_id');
     }
 
     public function competitionScoreVersions(): HasMany
     {
-        return $this->hasMany(CompetitionScoreVersion::class);
+        return $this->hasMany(CompetitionScoreVersion::class, 'scorecard_id');
     }
 
     public function competitionScoreAmendments(): HasMany
     {
-        return $this->hasMany(CompetitionScoreAmendment::class);
+        return $this->hasMany(CompetitionScoreAmendment::class, 'scorecard_id');
     }
 }

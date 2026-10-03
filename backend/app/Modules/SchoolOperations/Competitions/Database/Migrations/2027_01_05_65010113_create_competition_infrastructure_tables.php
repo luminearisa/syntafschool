@@ -61,7 +61,6 @@ return new class extends Migration
             $t->string('user_agent', 255)->nullable();
             $t->unsignedBigInteger('campus_id')->nullable()->index();
             $t->dateTime('created_at')->index();
-            $t->softDeletes();
         });
         Schema::create('competition_domain_events', function (Blueprint $t): void {
             $t->id();
@@ -71,10 +70,9 @@ return new class extends Migration
             $t->unsignedBigInteger('aggregate_id')->nullable()->index();
             $t->json('payload')->nullable();
             $t->json('channels')->nullable();
-            $t->boolean('published')->index()->default(true);
+            $t->boolean('published')->index()->default(false);
             $t->dateTime('published_at')->nullable();
             $t->dateTime('created_at')->nullable();
-            $t->softDeletes();
         });
         Schema::create('competition_idempotency_keys', function (Blueprint $t): void {
             $t->id();

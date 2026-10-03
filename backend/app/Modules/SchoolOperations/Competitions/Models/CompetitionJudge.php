@@ -40,11 +40,11 @@ class CompetitionJudge extends Model
 
     public function competitionJudgeAssignments(): HasMany
     {
-        return $this->hasMany(CompetitionJudgeAssignment::class);
+        return $this->hasMany(CompetitionJudgeAssignment::class, 'judge_id');
     }
 
     public function competitionJudgeConflicts(): HasMany
     {
-        return $this->hasMany(CompetitionJudgeConflict::class);
+        return $this->hasMany(CompetitionJudgeConflict::class, 'judge_id');
     }
 }

@@ -23,6 +23,8 @@ class CompetitionScoreVersion extends Model
 
     protected $table = 'competition_score_versions';
 
+    public $timestamps = false;
+
     /** Kolom `id` dijaga; sisanya diisi lewat layanan yang tervalidasi. */
     protected $guarded = [];
 
@@ -42,6 +44,6 @@ class CompetitionScoreVersion extends Model
 
     public function competitionScorecard(): BelongsTo
     {
-        return $this->belongsTo(CompetitionScorecard::class);
+        return $this->belongsTo(CompetitionScorecard::class, 'scorecard_id');
     }
 }

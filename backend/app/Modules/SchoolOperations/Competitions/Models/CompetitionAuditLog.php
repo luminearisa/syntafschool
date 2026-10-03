@@ -5,26 +5,30 @@ declare(strict_types=1);
 namespace App\Modules\SchoolOperations\Competitions\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use LogicException;
 
-/**
- * CompetitionAuditLog — tabel `competition_audit_logs`.
- *
- * Modul Competition hanya menyimpan keadaan khas kompetisi. Rujukan ke
- * modul lain (siswa, pegawai, keuangan, fasilitas) sengaja TIDAK dibuatkan
- * relasi Eloquent: modul ini bukan pemilik data tersebut dan mengaksesnya
- * lewat kontrak penyedia (§110).
- */
+/** Append-only evidence record. Deliberately has no soft-delete/update timestamp behavior. */
 class CompetitionAuditLog extends Model
 {
-    use SoftDeletes;
-
     protected $table = 'competition_audit_logs';
 
-    /** Kolom `id` dijaga; sisanya diisi lewat layanan yang tervalidasi. */
+    public $timestamps = false;
+
     protected $guarded = [];
+
+    public function save(array $options = [])
+    {
+        if ($this->exists && $this->isDirty()) {
+            throw new LogicException('Competition audit records are immutable.');
+        }
+
+        return parent::save($options);
+    }
+
+    public function delete(): ?bool
+    {
+        throw new LogicException('Competition audit records cannot be deleted.');
+    }
 
     protected function casts(): array
     {

@@ -38,6 +38,6 @@ class CompetitionConsent extends Model
 
     public function competitionRegistration(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistration::class);
+        return $this->belongsTo(CompetitionRegistration::class, 'registration_id');
     }
 }

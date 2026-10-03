@@ -37,11 +37,11 @@ class CompetitionTemplateCategory extends Model
 
     public function competitionDivision(): BelongsTo
     {
-        return $this->belongsTo(CompetitionDivision::class);
+        return $this->belongsTo(CompetitionDivision::class, 'competition_division_id');
     }
 
     public function competitionTemplate(): BelongsTo
     {
-        return $this->belongsTo(CompetitionTemplate::class);
+        return $this->belongsTo(CompetitionTemplate::class, 'template_id');
     }
 }

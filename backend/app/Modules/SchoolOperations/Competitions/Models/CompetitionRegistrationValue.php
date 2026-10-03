@@ -39,11 +39,11 @@ class CompetitionRegistrationValue extends Model
 
     public function competitionRegistration(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistration::class);
+        return $this->belongsTo(CompetitionRegistration::class, 'registration_id');
     }
 
     public function competitionRegistrationField(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistrationField::class);
+        return $this->belongsTo(CompetitionRegistrationField::class, 'field_id');
     }
 }

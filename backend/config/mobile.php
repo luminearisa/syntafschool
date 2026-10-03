@@ -30,6 +30,13 @@ return [
             'library/opac',
             'library/opac/*',
             'students/*/assignments',
+            // Competition portal: discover, register only a verified child, view own registrations and consent.
+            'competition-discover',
+            'competition-my-children',
+            'my-competitions',
+            'competition-editions/*/registrations',
+            'competition-registrations/*',
+            'competition-consents/*/decide',
         ],
         'student' => [
             'auth/*',
@@ -59,6 +66,11 @@ return [
             'library/opac',
             'library/opac/*',
             'library/members/me/card',
+            // Competition portal: pendaftaran hanya untuk identitas siswa aktif yang tertaut pada token.
+            'competition-discover',
+            'my-competitions',
+            'competition-editions/*/registrations',
+            'competition-registrations/*',
             // CBT: jalur siswa saja; `attempts/*/void` dan lainnya butuh izin proktor/pengelola (tidak dimiliki siswa).
             'cbt/my/sessions',
             'cbt/sessions/*/start',

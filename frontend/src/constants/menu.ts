@@ -18,6 +18,7 @@ import {
   Trophy,
   HeartHandshake,
   Bus,
+  MoonStar,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -35,6 +36,8 @@ import { bkMenu } from '@/routes/domains/bk';
 import { workflowMenu } from '@/routes/domains/workflow';
 import { assetMenu } from '@/routes/domains/asset';
 import { transportationMenu } from '@/routes/domains/transportation';
+import { religiousMenu } from '@/routes/domains/religious';
+import { competitionMenu } from '@/routes/domains/competitions';
 
 export interface MenuChild {
   label: string;
@@ -115,6 +118,15 @@ export const MENU_ITEMS: MenuItem[] = [
     permission: 'workflow.view',
     children: workflowMenu,
   },
+  { label: 'Jelajahi kompetisi', icon: Trophy, to: '/competitions/discover', permission: 'registration.create' },
+  { label: 'Kompetisi Saya', icon: Trophy, to: '/my-competitions', permission: 'competition.portal.student' },
+  { label: 'Kompetisi Anak', icon: Trophy, to: '/competitions/parent', permission: 'competition.portal.parent' },
+  {
+    label: 'Kompetisi',
+    icon: Trophy,
+    permission: 'competition.view',
+    children: competitionMenu,
+  },
   /*
    * Student Activity & Extracurricular — pengembangan diri siswa.
    *
@@ -180,6 +192,12 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: BookOpenCheck,
     permission: 'tahfiz.view',
     children: tahfizMenu,
+  },
+  {
+    label: 'Religius & Masjid',
+    icon: MoonStar,
+    permission: 'religious.view',
+    children: religiousMenu,
   },
   {
     label: 'Boarding / Pesantren',

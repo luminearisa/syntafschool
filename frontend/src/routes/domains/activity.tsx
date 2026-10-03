@@ -1,8 +1,8 @@
 import type { RouteObject } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import type { MenuChild } from '@/constants/menu';
 import { PermissionGuard } from '@/routes/PermissionGuard';
 import ActivityCatalogPage from '@/features/activity/pages/ActivityCatalogPage';
-import ActivityCompetitionsPage from '@/features/activity/pages/ActivityCompetitionsPage';
 import ActivityPortfolioPage from '@/features/activity/pages/ActivityPortfolioPage';
 import ActivityPublicPortfolioPage from '@/features/activity/pages/ActivityPublicPortfolioPage';
 import ActivityRecognitionPage from '@/features/activity/pages/ActivityRecognitionPage';
@@ -36,8 +36,10 @@ export const domainRoutes: RouteObject[] = [
   { path: 'activities/verify', element: guard('activity.view', <ActivityCertificateVerifyPage />) },
   { path: 'activities/portfolio', element: guard('activity.portfolio.view', <ActivityPortfolioPage />) },
   {
+    // Kompetisi kini dikelola domain Competition Management. Aktivitas siswa
+    // hanya mengorkestrasi keikutsertaan; jangan menampilkan engine lomba kedua.
     path: 'activities/competitions',
-    element: guard(['activity.competition.view', 'activity.competition.judge'], <ActivityCompetitionsPage />),
+    element: <Navigate to="/competitions" replace />,
   },
   {
     path: 'activities/recognition',
@@ -68,7 +70,6 @@ export const activityMenu: MenuChild[] = [
   { label: 'Aktivitas Anak', to: '/activities/parent', permission: 'activity.portal.view' },
   { label: 'Verifikasi Sertifikat', to: '/activities/verify', permission: 'activity.view' },
   { label: 'Portofolio & Transkrip', to: '/activities/portfolio', permission: 'activity.portfolio.view' },
-  { label: 'Kompetisi', to: '/activities/competitions', permission: ['activity.competition.view', 'activity.competition.judge'] },
   { label: 'Prestasi & Sertifikat', to: '/activities/recognition', permission: ['activity.achievement.view', 'activity.certificate.view'] },
   {
     label: 'Tata Kelola & Audit',

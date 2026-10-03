@@ -40,6 +40,6 @@ class CompetitionScoreAmendment extends Model
 
     public function competitionScorecard(): BelongsTo
     {
-        return $this->belongsTo(CompetitionScorecard::class);
+        return $this->belongsTo(CompetitionScorecard::class, 'scorecard_id');
     }
 }

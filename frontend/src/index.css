@@ -114,9 +114,7 @@ a {
   flex-direction: column;
   overflow: hidden;
   color: #e9f3ee;
-  background:
-    radial-gradient(ellipse at 4% 0%, rgba(56, 139, 108, 0.26), transparent 35%),
-    linear-gradient(180deg, #12332d 0%, #102c28 48%, #0d2723 100%);
+  background: #102c28;
   box-shadow: 10px 0 30px rgba(18, 46, 39, 0.07);
 }
 
@@ -190,7 +188,7 @@ a {
 
 .sidebar-brand-subtitle {
   margin-top: 3px;
-  color: #9fb9ad;
+  color: #bfd4ca;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.105em;
@@ -212,7 +210,7 @@ a {
 
 .sidebar-section-label {
   margin: 0 10px 9px;
-  color: #88a99b;
+  color: #b6cdc1;
   font-size: 9px;
   font-weight: 750;
   letter-spacing: 0.14em;
@@ -304,7 +302,7 @@ a {
   display: block;
   border-radius: 7px;
   padding: 6px 9px;
-  color: #9fb6aa;
+  color: #c2d5cb;
   font-size: 11.5px;
   font-weight: 520;
   line-height: 1.35;
@@ -318,8 +316,8 @@ a {
 }
 
 .sidebar-child-link.is-active {
-  color: #d0f4dd;
-  background: rgba(80, 164, 121, 0.18);
+  color: #f2fff7;
+  background: #145a45;
   font-weight: 650;
 }
 

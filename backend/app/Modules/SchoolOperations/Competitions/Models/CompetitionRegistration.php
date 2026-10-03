@@ -43,17 +43,17 @@ class CompetitionRegistration extends Model
 
     public function competitionCategory(): BelongsTo
     {
-        return $this->belongsTo(CompetitionCategory::class);
+        return $this->belongsTo(CompetitionCategory::class, 'category_id');
     }
 
     public function competitionEdition(): BelongsTo
     {
-        return $this->belongsTo(CompetitionEdition::class);
+        return $this->belongsTo(CompetitionEdition::class, 'edition_id');
     }
 
     public function competitionRegistrationForm(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistrationForm::class);
+        return $this->belongsTo(CompetitionRegistrationForm::class, 'form_id');
     }
 
     // ── Relasi ke anak di dalam modul ini ───────────────────────────
@@ -65,31 +65,31 @@ class CompetitionRegistration extends Model
 
     public function competitionRegistrationDocuments(): HasMany
     {
-        return $this->hasMany(CompetitionRegistrationDocument::class);
+        return $this->hasMany(CompetitionRegistrationDocument::class, 'registration_id');
     }
 
     public function competitionRegistrationStatusHistorys(): HasMany
     {
-        return $this->hasMany(CompetitionRegistrationStatusHistory::class);
+        return $this->hasMany(CompetitionRegistrationStatusHistory::class, 'registration_id');
     }
 
     public function competitionConsents(): HasMany
     {
-        return $this->hasMany(CompetitionConsent::class);
+        return $this->hasMany(CompetitionConsent::class, 'registration_id');
     }
 
     public function competitionEligibilityEvaluations(): HasMany
     {
-        return $this->hasMany(CompetitionEligibilityEvaluation::class);
+        return $this->hasMany(CompetitionEligibilityEvaluation::class, 'registration_id');
     }
 
     public function competitionParticipants(): HasMany
     {
-        return $this->hasMany(CompetitionParticipant::class);
+        return $this->hasMany(CompetitionParticipant::class, 'registration_id');
     }
 
     public function competitionWaitlists(): HasMany
     {
-        return $this->hasMany(CompetitionWaitlist::class);
+        return $this->hasMany(CompetitionWaitlist::class, 'registration_id');
     }
 }

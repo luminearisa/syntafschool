@@ -39,11 +39,11 @@ class CompetitionRegistrationDocument extends Model
 
     public function competitionDocumentRequirement(): BelongsTo
     {
-        return $this->belongsTo(CompetitionDocumentRequirement::class);
+        return $this->belongsTo(CompetitionDocumentRequirement::class, 'requirement_id');
     }
 
     public function competitionRegistration(): BelongsTo
     {
-        return $this->belongsTo(CompetitionRegistration::class);
+        return $this->belongsTo(CompetitionRegistration::class, 'registration_id');
     }
 }
