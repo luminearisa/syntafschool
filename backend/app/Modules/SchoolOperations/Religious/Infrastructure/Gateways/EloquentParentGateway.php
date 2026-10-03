@@ -2,7 +2,9 @@
 
 namespace App\Modules\SchoolOperations\Religious\Infrastructure\Gateways;
 
+use App\Models\User;
 use App\Modules\SchoolOperations\Religious\Domain\Contracts\ParentGatewayInterface;
+use App\Services\Mobile\ContextService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -14,29 +16,14 @@ class EloquentParentGateway implements ParentGatewayInterface
 
     protected function pivot(): ?string
     {
-        return $this->firstTable(['student_guardians', 'guardians', 'student_parents']);
+        return $this->firstTable(['student_guardians', 'student_parents']);
     }
 
     public function childrenFor(int $parentUserId): array
     {
-        $pivot = $this->pivot();
-        if ($pivot === null) {
-            return [];
-        }
+        $studentIds = $this->studentIdsForParent($parentUserId);
 
-        $columns = $this->columns($pivot);
-        $userColumn = $this->pick($columns, ['user_id', 'guardian_user_id', 'parent_user_id']);
-        if ($userColumn === null || ! in_array('student_id', $columns, true)) {
-            return [];
-        }
-
-        $ids = DB::table($pivot)->where($userColumn, $parentUserId)->pluck('student_id')->all();
-
-        $gateway = $this->delegate('App\\Modules\\Activity\\Domain\\Contracts\\ParentProviderInterface');
-
-        return array_values(array_filter(array_map(fn ($id): ?array => [
-            'id' => (int) $id,
-        ], $ids)));
+        return array_map(fn (int $id): array => ['id' => $id], $studentIds);
     }
 
     public function guardiansFor(int $studentId): array
@@ -52,19 +39,7 @@ class EloquentParentGateway implements ParentGatewayInterface
 
     public function canAccess(int $parentUserId, int $studentId): bool
     {
-        $pivot = $this->pivot();
-        if ($pivot === null) {
-            return false;
-        }
-
-        $columns = $this->columns($pivot);
-        $userColumn = $this->pick($columns, ['user_id', 'guardian_user_id', 'parent_user_id']);
-        if ($userColumn === null) {
-            return false;
-        }
-
-        return DB::table($pivot)->where($userColumn, $parentUserId)
-            ->where('student_id', $studentId)->exists();
+        return in_array($studentId, $this->studentIdsForParent($parentUserId), true);
     }
 
     public function available(): bool
@@ -75,5 +50,49 @@ class EloquentParentGateway implements ParentGatewayInterface
     public function unavailableReason(): ?string
     {
         return $this->available() ? null : 'Tabel relasi wali-siswa tidak tersedia pada instalasi ini.';
+    }
+
+    /**
+     * Relasi ERP memakai student_guardians.guardian_id, bukan user_id.
+     * Identitas Guardian dicari lewat ContextService agar mendukung tautan
+     * users.userable, user_identities, dan ppdb_parent_accounts dengan konsisten.
+     * Skema alternatif yang memang menyimpan user_id tetap didukung.
+     *
+     * @return list<int>
+     */
+    protected function studentIdsForParent(int $parentUserId): array
+    {
+        $pivot = $this->pivot();
+        if ($pivot === null) {
+            return [];
+        }
+
+        $columns = $this->columns($pivot);
+        if (! in_array('student_id', $columns, true)) {
+            return [];
+        }
+
+        $userColumn = $this->pick($columns, ['user_id', 'guardian_user_id', 'parent_user_id']);
+        if ($userColumn !== null) {
+            return DB::table($pivot)->where($userColumn, $parentUserId)
+                ->pluck('student_id')->map(fn ($id): int => (int) $id)->unique()->values()->all();
+        }
+
+        if (! in_array('guardian_id', $columns, true) || ! $this->has('users')) {
+            return [];
+        }
+
+        $user = User::query()->find($parentUserId);
+        if (! $user) {
+            return [];
+        }
+
+        $guardianIds = app(ContextService::class)->identityIds($user, ContextService::GUARDIAN);
+        if ($guardianIds === []) {
+            return [];
+        }
+
+        return DB::table($pivot)->whereIn('guardian_id', $guardianIds)
+            ->pluck('student_id')->map(fn ($id): int => (int) $id)->unique()->values()->all();
     }
 }

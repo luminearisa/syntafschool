@@ -3,6 +3,8 @@
 namespace App\Modules\SchoolOperations\Religious\Application\Services;
 
 use App\Modules\SchoolOperations\Religious\Domain\Contracts\ReligiousAccessProviderInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Support\ReligiousContext;
+use App\Services\Mobile\ContextService;
 
 /**
  * Cakupan & izin modul Religious (§4, §94).
@@ -137,9 +139,8 @@ class ReligiousScopeService
 
     public function __construct(
         protected ReligiousAccessProviderInterface $access,
-        protected \App\Modules\SchoolOperations\Religious\Domain\Support\ReligiousContext $context,
-    ) {
-    }
+        protected ReligiousContext $context,
+    ) {}
 
     public function can(string $ability, mixed $user = null): bool
     {
@@ -179,7 +180,8 @@ class ReligiousScopeService
             return ['visible' => true, 'student_ids' => null, 'reason' => 'Cakupan pengelola.'];
         }
 
-        $own = $user->student_id ?? null;
+        $own = app(ContextService::class)->studentId($user)
+            ?? ($user->student_id ?? null);
 
         return [
             'visible' => true,

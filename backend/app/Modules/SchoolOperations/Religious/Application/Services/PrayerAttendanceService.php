@@ -2,13 +2,17 @@
 
 namespace App\Modules\SchoolOperations\Religious\Application\Services;
 
-use App\Modules\SchoolOperations\Religious\Domain\Contracts\{
-    AttendanceGatewayInterface, BoardingGatewayInterface, DisciplineGatewayInterface, StudentGatewayInterface
-};
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\AttendanceGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\BoardingGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\DisciplineGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\StudentGatewayInterface;
 use App\Modules\SchoolOperations\Religious\Domain\Support\ReligiousContext;
-use App\Modules\SchoolOperations\Religious\Models\{
-    PrayerAttendanceAdjustment, PrayerAttendancePolicy, PrayerAttendanceRecord, PrayerSchedule, ReligiousDailyClosing
-};
+use App\Modules\SchoolOperations\Religious\Models\PrayerAttendanceAdjustment;
+use App\Modules\SchoolOperations\Religious\Models\PrayerAttendancePolicy;
+use App\Modules\SchoolOperations\Religious\Models\PrayerAttendanceRecord;
+use App\Modules\SchoolOperations\Religious\Models\PrayerSchedule;
+use App\Modules\SchoolOperations\Religious\Models\ReligiousDailyClosing;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -33,8 +37,7 @@ class PrayerAttendanceService
         protected BoardingGatewayInterface $boarding,
         protected StudentGatewayInterface $students,
         protected DisciplineGatewayInterface $discipline,
-    ) {
-    }
+    ) {}
 
     // ── Kebijakan & jendela (§25) ───────────────────────────────────────
 
@@ -44,44 +47,52 @@ class PrayerAttendanceService
      */
     public function policyFor(array $context): ?PrayerAttendancePolicy
     {
+        $date = isset($context['attendance_date'])
+            ? Carbon::parse($context['attendance_date'])->toDateString()
+            : now()->toDateString();
+
         $candidates = PrayerAttendancePolicy::query()->where('active', true)
             ->where('status', 'ACTIVE')
+            ->where(fn ($query) => $query->whereNull('effective_from')->orWhereDate('effective_from', '<=', $date))
+            ->where(fn ($query) => $query->whereNull('effective_until')->orWhereDate('effective_until', '>=', $date))
             ->orderByDesc('priority')->get();
 
         $best = null;
         $bestScore = -1;
+        $prayerType = strtoupper((string) ($context['prayer_type'] ?? ''));
 
         foreach ($candidates as $policy) {
-            $score = 0;
+            $score = match (strtoupper((string) $policy->scope_type)) {
+                'GLOBAL' => 1,
+                'ORGANIZATION' => ! empty($context['organization_id'])
+                    && (int) $policy->organization_id === (int) $context['organization_id'] ? 2 : 0,
+                'CAMPUS' => ! empty($context['campus_id'])
+                    && (int) $policy->campus_id === (int) $context['campus_id'] ? 3 : 0,
+                'GRADE' => ! empty($context['grade_level'])
+                    && (string) $policy->grade_level === (string) $context['grade_level'] ? 4 : 0,
+                'DORMITORY' => ! empty($context['dormitory_id'])
+                    && (int) $policy->dormitory_id === (int) $context['dormitory_id'] ? 5 : 0,
+                default => 0,
+            };
 
-            if ($policy->scope_type === 'GLOBAL') {
-                $score = 1;
-            }
-            if ($policy->scope_type === 'ORGANIZATION' && ! empty($context['organization_id'])
-                && (int) $policy->organization_id === (int) $context['organization_id']) {
-                $score = 2;
-            }
-            if ($policy->scope_type === 'CAMPUS' && ! empty($context['campus_id'])
-                && (int) $policy->campus_id === (int) $context['campus_id']) {
-                $score = 3;
-            }
-            if ($policy->scope_type === 'GRADE' && ! empty($context['grade_level'])
-                && (string) $policy->grade_level === (string) $context['grade_level']) {
-                $score = 4;
-            }
-            if ($policy->scope_type === 'DORMITORY' && ! empty($context['dormitory_id'])
-                && (int) $policy->dormitory_id === (int) $context['dormitory_id']) {
-                $score = 5;
+            if ($score === 0) {
+                continue;
             }
 
-            // Kebijakan yang menyebut jenis shalat tertentu lebih diutamakan.
-            if ($score > 0 && ! empty($context['prayer_type'])) {
-                $types = array_map('strtoupper', (array) ($policy->prayer_types ?? []));
-                if ($types !== [] && in_array(strtoupper((string) $context['prayer_type']), $types, true)) {
-                    $score += 10;
+            $types = array_map('strtoupper', (array) ($policy->prayer_types ?? []));
+            $score *= 2;
+            if ($prayerType !== '' && $types !== []) {
+                if (! in_array($prayerType, $types, true)) {
+                    continue;
                 }
+
+                // Jenis shalat menjadi pemecah seri; cakupan lebih spesifik
+                // tetap mengalahkan kebijakan global yang spesifik jenis.
+                $score++;
             }
 
+            // Kandidat diurutkan berdasar priority sehingga skor yang sama
+            // mempertahankan kebijakan dengan prioritas tertinggi.
             if ($score > $bestScore) {
                 $best = $policy;
                 $bestScore = $score;
@@ -94,56 +105,138 @@ class PrayerAttendanceService
     /**
      * Evaluasi apakah pencatatan berada dalam jendela yang sah (Aturan 5).
      *
-     * @return array{allowed:bool, status_hint:?string, reason:?string, policy_id:?int}
+     * @return array{allowed:bool, status_hint:?string, reason:?string, policy_id:?int, overrideable?:bool}
      */
     public function windowCheck(array $context, ?string $at = null): array
     {
+        $now = $at ? Carbon::parse($at) : now();
+        $date = isset($context['attendance_date'])
+            ? Carbon::parse($context['attendance_date'])->toDateString()
+            : $now->toDateString();
+        $prayerType = strtoupper((string) ($context['prayer_type'] ?? ''));
+        $context['attendance_date'] = $date;
+        $context['prayer_type'] = $prayerType;
+        $schedule = null;
+
+        if (! empty($context['prayer_schedule_id'])) {
+            $schedule = $this->matchingSchedule($context, $date, $prayerType);
+            if (! $schedule) {
+                return [
+                    'allowed' => false,
+                    'status_hint' => null,
+                    'reason' => 'Jadwal yang dipilih tidak sesuai tanggal atau jenis shalat.',
+                    'policy_id' => null,
+                    'overrideable' => false,
+                ];
+            }
+        }
+
         $policy = $this->policyFor($context);
-        $now = $at ? \Carbon\Carbon::parse($at) : now();
 
-        $schedule = ! empty($context['prayer_schedule_id'])
-            ? PrayerSchedule::query()->find($context['prayer_schedule_id'])
-            : null;
-
-        $adhan = $schedule?->adhan_time ? substr((string) $schedule->adhan_time, 0, 5)
-            : ($context['adhan_time'] ?? null);
-
-        if ($policy === null || $adhan === null) {
-            // Tanpa kebijakan & tanpa jadwal, pencatatan tetap diizinkan sebagai
-            // data operasional (mis. shalat sunnah atau kegiatan khusus).
+        if ($policy === null) {
+            // Tanpa kebijakan, pencatatan tetap diizinkan sebagai data operasional.
             return [
                 'allowed' => true,
                 'status_hint' => null,
-                'reason' => $policy === null
-                    ? 'Belum ada kebijakan presensi; dicatat sebagai data operasional.'
-                    : null,
+                'reason' => 'Belum ada kebijakan presensi; dicatat sebagai data operasional.',
                 'policy_id' => null,
+            ];
+        }
+
+        $schedule ??= $this->matchingSchedule($context, $date, $prayerType);
+        $adhan = $schedule?->adhan_time ? substr((string) $schedule->adhan_time, 0, 5) : null;
+
+        if ($adhan === null) {
+            return [
+                'allowed' => false,
+                'status_hint' => null,
+                'reason' => 'Jadwal adhan yang sesuai tidak ditemukan; presensi ditolak (Aturan 5).',
+                'policy_id' => $policy->getKey(),
+                'overrideable' => false,
             ];
         }
 
         $adhanMinutes = $this->context->timeToMinutes($adhan);
         $nowMinutes = ((int) $now->format('H')) * 60 + ((int) $now->format('i'));
+        $minutesFromAdhan = $nowMinutes - $adhanMinutes;
+        $scheduleDate = $schedule->schedule_date->toDateString();
 
-        $opens = $adhanMinutes - (int) $policy->window_before_minutes;
-        $closes = $adhanMinutes + (int) $policy->window_after_minutes;
-        $lateAfter = $adhanMinutes + (int) $policy->late_threshold_minutes;
-
-        if ($nowMinutes < $opens || $nowMinutes > $closes) {
+        // Waktu shalat seperti Isya boleh melewati tengah malam, tetapi hanya
+        // bila timestamp memang berada pada hari setelah tanggal jadwal.
+        if ($now->toDateString() === Carbon::parse($scheduleDate)->addDay()->toDateString()) {
+            $minutesFromAdhan += 1440;
+        } elseif ($now->toDateString() !== $scheduleDate) {
             return [
                 'allowed' => false,
                 'status_hint' => null,
-                'reason' => 'Di luar jendela presensi ('.$opens.'-'.$closes.' menit dari adhan). '
+                'reason' => 'Waktu pencatatan tidak berada pada tanggal jadwal yang dipilih.',
+                'policy_id' => $policy->getKey(),
+                'overrideable' => false,
+            ];
+        }
+
+        $opens = -(int) $policy->window_before_minutes;
+        $closes = (int) $policy->window_after_minutes;
+        $lateAfter = (int) $policy->late_threshold_minutes;
+
+        if ($minutesFromAdhan < $opens || $minutesFromAdhan > $closes) {
+            return [
+                'allowed' => false,
+                'status_hint' => null,
+                'reason' => 'Di luar jendela presensi ('.$opens.' hingga +'.$closes.' menit dari adhan). '
                     .'Gunakan penyesuaian berwenang (Aturan 5).',
                 'policy_id' => $policy->getKey(),
+                'overrideable' => true,
             ];
         }
 
         return [
             'allowed' => true,
-            'status_hint' => $nowMinutes > $lateAfter ? 'LATE' : 'PRESENT',
+            'status_hint' => $minutesFromAdhan > $lateAfter ? 'LATE' : 'PRESENT',
             'reason' => null,
             'policy_id' => $policy->getKey(),
         ];
+    }
+
+    /** Pilih jadwal untuk tanggal/shalat/lokasi yang diminta tanpa memakai jadwal lokasi lain. */
+    protected function matchingSchedule(array $context, string $date, string $prayerType): ?PrayerSchedule
+    {
+        $scheduleId = $context['prayer_schedule_id'] ?? null;
+
+        if ($scheduleId) {
+            $schedule = PrayerSchedule::query()->find($scheduleId);
+        } else {
+            $base = PrayerSchedule::query()->whereDate('schedule_date', $date)
+                ->where('prayer_type', $prayerType);
+            $schedule = null;
+
+            if (! empty($context['mosque_id'])) {
+                $schedule = (clone $base)->where('mosque_id', (int) $context['mosque_id'])->first();
+            }
+
+            if (! $schedule && ! empty($context['campus_id'])) {
+                $schedule = (clone $base)->where('campus_id', (int) $context['campus_id'])
+                    ->whereNull('mosque_id')->first();
+            }
+        }
+
+        if (! $schedule
+            || $schedule->schedule_date->toDateString() !== $date
+            || strtoupper((string) $schedule->prayer_type) !== $prayerType) {
+            return null;
+        }
+
+        if (! empty($context['mosque_id']) && $schedule->mosque_id !== null
+            && (int) $schedule->mosque_id !== (int) $context['mosque_id']) {
+            return null;
+        }
+
+        if (! empty($context['campus_id']) && $schedule->campus_id !== null
+            && (int) $schedule->campus_id !== (int) $context['campus_id']) {
+            return null;
+        }
+
+        return $schedule;
     }
 
     // ── Pencatatan (§22, §23, §39, §70) ───────────────────
@@ -151,30 +244,42 @@ class PrayerAttendanceService
     /**
      * Catat satu presensi shalat.
      *
-     * @param bool $authorized melewati validasi jendela (Aturan 5, penyesuaian)
+     * @param  bool  $authorized  melewati validasi jendela (Aturan 5, penyesuaian)
      */
-    public function record(array $payload, bool $authorized = false): array
+    public function record(array $payload, bool $authorized = false, ?string $authorizationReason = null): array
     {
-        $status = strtoupper((string) ($payload['status'] ?? 'PRESENT'));
+        $date = $payload['attendance_date'] ?? now()->toDateString();
+        $prayerType = strtoupper((string) ($payload['prayer_type'] ?? ''));
+
+        if ($prayerType === '') {
+            throw ValidationException::withMessages(['prayer_type' => 'Jenis shalat wajib diisi.']);
+        }
+
+        $check = $this->windowCheck(array_merge($payload, [
+            'attendance_date' => $date,
+            'prayer_type' => $prayerType,
+        ]), $payload['recorded_at'] ?? null);
+        if (! $check['allowed'] && (! $authorized || ! ($check['overrideable'] ?? false))) {
+            throw ValidationException::withMessages(['status' => $check['reason']]);
+        }
+
+        // Bila operator tidak menetapkan status manual, gunakan hasil evaluasi jendela.
+        $status = strtoupper((string) ($payload['status'] ?? $check['status_hint'] ?? 'PRESENT'));
         if (! in_array($status, self::STATUSES, true)) {
             throw ValidationException::withMessages([
                 'status' => 'Status presensi tidak dikenal: '.$status,
             ]);
         }
 
-        $date = $payload['attendance_date'] ?? now()->toDateString();
-        $prayerType = strtoupper((string) $payload['prayer_type']);
+        $authorizationReason = $authorized
+            ? ($authorizationReason ?? $payload['authorization_reason'] ?? null)
+            : null;
         $personKey = ! empty($payload['student_id']) ? 'student:'.$payload['student_id'] : 'employee:'.($payload['employee_id'] ?? '-');
-
-        $check = $this->windowCheck($payload + ['attendance_date' => $date], $payload['recorded_at'] ?? null);
-        if (! $check['allowed'] && ! $authorized) {
-            throw ValidationException::withMessages(['status' => $check['reason']]);
-        }
 
         // Idempotensi: satu orang, satu shalat, satu hari = satu catatan.
         $scopeKey = implode('|', [$personKey, $prayerType, $date, (string) ($payload['mosque_id'] ?? '-')]);
 
-        $outcome = $this->context->idempotent('prayer_attendance', $scopeKey, function () use ($payload, $status, $date, $prayerType, $check) {
+        $outcome = $this->context->idempotent('prayer_attendance', $scopeKey, function () use ($payload, $status, $date, $prayerType, $check, $authorized, $authorizationReason) {
             $record = PrayerAttendanceRecord::query()->create([
                 'mosque_id' => $payload['mosque_id'] ?? null,
                 'campus_id' => $payload['campus_id'] ?? null,
@@ -206,7 +311,8 @@ class PrayerAttendanceService
             $this->context->audit('religious.prayer_attendance.recorded', $record, [
                 'mosque_id' => $record->mosque_id, 'campus_id' => $record->campus_id,
                 'status' => $status, 'method' => $record->method,
-            ]);
+                'authorized_override' => $authorized,
+            ], $authorizationReason);
             $this->context->publish('PrayerAttendanceRecorded', $record, [
                 'prayer_type' => $prayerType, 'date' => $date, 'status' => $status,
             ]);
@@ -246,13 +352,13 @@ class PrayerAttendanceService
     }
 
     /** Catat massal (mis. satu asrama sekaligus). */
-    public function recordBulk(array $payloads, bool $authorized = false): array
+    public function recordBulk(array $payloads, bool $authorized = false, ?string $authorizationReason = null): array
     {
         $results = ['recorded' => 0, 'duplicates' => 0, 'failed' => 0, 'rows' => []];
 
         foreach ($payloads as $payload) {
             try {
-                $result = $this->record($payload, $authorized);
+                $result = $this->record($payload, $authorized, $authorizationReason);
                 $result['duplicate'] ? $results['duplicates']++ : $results['recorded']++;
                 $results['rows'][] = $result['attendance'];
             } catch (\Throwable $e) {
@@ -352,8 +458,8 @@ class PrayerAttendanceService
             'approved_by' => $this->context->actorId(),
             'approved_at' => now(),
             'is_authorized' => true,
-            'notes' => trim($adjustment->notes."
-".$approverNote) ?: null,
+            'notes' => trim($adjustment->notes.'
+'.$approverNote) ?: null,
         ])->save();
 
         $applied = false;

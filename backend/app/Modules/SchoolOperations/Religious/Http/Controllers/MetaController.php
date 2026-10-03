@@ -2,14 +2,28 @@
 
 namespace App\Modules\SchoolOperations\Religious\Http\Controllers;
 
-use App\Modules\SchoolOperations\Religious\Application\Services\{PrayerScheduleService, ReligiousScopeService};
-use App\Modules\SchoolOperations\Religious\Domain\Contracts\{
-    AssetGatewayInterface, AttendanceGatewayInterface, BoardingGatewayInterface, CateringGatewayInterface,
-    CertificateGatewayInterface, DisciplineGatewayInterface, DocumentGatewayInterface, EmployeeGatewayInterface,
-    EventGatewayInterface, FacilityGatewayInterface, FinanceGatewayInterface, InventoryGatewayInterface,
-    NotificationGatewayInterface, ParentGatewayInterface, StudentActivityGatewayInterface, StudentGatewayInterface,
-    TahfidzGatewayInterface, TeacherGatewayInterface, TransportationGatewayInterface, WorkflowGatewayInterface
-};
+use App\Modules\SchoolOperations\Religious\Application\Services\PrayerScheduleService;
+use App\Modules\SchoolOperations\Religious\Application\Services\ReligiousScopeService;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\AssetGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\AttendanceGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\BoardingGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\CateringGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\CertificateGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\DisciplineGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\DocumentGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\EmployeeGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\EventGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\FacilityGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\FinanceGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\InventoryGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\NotificationGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\ParentGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\StudentActivityGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\StudentGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\TahfidzGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\TeacherGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\TransportationGatewayInterface;
+use App\Modules\SchoolOperations\Religious\Domain\Contracts\WorkflowGatewayInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -26,11 +40,12 @@ class MetaController extends Controller
     public function __construct(
         private readonly PrayerScheduleService $prayers,
         private readonly ReligiousScopeService $scope,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
+        $request->user()->can('religious.view') || abort(403);
+
         return response()->json(['data' => [
             'module' => config('religious.module'),
             'domains' => [
@@ -53,6 +68,8 @@ class MetaController extends Controller
     /** Ketersediaan seluruh titik integrasi lintas modul (§77, §100). */
     public function integrations(Request $request): JsonResponse
     {
+        $request->user()->can('religious.view') || abort(403);
+
         $contracts = [
             'student' => StudentGatewayInterface::class,
             'parent' => ParentGatewayInterface::class,

@@ -3,6 +3,7 @@
 namespace App\Modules\SchoolOperations\Religious\Http\Controllers;
 
 use App\Modules\SchoolOperations\Religious\Application\Services\PrayerAttendanceService;
+use App\Modules\SchoolOperations\Religious\Models\PrayerAttendancePolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -10,9 +11,7 @@ use Illuminate\Routing\Controller;
 /** Presensi shalat, kebijakan, jendela, penyesuaian, dan penutupan harian (§22-§26, §70, §90). */
 class AttendanceController extends Controller
 {
-    public function __construct(private readonly PrayerAttendanceService $attendance)
-    {
-    }
+    public function __construct(private readonly PrayerAttendanceService $attendance) {}
 
     /** Catat presensi (§22, §90). Idempoten per orang+shalat+tanggal. */
     public function store(Request $request): JsonResponse
@@ -32,9 +31,17 @@ class AttendanceController extends Controller
             'method' => ['nullable', 'string'], 'device_code' => ['nullable', 'string'],
             'minutes_late' => ['nullable', 'integer'], 'recorded_at' => ['nullable'],
             'notes' => ['nullable', 'string'],
+            'authorized' => ['sometimes', 'boolean'],
+            'authorization_reason' => ['required_if:authorized,true', 'nullable', 'string', 'min:5', 'max:1000'],
         ]);
 
-        return response()->json(['data' => $this->attendance->record($validated, $request->boolean('authorized'))], 201);
+        $authorized = $this->authorizedOverride($request, $validated['authorized'] ?? false);
+        $authorizationReason = $validated['authorization_reason'] ?? null;
+        unset($validated['authorized'], $validated['authorization_reason']);
+
+        return response()->json([
+            'data' => $this->attendance->record($validated, $authorized, $authorizationReason),
+        ], 201);
     }
 
     public function bulk(Request $request): JsonResponse
@@ -43,9 +50,16 @@ class AttendanceController extends Controller
         $validated = $request->validate([
             'records' => ['required', 'array', 'min:1'],
             'records.*.prayer_type' => ['required', 'string'],
+            'authorized' => ['sometimes', 'boolean'],
+            'authorization_reason' => ['required_if:authorized,true', 'nullable', 'string', 'min:5', 'max:1000'],
         ]);
 
-        return response()->json(['data' => $this->attendance->recordBulk($validated['records'], $request->boolean('authorized'))], 201);
+        $authorized = $this->authorizedOverride($request, $validated['authorized'] ?? false);
+        $authorizationReason = $validated['authorization_reason'] ?? null;
+
+        return response()->json(['data' => $this->attendance->recordBulk(
+            $validated['records'], $authorized, $authorizationReason
+        )], 201);
     }
 
     /** Periksa jendela presensi sebelum mencatat (Aturan 5). */
@@ -64,7 +78,7 @@ class AttendanceController extends Controller
         $request->user()->can('religious.attendance.view') || abort(403);
 
         return response()->json(['data' => [
-            'policies' => \App\Modules\SchoolOperations\Religious\Models\PrayerAttendancePolicy::query()->where('active', true)->get(),
+            'policies' => PrayerAttendancePolicy::query()->where('active', true)->get(),
             'default' => config('religious.attendance.default_policy'),
         ]]);
     }
@@ -72,7 +86,7 @@ class AttendanceController extends Controller
     public function storePolicy(Request $request): JsonResponse
     {
         $request->user()->can('religious.settings.manage') || abort(403);
-        $policy = \App\Modules\SchoolOperations\Religious\Models\PrayerAttendancePolicy::query()->create($request->validate([
+        $policy = PrayerAttendancePolicy::query()->create($request->validate([
             'code' => ['required', 'string'], 'name' => ['required', 'string'],
             'scope_type' => ['nullable', 'string'], 'organization_id' => ['nullable', 'integer'],
             'campus_id' => ['nullable', 'integer'], 'dormitory_id' => ['nullable', 'integer'],
@@ -179,5 +193,22 @@ class AttendanceController extends Controller
         return response()->json(['data' => $this->attendance->forwardToDiscipline(
             $validated['from'], $validated['to'], $request->only(['student_id'])
         )]);
+    }
+
+    /**
+     * Override jendela presensi tidak boleh ditentukan sepihak oleh payload.
+     * Hanya petugas dengan izin persetujuan yang dapat melewatinya, dan alasannya
+     * wajib dikirim agar tercatat pada audit log.
+     */
+    private function authorizedOverride(Request $request, mixed $requested): bool
+    {
+        if (! filter_var($requested, FILTER_VALIDATE_BOOLEAN)) {
+            return false;
+        }
+
+        $request->user()->can('religious.attendance.approve')
+            || abort(403, 'Override jendela presensi memerlukan izin persetujuan.');
+
+        return true;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Modules\SchoolOperations\Religious\Domain\Support;
 use App\Modules\SchoolOperations\Religious\Models\ReligiousAuditLog;
 use App\Modules\SchoolOperations\Religious\Models\ReligiousEvent;
 use App\Modules\SchoolOperations\Religious\Models\ReligiousIdempotencyKey;
+use App\Services\Mobile\ContextService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -144,7 +145,7 @@ class ReligiousContext
         }
 
         try {
-            $result = DB::transaction(function () use ($scope, $key, $scopedKey, $callback, $meta): array {
+            $result = DB::transaction(function () use ($scope, $scopedKey, $callback, $meta): array {
                 ReligiousIdempotencyKey::query()->create([
                     'idempotency_key' => $scopedKey,
                     'scope' => $scope,
@@ -223,7 +224,7 @@ class ReligiousContext
             'campus_ids' => $this->campusIds($user),
             'mosque_ids' => $this->mosqueIds($user),
             'organization_ids' => $this->organizationIds($user),
-            'dormitory_ids' => $this->organizationIds($user),
+            'dormitory_ids' => $this->dormitoryIds($user),
             'is_global' => $this->isGlobal($user),
         ];
     }
@@ -252,9 +253,13 @@ class ReligiousContext
 
         return $this->safe(function () use ($user): array {
             $ids = [];
-            foreach (['campus_id', 'school_id'] as $attribute) {
-                if (! empty($user->{$attribute})) {
-                    $ids[] = (int) $user->{$attribute};
+            $userable = $this->safe(fn () => method_exists($user, 'userable') ? $user->userable : null);
+
+            foreach ([$user, $userable] as $source) {
+                foreach (['campus_id', 'school_id'] as $attribute) {
+                    if ($source !== null && ! empty($source->{$attribute})) {
+                        $ids[] = (int) $source->{$attribute};
+                    }
                 }
             }
 
@@ -278,7 +283,9 @@ class ReligiousContext
 
             if ($this->hasTable($pivot) && Schema::hasColumn($pivot, 'mosque_id')) {
                 $column = Schema::hasColumn($pivot, 'user_id') ? 'user_id' : 'employee_id';
-                $value = $column === 'user_id' ? $user->id : ($user->employee_id ?? null);
+                $value = $column === 'user_id'
+                    ? $user->id
+                    : ($user->employee_id ?? app(ContextService::class)->employeeId($user));
 
                 if ($value) {
                     return DB::table($pivot)->where($column, $value)->pluck('mosque_id')
@@ -310,7 +317,30 @@ class ReligiousContext
         }, []);
     }
 
-    /** Terapkan batas cakupan pada query builder (kolom kampus/masjid). */
+    public function dormitoryIds(mixed $user = null): array
+    {
+        $user ??= Auth::user();
+        if ($user === null || $this->isGlobal($user)) {
+            return [];
+        }
+
+        return $this->safe(function () use ($user): array {
+            $ids = [];
+            foreach (['dormitory_id', 'boarding_dormitory_id'] as $attribute) {
+                if (! empty($user->{$attribute})) {
+                    $ids[] = (int) $user->{$attribute};
+                }
+            }
+
+            if (method_exists($user, 'dormitories')) {
+                $ids = array_merge($ids, (array) $user->dormitories()->pluck('id')->all());
+            }
+
+            return array_values(array_unique(array_filter($ids)));
+        }, []);
+    }
+
+    /** Terapkan cakupan pada query. Tanpa scope eksplisit, akses ditolak. */
     public function applyScope(mixed $query, mixed $user = null, string $campusColumn = 'campus_id', string $mosqueColumn = 'mosque_id'): mixed
     {
         $scope = $this->scopeFor($user);
@@ -319,15 +349,25 @@ class ReligiousContext
             return $query;
         }
 
-        if ($scope['campus_ids'] && $this->columnExists($query, $campusColumn)) {
-            $query->whereIn($campusColumn, $scope['campus_ids']);
+        $hasCampusScope = $scope['campus_ids'] !== []
+            && $this->columnExists($query, $campusColumn);
+        $hasMosqueScope = $scope['mosque_ids'] !== []
+            && $this->columnExists($query, $mosqueColumn);
+
+        if (! $hasCampusScope && ! $hasMosqueScope) {
+            return $query->whereRaw('1 = 0');
         }
 
-        if ($scope['mosque_ids'] && $this->columnExists($query, $mosqueColumn)) {
-            $query->whereIn($mosqueColumn, $scope['mosque_ids']);
-        }
+        return $query->where(function ($nested) use ($scope, $campusColumn, $mosqueColumn, $hasCampusScope, $hasMosqueScope): void {
+            if ($hasCampusScope) {
+                $nested->whereIn($campusColumn, $scope['campus_ids']);
+            }
 
-        return $query;
+            if ($hasMosqueScope) {
+                $method = $hasCampusScope ? 'orWhereIn' : 'whereIn';
+                $nested->{$method}($mosqueColumn, $scope['mosque_ids']);
+            }
+        });
     }
 
     protected function columnExists(mixed $query, string $column): bool
