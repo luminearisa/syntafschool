@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Modules\SchoolOperations\Laundry\Domain\Events;
+
+/**
+ * Wallet charge gagal (mis. saldo tidak cukup).
+ *
+ * Event murni (bukan Eloquent event): dipublikasikan application service pada
+ * titik transisi yang sah, membawa id order + snapshot data secukupnya agar
+ * listener tidak perlu membaca ulang database.
+ */
+class LaundryPaymentFailed
+{
+    /** @param array<string, mixed> $data */
+    public function __construct(
+        public readonly int $orderId,
+        public readonly array $data = [],
+    ) {
+    }
+}

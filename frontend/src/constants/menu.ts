@@ -18,6 +18,7 @@ import {
   Trophy,
   HeartHandshake,
   Bus,
+  WashingMachine,
   MoonStar,
   ShoppingCart,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ import { bkMenu } from '@/routes/domains/bk';
 import { workflowMenu } from '@/routes/domains/workflow';
 import { assetMenu } from '@/routes/domains/asset';
 import { transportationMenu } from '@/routes/domains/transportation';
+import { laundryMenu } from '@/routes/domains/laundry';
 import { religiousMenu } from '@/routes/domains/religious';
 import { competitionMenu } from '@/routes/domains/competitions';
 import { procurementMenu } from '@/routes/domains/procurement';
@@ -87,6 +89,11 @@ export const MENU_ITEMS: MenuItem[] = [
     label: 'Transportasi',
     icon: Bus,
     children: transportationMenu,
+  },
+  {
+    label: 'Laundry',
+    icon: WashingMachine,
+    children: laundryMenu,
   },
   ...ppdbMenu,
   {
