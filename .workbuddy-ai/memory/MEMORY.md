@@ -40,7 +40,9 @@
 - Guest tanpa `Accept: application/json` → 500; override `redirectGuestsTo` di `bootstrap/app.php` jangan dihapus
 - `AcademicYear::value('start_date')` = Carbon → `->format('Y')`
 - BSD grep: `grep -E "a|b"`. **Jangan dua edit ke file sama dalam satu pesan.**
-- Belum ada repo Git → tidak ada rollback
+- **Repo Git ADA** (update 2026-10-03): `origin → github.com/luminearisa/syntafschool.git`, branch `main`.
+  Tapi user **melarang operasi git destruktif** (checkout/restore/reset/stash/clean/commit) — pull boleh,
+  dan pakai `merge --ff-only` + backup file dulu. Lihat aturan haram di memori user.
 
 ## Pola Modul Kompleks
 - Bentrok jadwal: `detectConflicts()` (daftar) + `assertNoConflict()`; `check-conflict` selalu 200 + `has_conflict`

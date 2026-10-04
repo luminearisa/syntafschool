@@ -15,6 +15,10 @@ use App\Modules\SchoolOperations\Transportation\Providers\TransportationServiceP
 use App\Modules\SchoolOperations\Religious\Providers\ReligiousServiceProvider;
 use App\Modules\SchoolOperations\Competitions\Providers\CompetitionServiceProvider;
 use App\Modules\Hrd\Providers\HrdServiceProvider;
+use App\Modules\Mutation\Providers\MutationServiceProvider;
+use App\Modules\Procurement\Providers\ProcurementServiceProvider;
+use App\Modules\Promotion\Providers\PromotionServiceProvider;
+use App\Modules\StudentProgress\Providers\StudentProgressServiceProvider;
 use App\Providers\AppServiceProvider;
 
 return [
@@ -88,4 +92,20 @@ return [
     ReligiousServiceProvider::class,
     // Competition Management domain engine (School Operations Phase 5).
     CompetitionServiceProvider::class,
+
+    // Modul Promotion (A10): kenaikan kelas & kelulusan (tabel promotion_*,
+    // graduations) + route /api/v1/promotion/* & /api/v1/graduations/*.
+    PromotionServiceProvider::class,
+    // Modul StudentProgress: prestasi & pelanggaran siswa + route
+    // /api/v1/student-achievements/* & /api/v1/student-violations/*.
+    StudentProgressServiceProvider::class,
+    // Modul Mutation: mutasi siswa (masuk/keluar/pindah) + tabel student_transfers
+    // + route /api/v1/student-transfers/*.
+    MutationServiceProvider::class,
+
+    // Modul Procurement & Vendor: PR → approval → RFQ → quotation → evaluasi →
+    // pemilihan vendor → PO → penerimaan → invoice → 3-way match → handoff
+    // Accounting. Tabel `proc_*` + route /api/v1/procurement/*. Menyediakan
+    // VendorProvider/ProcurementProvider untuk modul Asset lewat kontrak.
+    ProcurementServiceProvider::class,
 ];

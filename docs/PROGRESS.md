@@ -1780,3 +1780,50 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [ ] Ditunda (batas fase §103): GPS real-time, optimasi rute/AI, prediksi ETA lanjutan, pemeliharaan prediktif,
       protokol perangkat keras RFID/NFC, kanal notifikasi eksternal, impor CSV/Excel, pengarsipan terjadwal, suite PHPUnit
 - Detail: [docs/33](./33-MODUL-TRANSPORTASI-FASE-2.md)
+
+---
+
+## Modul Procurement & Vendor Management — `app/Modules/Procurement`
+
+- [x] **Skema**: 47 tabel berprefix `proc_` (7 berkas migrasi) — vendor & onboarding,
+      katalog, PR, RFQ, penawaran, evaluasi, pemilihan vendor, PO + versi, penerimaan
+      barang/jasa + inspeksi, invoice + matching + pengecualian, integrasi, kontrak,
+      anggaran, audit, log peristiwa, pengaturan
+- [x] **Domain**: 24 enum (status/jenis/aksi audit), 7 kontrak integrasi keluar
+      (Accounting, Budget, Inventory, Asset, Workflow, Notification, Document),
+      `IntegrationResult`, `ProcurementException`
+- [x] **Layanan** (20): penomoran dokumen (memakai `document_sequences`, atomik),
+      audit, peristiwa domain (outbox), integrasi (idempotensi), kontrol aturan bisnis,
+      vendor & onboarding, kinerja vendor (scorecard dari data faktual), katalog,
+      PR + validasi + approval, RFQ, penawaran + matriks perbandingan, evaluasi
+      berbobot, pemilihan vendor (beralasan), PO + amandemen ber-versi, penerimaan +
+      inspeksi, penerimaan jasa, invoice + deteksi duplikat, 3-way matching +
+      pengecualian, handoff Accounting idempoten, anggaran, analitik/dasbor
+- [x] **API**: 10 controller, ±95 rute `/api/v1/procurement/*`, middleware
+      `permission:procurement.*`, batas laju per kanal
+- [x] **Integrasi dua arah**: memenuhi `Asset\Domain\Contracts\VendorProviderInterface`
+      & `ProcurementProviderInterface`; default `Null*` menjaga modul tetap jalan bila
+      modul tujuan belum terpasang (niat tercatat PENDING di `proc_integrations`)
+- [x] **Izin & peran**: 19 izin + 8 peran baru (`admin-pengadaan`, `manajer-pengadaan`,
+      `petugas-pengadaan`, `pemohon-pengadaan`, `verifikator-anggaran`,
+      `petugas-penerimaan`, `inspektur-mutu`, `verifikator-invoice`)
+- [x] **Seeder master**: 18 kategori bawaan, pengaturan toleransi, vendor contoh
+- [x] **Perintah artisan**: `procurement:vendor-performance`, `procurement:retry-handoff`
+- [x] Cek sintaks 141 berkas: bersih
+- [x] **Migrasi & uji asap**: 7 migrasi `proc_*` berjalan bersih; skrip
+      `backend/tests/Manual/procurement_smoke.php` menempuh alur emas end-to-end
+      (3 vendor → PR → approval → konsolidasi → RFQ → 3 penawaran → perbandingan →
+      evaluasi → pemilihan → PO → amandemen ber-versi → penerimaan sebagian+penuh →
+      invoice → 3-way match → handoff idempoten) — **41 lulus / 0 gagal**
+- [x] **Antarmuka React** (`frontend/src/features/procurement`) — 16 halaman:
+      dasbor, vendor (daftar/detail + onboarding, dokumen, klasifikasi, scorecard),
+      katalog (barang/jasa + kategori), PR (daftar/detail + validasi, approval,
+      linimasa, konsolidasi), RFQ (daftar/detail + penawaran, matriks perbandingan,
+      kriteria, evaluasi, pemilihan), PO (daftar/detail + amandemen, konfirmasi vendor,
+      tutup/batal, penerimaan), penerimaan (barang/jasa + inspeksi), invoice
+      (daftar/detail + matching, override, handoff, status bayar), pengecualian invoice,
+      laporan, pengaturan. Route & menu didaftarkan lewat
+      `routes/domains/procurement.tsx` (`domainRoutes` + `procurementMenu`)
+- [ ] Portal vendor, unggah/impor-ekspor berkas, PDF dokumen pengadaan
+- [ ] Suite PHPUnit otomatis (uji dilakukan lewat skrip smoke)
+- Detail: [docs/35](./35-MODUL-PROCUREMENT-VENDOR.md)

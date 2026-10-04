@@ -19,6 +19,7 @@ import {
   HeartHandshake,
   Bus,
   MoonStar,
+  ShoppingCart,
 } from 'lucide-react';
 import { MASTER_GROUPS, getResourcesByGroup } from './masterData';
 import { domainMenu } from '@/routes/domains';
@@ -38,6 +39,7 @@ import { assetMenu } from '@/routes/domains/asset';
 import { transportationMenu } from '@/routes/domains/transportation';
 import { religiousMenu } from '@/routes/domains/religious';
 import { competitionMenu } from '@/routes/domains/competitions';
+import { procurementMenu } from '@/routes/domains/procurement';
 
 export interface MenuChild {
   label: string;
@@ -217,6 +219,12 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: Package,
     permission: 'asset.view',
     children: assetMenu,
+  },
+  {
+    label: 'Pengadaan',
+    icon: ShoppingCart,
+    permission: 'procurement.view',
+    children: procurementMenu,
   },
   {
     label: 'Pengaturan',
