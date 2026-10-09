@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CalendarRange, ExternalLink, RefreshCw } from 'lucide-react';
@@ -10,7 +10,6 @@ import {
   ReloadButton,
   SectionCard,
   StatCard,
-  TabsNav,
   useUrlFilters,
 } from '../../components/ops/PpdbOpsUi';
 import { Badge } from '@/components/ui/Badge';
@@ -59,62 +58,37 @@ function actionPath(key: string): string {
   return '/ppdb/registrations';
 }
 
-function TrendBars({ rows, monthly }: { rows: { period: string; total: number }[]; monthly: boolean }) {
-  const items = useMemo(() => {
-    if (!monthly) {
-      return rows.map((row) => ({
-        label: formatDate(row.period),
-        value: Number(row.total ?? 0),
-      }));
-    }
-    const grouped = new Map<string, number>();
-    for (const row of rows) {
-      const month = row.period.slice(0, 7);
-      grouped.set(month, (grouped.get(month) ?? 0) + Number(row.total ?? 0));
-    }
-    return [...grouped.entries()].map(([month, total]) => ({
-      label: `${month.split('-')[1]}/${month.split('-')[0]}`,
-      value: total,
-    }));
-  }, [rows, monthly]);
-
-  return <BarChart items={items} emptyLabel="Belum ada aktivitas harian pada lingkup ini." />;
-}
-
 function DistributionPanels({ data }: { data: PpdbDashboard }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <SectionCard title="Distribusi per Program" description="Bar = jumlah pendaftar.">
         <BarChart
-          items={data.distribution.programs.map((program) => ({
+          items={(data.distribution.by_program ?? []).map((program) => ({
             label: program.name,
-            value: program.registrations,
-            hint:
-              program.quota && program.percent_of_quota != null
-                ? `${program.percent_of_quota}% kuota`
-                : undefined,
+            value: program.applications,
+            hint: program.has_quota ? `${program.filled_percent}% kuota` : undefined,
             to: `/ppdb/registrations?program_id=${program.id}`,
           }))}
         />
       </SectionCard>
       <SectionCard title="Distribusi per Gelombang" description="Bar = jumlah pendaftar.">
         <BarChart
-          items={data.distribution.waves.map((wave) => ({
+          items={(data.distribution.by_wave ?? []).map((wave) => ({
             label: wave.name,
-            value: wave.registrations,
-            hint: wave.percent_of_quota != null ? `${wave.percent_of_quota}% kuota` : undefined,
+            value: wave.applications,
+            hint: wave.has_quota ? `${wave.filled_percent}% kuota` : undefined,
             to: `/ppdb/registrations?wave_id=${wave.id}`,
           }))}
         />
       </SectionCard>
       <SectionCard
         title="Distribusi Jenis Kelamin"
-        description={data.distribution.genders ? 'Bar = jumlah calon.' : 'Tidak dikirim pada lingkup ini.'}
+        description={data.distribution.by_gender?.length ? 'Bar = jumlah calon.' : 'Tidak dikirim pada lingkup ini.'}
       >
         <BarChart
-          items={(data.distribution.genders ?? []).map((gender) => ({
+          items={(data.distribution.by_gender ?? []).map((gender) => ({
             label: gender.name || 'Belum diisi',
-            value: gender.total,
+            value: gender.applicants,
           }))}
         />
       </SectionCard>
@@ -130,7 +104,6 @@ export function PpdbDashboardPage() {
     'date_from',
     'date_to',
   ]);
-  const [trendMode, setTrendMode] = useState<'daily' | 'monthly'>('daily');
 
   const query = useQuery({
     queryKey: ['ppdb', 'dashboard', filters.values],
@@ -268,10 +241,10 @@ export function PpdbDashboardPage() {
               description="Persentase dihitung server terhadap pendaftar awal."
             >
               <BarChart
-                items={data.funnel.map((step) => ({
+                items={(data.funnel?.steps ?? []).map((step) => ({
                   label: step.label,
-                  value: step.total,
-                  hint: `${step.percent}%`,
+                  value: step.count,
+                  hint: `${step.percent_of_start}%`,
                   to: REGISTRATION_STATUSES.includes(step.key as PpdbRegistrationStatus)
                     ? `/ppdb/registrations${mergeQuery(scopeQuery, { status: step.key })}`
                     : undefined,
@@ -328,15 +301,15 @@ export function PpdbDashboardPage() {
             }
           >
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-              <StatCard label="Total tertagih" value={money(data.financial.billed)} tone="brand" />
-              <StatCard label="Terkumpul" value={money(data.financial.collected)} tone="green" />
+              <StatCard label="Total tertagih" value={money(data.financial.net_billed_amount)} tone="brand" />
+              <StatCard label="Terkumpul" value={money(data.financial.collected_amount)} tone="green" />
               <StatCard
                 label="Tunggakan"
-                value={money(data.financial.outstanding)}
-                tone={data.financial.outstanding > 0 ? 'red' : 'green'}
+                value={money(data.financial.outstanding_amount)}
+                tone={data.financial.outstanding_amount > 0 ? 'red' : 'green'}
               />
-              <StatCard label="Invoice lunas" value={data.financial.paid_invoices} tone="green" />
-              <StatCard label="Invoice belum lunas" value={data.financial.unpaid_invoices} tone="amber" />
+              <StatCard label="Invoice lunas" value={data.financial.paid_invoice_count} tone="green" />
+              <StatCard label="Invoice belum lunas" value={data.financial.open_invoice_count} tone="amber" />
               <StatCard
                 label="Pendaftar"
                 value={totalRegistrations}
@@ -366,10 +339,10 @@ export function PpdbDashboardPage() {
                   Terkumpul per metode
                 </p>
                 <BarChart
-                  items={(data.financial.by_method ?? []).map((method) => ({
-                    label: method.name,
-                    value: Number(method.total ?? 0),
-                    hint: `${method.count} transaksi`,
+                  items={(data.financial.by_payment_method ?? []).map((method) => ({
+                    label: method.label,
+                    value: Number(method.amount ?? 0),
+                    hint: `${method.payments} transaksi`,
                   }))}
                   formatValue={money}
                   barClass="bg-blue-500"
@@ -397,18 +370,19 @@ export function PpdbDashboardPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <SectionCard
               title="Tren Pendaftaran"
+              description={data.trend?.basis ?? 'Jumlah pendaftaran per periode.'}
               action={
-                <TabsNav
-                  tabs={[
-                    { key: 'daily', label: 'Harian' },
-                    { key: 'monthly', label: 'Bulanan' },
-                  ]}
-                  active={trendMode}
-                  onChange={setTrendMode}
-                />
+                <Badge tone="gray">{data.trend?.granularity === 'weekly' ? 'Mingguan' : 'Bulanan'}</Badge>
               }
             >
-              <TrendBars rows={data.trend} monthly={trendMode === 'monthly'} />
+              <BarChart
+                items={(data.trend?.points ?? []).map((point) => ({
+                  label: point.label,
+                  value: point.registrations,
+                  hint: `${point.submitted} terkirim · ${point.paid} lunas`,
+                }))}
+                emptyLabel="Belum ada pendaftaran pada rentang tren."
+              />
             </SectionCard>
 
             <SectionCard

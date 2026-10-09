@@ -871,36 +871,115 @@ export interface PpdbDashboard {
     by_document_status: Record<PpdbDocumentStatus, number>;
     by_account_status?: Partial<Record<PpdbAccountStatus, number>>;
   };
-  funnel: { key: string; label: string; total: number; percent: number }[];
+  /** Corong seleksi kumulatif — bentuk objek dengan `steps` (bukan array). */
+  funnel: {
+    basis: string;
+    total: number;
+    overall_conversion_percent: number;
+    steps: {
+      key: string;
+      label: string;
+      basis: string;
+      count: number;
+      drop_from_previous: number;
+      percent_of_start: number;
+      conversion_percent: number;
+    }[];
+  };
   financial: {
-    billed: number;
-    collected: number;
-    outstanding: number;
-    paid_invoices: number;
-    unpaid_invoices: number;
-    by_method?: { name: string; total: number; count: number }[];
+    currency: string;
+    invoice_count: number;
+    registration_count: number;
+    gross_amount: number;
+    discount_amount: number;
+    billed_amount: number;
+    net_billed_amount: number;
+    collected_amount: number;
+    outstanding_amount: number;
+    awaiting_verification_amount: number;
+    refunded_amount: number;
+    failed_amount: number;
+    collection_percent: number;
+    average_invoice_amount: number;
+    paid_invoice_count: number;
+    open_invoice_count: number;
+    overdue_invoice_count: number;
+    by_invoice_status: Record<
+      string,
+      { count: number; billed: number; collected: number; outstanding: number }
+    >;
+    by_payment_status: Record<string, number>;
+    by_channel?: PpdbPaymentSplit[];
+    by_payment_method?: PpdbPaymentSplit[];
   };
   distribution: {
-    programs: {
+    total_quota: number;
+    total_accepted: number;
+    filled_percent: number;
+    by_program: {
       id: number;
+      code: string;
       name: string;
-      quota: number | null;
-      registrations: number;
-      passed?: number;
-      percent_of_quota: number | null;
+      status: string;
+      applications: number;
+      applicants: number;
+      accepted: number;
+      quota: number;
+      has_quota: boolean;
+      remaining_quota: number;
+      filled_percent: number;
+      share_percent: number;
     }[];
-    waves: {
+    by_wave: {
       id: number;
+      code: string;
       name: string;
-      quota: number | null;
-      registrations: number;
-      percent_of_quota: number | null;
+      status: string;
+      applications: number;
+      accepted: number;
+      quota: number;
+      has_quota: boolean;
+      remaining_quota: number;
+      filled_percent: number;
+      share_percent: number;
     }[];
-    genders?: { name: string; total: number }[];
+    by_gender: { id: number; name: string; applicants: number; share_percent: number }[];
   };
-  pending_actions: { key: string; label: string; count: number; route_key?: string }[];
-  trend: { period: string; total: number }[];
+  pending_actions: {
+    key: string;
+    label: string;
+    description?: string;
+    count: number;
+    route_key?: string;
+  }[];
+  trend?: {
+    granularity: 'monthly' | 'weekly';
+    basis: string;
+    bucket_count: number;
+    total: number;
+    points: {
+      key: string;
+      label: string;
+      from: string;
+      to: string;
+      registrations: number;
+      submitted: number;
+      verified: number;
+      paid: number;
+      completed: number;
+    }[];
+  };
   top?: { label: string; total: number }[];
+}
+
+/** Baris `by_channel`/`by_payment_method` pada keuangan dasbor PPDB. */
+export interface PpdbPaymentSplit {
+  key: string;
+  label: string;
+  payments: number;
+  amount: number;
+  share_percent: number;
+  amount_percent: number;
 }
 
 /* ============================ LAPORAN ============================ */
