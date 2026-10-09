@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Input } from '@/components/ui/Input';
+import { CheckCircle2, CircleDollarSign, Scale, Users } from 'lucide-react';
 import { laundryApi } from '../api/laundryApi';
-import { DataTable, DateOnly, Money, Panel, Stat, StatusPill, Weight } from '../components/LaundryUi';
+import { DataTable, DateOnly, Money, PageHeader, Panel, Stat, StatusPill, Weight } from '../components/LaundryUi';
+import { cn } from '@/lib/utils';
 
 /**
  * Portal wali (§25/§26, §63, §71).
@@ -31,43 +32,61 @@ export default function ParentLaundryPage() {
   const context = overview.data;
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">Laundry Anak</h1>
-        <p className="text-sm text-slate-500">Jatah gratis, pemakaian, sisa, saldo wallet, dan riwayat laundry.</p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        icon={<Users className="h-6 w-6" />}
+        title="Laundry Anak"
+        description="Jatah gratis, pemakaian, sisa, saldo wallet, dan riwayat laundry."
+      />
 
-      <Panel title="Pilih anak">
+      <Panel title="Pilih anak" description="Data per anak sesuai tautan wali yang sah.">
         {children.isLoading ? <p className="text-sm text-slate-500">Memuat…</p> : (
           <div className="flex flex-wrap gap-2">
             {list.map((child, i) => {
               const student = (child.student ?? {}) as { id?: number; full_name?: string; nis?: string };
               const id = String(student.id ?? (child as unknown as { student_id?: number }).student_id ?? i);
+              const isActive = activeId === id || (!studentId && i === 0);
               return (
                 <button
                   key={id}
                   type="button"
                   onClick={() => setStudentId(id)}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium ${(activeId === id || (!studentId && i === 0)) ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700'}`}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:bg-brand-50/50',
+                  )}
                 >
+                  {isActive ? <CheckCircle2 className="h-4 w-4" /> : null}
                   {String(student.full_name ?? `Anak ${i + 1}`)}
+                  {student.nis ? <span className={cn('text-xs', isActive ? 'text-brand-100' : 'text-slate-400')}>NIS {student.nis}</span> : null}
                 </button>
               );
             })}
             {list.length === 0 ? <p className="text-sm text-slate-500">Belum ada anak tertaut.</p> : null}
           </div>
         )}
-        <div className="mt-2 hidden">
-          <Input value={studentId} onChange={(e) => setStudentId(e.target.value)} />
-        </div>
       </Panel>
 
       {activeId ? (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="Sisa jatah" value={<Weight value={context?.quota.remaining} />} hint={`${context?.quota.quota_type ?? ''} · periode ${context?.quota.period?.key ?? '—'}`} />
+            <Stat
+              label="Sisa jatah"
+              value={<Weight value={context?.quota.remaining} />}
+              icon={<Scale className="h-4 w-4" />}
+              tone="good"
+              hint={`${context?.quota.quota_type ?? ''} · periode ${context?.quota.period?.key ?? '—'}`}
+            />
             <Stat label="Terpakai" value={<Weight value={context?.quota.used} />} hint={`dari ${context?.quota.allocated ?? 0}`} />
-            <Stat label="Saldo wallet" value={<Money value={context?.wallet?.balance} />} hint={context?.wallet?.number ?? '—'} />
+            <Stat
+              label="Saldo wallet"
+              value={<Money value={context?.wallet?.balance} />}
+              icon={<CircleDollarSign className="h-4 w-4" />}
+              tone="brand"
+              hint={context?.wallet?.number ?? '—'}
+            />
             <Stat label="Total dibayar" value={<Money value={context?.paid_total} compact />} hint="periode berjalan" />
           </div>
 
@@ -78,7 +97,7 @@ export default function ParentLaundryPage() {
               empty="Belum ada order."
               columns={[
                 { key: 'order', header: 'Order', render: (r) => (
-                  <Link to={`/laundry/portal/${activeId}/orders/${r.id}`} className="font-medium underline">{r.order_number}</Link>
+                  <Link to={`/laundry/portal/${activeId}/orders/${r.id}`} className="font-medium text-brand-700 hover:underline">{r.order_number}</Link>
                 ) },
                 { key: 'date', header: 'Tanggal', render: (r) => <DateOnly value={r.order_date} /> },
                 { key: 'split', header: 'Gratis / Bayar', render: (r) => (

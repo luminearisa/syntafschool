@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+  ArrowRight, CircleDollarSign, Clock, PackageCheck, Shirt, Sparkles, Truck, TriangleAlert, WashingMachine, Waves,
+} from 'lucide-react';
 import { laundryApi } from '../api/laundryApi';
-import { DataTable, DateTime, Money, Panel, Stat, StatusPill, Weight } from '../components/LaundryUi';
+import { DataTable, DateTime, Money, PageHeader, Panel, Stat, StatusPill, Weight } from '../components/LaundryUi';
 import type { OrderSummary } from '../types';
 
 /**
@@ -34,44 +37,89 @@ export default function LaundryDashboardPage() {
   const data = dashboard.data;
   const ops = daily.data;
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Laundry Control Center</h1>
-          <p className="text-sm text-slate-500">
-            {data.date} · jatah gratis dipakai dulu, sisanya dibayar via Wallet/RFID
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link to="/laundry/receive" className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white">
-            Meja Penerimaan
-          </Link>
-          <Link to="/laundry/processing" className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">
-            Papan Proses
-          </Link>
-        </div>
-      </div>
+  const pipeline: Array<{ label: string; value: number; icon: React.ReactNode }> = [
+    { label: 'Mengantre', value: data.pipeline.queued, icon: <Clock className="h-4 w-4" /> },
+    { label: 'Mencuci', value: data.pipeline.washing, icon: <Waves className="h-4 w-4" /> },
+    { label: 'Mengeringkan', value: data.pipeline.drying, icon: <WashingMachine className="h-4 w-4" /> },
+    { label: 'Menyetrika', value: data.pipeline.ironing, icon: <Sparkles className="h-4 w-4" /> },
+    { label: 'Melipat', value: data.pipeline.folding, icon: <Shirt className="h-4 w-4" /> },
+    { label: 'QC', value: data.pipeline.quality_check, icon: <PackageCheck className="h-4 w-4" /> },
+    { label: 'Dikemas', value: data.pipeline.packaged, icon: <PackageCheck className="h-4 w-4" /> },
+    { label: 'Terkirim', value: data.pipeline.delivered, icon: <Truck className="h-4 w-4" /> },
+  ];
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-        <Stat label="Order hari ini" value={data.today.orders} hint={`${data.today.completed} selesai · ${data.today.cancelled} batal`} />
-        <Stat label="Berat hari ini" value={<Weight value={data.today.weight_kg} />} hint={`${data.today.received} baru diterima`} />
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        icon={<WashingMachine className="h-6 w-6" />}
+        title="Laundry Control Center"
+        description={<>Ringkasan operasional {data.date} · jatah gratis dipakai dulu, sisanya dibayar via Wallet/RFID.</>}
+        actions={
+          <>
+            <Link
+              to="/laundry/receive"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-700"
+            >
+              Meja Penerimaan <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/laundry/processing"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Papan Proses
+            </Link>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <Stat
+          label="Order hari ini"
+          value={data.today.orders}
+          icon={<Shirt className="h-4 w-4" />}
+          hint={`${data.today.completed} selesai · ${data.today.cancelled} batal`}
+        />
+        <Stat
+          label="Berat hari ini"
+          value={<Weight value={data.today.weight_kg} />}
+          icon={<Waves className="h-4 w-4" />}
+          tone="info"
+          hint={`${data.today.received} baru diterima`}
+        />
         <Stat
           label="Menunggu bayar"
           value={data.today.payment_required}
+          icon={<CircleDollarSign className="h-4 w-4" />}
           tone={data.today.payment_required > 0 ? 'warn' : 'good'}
           hint="porsi berbayar belum lunas"
         />
-        <Stat label="Dalam proses" value={data.pipeline.processing} hint={`cuci ${data.pipeline.washing} · kering ${data.pipeline.drying}`} />
-        <Stat label="Siap diambil" value={data.pipeline.ready} tone={data.pipeline.ready > 0 ? 'warn' : 'default'} hint={`${data.pipeline.packaged} dikemas`} />
-        <Stat label="Insiden terbuka" value={data.incidents_open} tone={data.incidents_open > 0 ? 'bad' : 'good'} hint={`${data.delayed} order telat`} />
+        <Stat
+          label="Dalam proses"
+          value={data.pipeline.processing}
+          icon={<WashingMachine className="h-4 w-4" />}
+          hint={`cuci ${data.pipeline.washing} · kering ${data.pipeline.drying}`}
+        />
+        <Stat
+          label="Siap diambil"
+          value={data.pipeline.ready}
+          icon={<PackageCheck className="h-4 w-4" />}
+          tone={data.pipeline.ready > 0 ? 'warn' : 'default'}
+          hint={`${data.pipeline.packaged} dikemas`}
+        />
+        <Stat
+          label="Insiden terbuka"
+          value={data.incidents_open}
+          icon={<TriangleAlert className="h-4 w-4" />}
+          tone={data.incidents_open > 0 ? 'bad' : 'good'}
+          hint={`${data.delayed} order telat`}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel
           title="Operasional hari ini"
           description="Order, kilogram gratis vs berbayar, dan pendapatan wallet"
-          action={<Link to="/laundry/reports" className="text-xs font-medium text-slate-600 underline">Semua laporan</Link>}
+          action={<Link to="/laundry/reports" className="text-xs font-medium text-brand-700 hover:underline">Semua laporan →</Link>}
         >
           {daily.isLoading || !ops ? (
             <p className="text-sm text-slate-500">Memuat…</p>
@@ -79,26 +127,32 @@ export default function LaundryDashboardPage() {
             <div className="grid grid-cols-2 gap-3">
               <Stat label="Total order" value={ops.total_orders} hint={`${ops.completed} selesai · ${ops.pending} berjalan`} />
               <Stat label="Total kg" value={<Weight value={ops.total_kg} />} hint={<span><Weight value={ops.free_kg} /> gratis · <Weight value={ops.paid_kg} /> bayar</span>} />
-              <Stat label="Pendapatan" value={<Money value={ops.paid_revenue} compact />} hint={`${ops.wallet_transactions} transaksi wallet`} />
-              <Stat label="Insiden" value={ops.incidents} tone={ops.incidents > 0 ? 'warn' : 'good'} />
+              <Stat label="Pendapatan" value={<Money value={ops.paid_revenue} compact />} tone="brand" hint={`${ops.wallet_transactions} transaksi wallet`} />
+              <Stat label="Insiden" value={ops.incidents} tone={ops.incidents > 0 ? 'warn' : 'good'} hint="laporan hari ini" />
             </div>
           )}
         </Panel>
 
         <Panel
           title="Antrean pemrosesan"
-          description="Order aktif per tahap — masuk lewat papan proses"
-          action={<Link to="/laundry/processing" className="text-xs font-medium text-slate-600 underline">Buka papan</Link>}
+          description="Order aktif per tahap — kelola lewat papan proses"
+          action={<Link to="/laundry/processing" className="text-xs font-medium text-brand-700 hover:underline">Buka papan →</Link>}
         >
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Antre" value={data.pipeline.queued} />
-            <Stat label="Cuci" value={data.pipeline.washing} />
-            <Stat label="Kering" value={data.pipeline.drying} />
-            <Stat label="Setrika" value={data.pipeline.ironing} />
-            <Stat label="Lipat" value={data.pipeline.folding} />
-            <Stat label="QC" value={data.pipeline.quality_check} />
-            <Stat label="Dikemas" value={data.pipeline.packaged} />
-            <Stat label="Terkirim" value={data.pipeline.delivered} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {pipeline.map((stage) => (
+              <div
+                key={stage.label}
+                className={`rounded-xl border p-3 transition-colors ${stage.value > 0 ? 'border-brand-200 bg-brand-50/50' : 'border-slate-200 bg-slate-50/50'}`}
+              >
+                <div className="flex items-center gap-1.5 text-slate-500">
+                  <span className={stage.value > 0 ? 'text-brand-600' : 'text-slate-400'}>{stage.icon}</span>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide">{stage.label}</p>
+                </div>
+                <p className={`mt-1.5 text-xl font-semibold tabular-nums ${stage.value > 0 ? 'text-brand-700' : 'text-slate-400'}`}>
+                  {stage.value}
+                </p>
+              </div>
+            ))}
           </div>
         </Panel>
       </div>
@@ -106,7 +160,7 @@ export default function LaundryDashboardPage() {
       <Panel
         title="Order terbaru"
         description="10 order terakhir — klik nomor untuk detail & timeline"
-        action={<Link to="/laundry/orders" className="text-xs font-medium text-slate-600 underline">Semua order</Link>}
+        action={<Link to="/laundry/orders" className="text-xs font-medium text-brand-700 hover:underline">Semua order →</Link>}
       >
         <DataTable<OrderSummary>
           loading={orders.isLoading}
@@ -116,7 +170,7 @@ export default function LaundryDashboardPage() {
             {
               key: 'order', header: 'Order', render: (row) => (
                 <div>
-                  <Link to={`/laundry/orders/${row.id}`} className="font-medium text-slate-800 underline">{row.order_number}</Link>
+                  <Link to={`/laundry/orders/${row.id}`} className="font-medium text-brand-700 hover:underline">{row.order_number}</Link>
                   <p className="text-xs text-slate-500">{row.service ?? '—'} · {row.order_date ?? '—'}</p>
                 </div>
               ),
