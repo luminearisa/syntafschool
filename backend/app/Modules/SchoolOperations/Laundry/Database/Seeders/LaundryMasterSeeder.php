@@ -67,11 +67,26 @@ class LaundryMasterSeeder extends Seeder
             );
         }
 
-        // Admin sistem mendapat seluruh izin laundry.
-        foreach (['SUPER_ADMIN', 'ADMIN'] as $adminRole) {
+        // Admin sistem mendapat seluruh izin laundry — cakup kedua konvensi
+        // penamaan peran yang dipakai basis kode ini: `SUPER_ADMIN`/`ADMIN`
+        // (modul berbasis konstanta) dan `super-admin`/`admin-sekolah`
+        // (RolePermissionSeeder inti, yang menjadi peran aktual akun admin).
+        foreach (['SUPER_ADMIN', 'ADMIN', 'super-admin', 'admin-sekolah'] as $adminRole) {
             $instance = $roleModel::query()->where('name', $adminRole)->first();
             if ($instance) {
                 $instance->givePermissionTo($all);
+            }
+        }
+
+        // Peran inti `siswa`/`wali-murid` (RolePermissionSeeder) adalah peran
+        // aktual akun santri/wali di instalasi nyata — tanpa `laundry.portal.view`,
+        // portal /me/laundry dan /parent/laundry menolak 403 untuk semua santri
+        // dan wali meskipun peran modul STUDENT/PARENT sudah dibuat.
+        $portal = $all->filter(fn ($permission) => $permission->name === 'laundry.portal.view')->values();
+        foreach (['siswa', 'wali-murid'] as $portalRole) {
+            $instance = $roleModel::query()->where('name', $portalRole)->first();
+            if ($instance) {
+                $instance->givePermissionTo($portal);
             }
         }
     }

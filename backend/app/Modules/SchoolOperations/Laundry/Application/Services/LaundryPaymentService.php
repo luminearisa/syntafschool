@@ -54,7 +54,13 @@ class LaundryPaymentService
      */
     public function preview(LaundryOrder $order): array
     {
-        $payable = $order->payableAmount();
+        // Tagihan hanya relevan bila order masih menunggu pembayaran — untuk
+        // order lunas/dibebaskan, payable = 0 supaya layar detail tidak
+        // menampilkan "sisa setelah bayar" yang menyesatkan (saldo dikurangi
+        // tagihan yang sebenarnya sudah terbayar).
+        $payable = in_array($order->payment_status, ['PAYMENT_REQUIRED', 'FAILED', 'PENDING'], true)
+            ? $order->payableAmount()
+            : 0.0;
         $account = $this->wallet->accountFor((int) $order->student_id);
         $balance = $account !== null ? LaundryMath::money($account['balance']) : null;
 

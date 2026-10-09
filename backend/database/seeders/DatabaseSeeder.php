@@ -28,6 +28,7 @@ use App\Modules\Bk\Database\Seeders\BkPermissionSeeder;
 use App\Modules\Bk\Database\Seeders\BkPhase2PermissionSeeder;
 use App\Modules\Bk\Database\Seeders\BkRetentionPolicySeeder;
 use App\Modules\Bk\Database\Seeders\BkSlaPolicySeeder;
+use App\Modules\SchoolOperations\Laundry\Database\Seeders\LaundryMasterSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -86,6 +87,11 @@ class DatabaseSeeder extends Seeder
             CbtPermissionSeeder::class,
         ClinicPermissionSeeder::class,
         ClinicMasterSeeder::class,
+            // Modul Laundry: izin granular laundry.* + peran LAUNDRY_* + layanan
+            // default (REGULAR/EXPRESS/...). Tanpa ini, seluruh endpoint /api/v1/laundry
+            // menolak 403 untuk semua pengguna termasuk admin karena izin tidak pernah
+            // dibuat — persis pola modul lain di atasnya.
+            LaundryMasterSeeder::class,
             ReferenceSeeder::class,
             AcademicSeeder::class,
             ReferenceFinanceLibrarySeeder::class,

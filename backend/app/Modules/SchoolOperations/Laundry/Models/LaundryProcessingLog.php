@@ -2,6 +2,7 @@
 
 namespace App\Modules\SchoolOperations\Laundry\Models;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,5 +18,11 @@ class LaundryProcessingLog extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(LaundryOrder::class, 'laundry_order_id');
+    }
+
+    /** Pelaku transisi — dimuat oleh LaundryOrderService::timeline() (`logs.actor:id,name`). */
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
     }
 }
