@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { Field, Panel, PageHeader, StatusPill, Weight, readError } from '../components/LaundryUi';
 import { cn } from '@/lib/utils';
@@ -34,7 +34,7 @@ const STAGES = ['WASHING', 'DRYING', 'IRONING', 'FOLDING'];
  * drawer samping sehingga papan tetap terlihat.
  */
 export default function LaundryProcessingPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [batchForm, setBatchForm] = useState({ stage: 'WASHING', laundry_machine_id: '', order_ids: '' });
   const [stepForm, setStepForm] = useState({ order_id: '', step_type: 'WASHING', action: 'start' as 'start' | 'complete', notes: '' });

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, DateTime, Field, Money, PageHeader, Panel, StatusPill, Weight, newIdempotencyKey, readError } from '../components/LaundryUi';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 export default function LaundryOrderDetailPage() {
   const { id } = useParams();
   const orderId = Number(id);
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [reason, setReason] = useState('');
   const [overrideType, setOverrideType] = useState<'WAIVE_FEE' | 'FORCE_PROCESS'>('WAIVE_FEE');

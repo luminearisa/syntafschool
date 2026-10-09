@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ClipboardList, ListFilter, Search, Wallet, X } from 'lucide-react';
+import { ClipboardList, ListFilter, PackagePlus, Search, Wallet, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, FilterBar, Money, PageHeader, Panel, StatusPill, Weight, newIdempotencyKey, readError } from '../components/LaundryUi';
 import type { OrderSummary } from '../types';
@@ -28,7 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
  * Filter: status, status bayar, layanan, rentang tanggal, pencarian nomor/NIS/nama.
  */
 export default function LaundryOrdersPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('search') ?? '');
@@ -85,6 +85,13 @@ export default function LaundryOrdersPage() {
         icon={<ClipboardList className="h-6 w-6" />}
         title="Order Laundry"
         description="Seluruh transaksi: terima → timbang → jatah/bayar → proses → serah terima."
+        actions={can('laundry.create') ? (
+          <Link to="/laundry/receive">
+            <Button>
+              <PackagePlus className="h-4 w-4" /> Buat Order
+            </Button>
+          </Link>
+        ) : undefined}
       />
 
       <Panel title="Filter & pencarian" description="Kombinasikan status, layanan, dan rentang tanggal — tersimpan di URL untuk dibagikan.">

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, Field, PageHeader, Panel, StatusPill, Weight, readError } from '../components/LaundryUi';
 import type { LaundryBag } from '../types';
@@ -32,7 +32,7 @@ const EMPTY_BAG: BagForm = { bag_code: '', rfid_uid: '', qr_code: '', bag_type: 
  * Buat, edit, dan penautan tas dikerjakan lewat drawer samping.
  */
 export default function LaundryBagsPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState('');
   const [form, setForm] = useState<BagForm>(EMPTY_BAG);

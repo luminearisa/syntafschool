@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useUiStore } from '@/stores/uiStore';
+import { useAuthStore } from '@/stores/authStore';
+import { authApi } from '@/features/auth/api/authApi';
 import { getResourceDef } from '@/constants/masterData';
 import { MENU_ITEMS } from '@/constants/menu';
 
@@ -56,8 +58,29 @@ function usePageContext(): PageContext {
 export function AppLayout({ children }: { children?: ReactNode } = {}) {
   const sidebarOpen = useUiStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
+  const setUser = useAuthStore((state) => state.setUser);
   const location = useLocation();
   const { title, section } = usePageContext();
+
+  // Segarkan profil + izin dari server sekali saat aplikasi dimuat. Tanpa ini,
+  // snapshot izin yang tersimpan di localStorage bisa usang (mis. setelah
+  // modul/izin baru di-seed), sehingga menu dan tombol berbasis izin hilang
+  // sampai pengguna login ulang. Server tetap menjadi sumber kebenaran.
+  useEffect(() => {
+    let active = true;
+    authApi
+      .me()
+      .then((me) => {
+        if (active) setUser(me);
+      })
+      .catch(() => {
+        /* 401 ditangani interceptor axios (logout otomatis) */
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [setUser]);
 
   useEffect(() => {
     setSidebarOpen(false);

@@ -27,7 +27,14 @@ export const useAuthStore = create<AuthState>()(
       },
       can: (permission) => {
         const user = get().user;
-        if (!user?.permissions) return false;
+        if (!user) return false;
+        // Super-admin selalu memiliki seluruh izin — konsisten dengan
+        // `usePermission().can()`. Pemeriksaan ini penting karena halaman
+        // modul (mis. Laundry) membaca izin dari store: bila snapshot izin
+        // di klien sudah usang (diambil saat login sebelum modul/izin baru
+        // di-seed), tombol create/aksi akan hilang tanpa ini.
+        if (user.roles?.includes('super-admin')) return true;
+        if (!user.permissions) return false;
         return user.permissions.includes(permission);
       },
     }),

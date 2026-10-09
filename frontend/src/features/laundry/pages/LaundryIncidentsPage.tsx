@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, DateOnly, Field, Money, PageHeader, Panel, StatusPill, readError } from '../components/LaundryUi';
 import type { LaundryIncident } from '../types';
@@ -27,7 +27,7 @@ const COMPENSATIONS = ['REPLACEMENT', 'REFUND', 'CREDIT', 'FREE_QUOTA', 'WALLET_
  * Laporan & kompensasi diisi lewat drawer samping per insiden.
  */
 export default function LaundryIncidentsPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');

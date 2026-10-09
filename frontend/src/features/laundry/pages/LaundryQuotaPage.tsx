@@ -5,7 +5,7 @@ import { GitBranch, Scale, SlidersHorizontal, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, DateOnly, DetailRow, Field, FilterBar, PageHeader, Panel, Progress, StatusPill, Weight, readError } from '../components/LaundryUi';
 import type { EntitlementRow } from '../types';
@@ -17,7 +17,7 @@ import type { EntitlementRow } from '../types';
  * (Rule 15/24). Detail santri & form penyesuaian hidup di drawer samping.
  */
 export default function LaundryQuotaPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [studentId, setStudentId] = useState('');
   const [periodKey, setPeriodKey] = useState('');

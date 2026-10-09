@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, Field, PageHeader, Panel, StatusPill, Weight, readError } from '../components/LaundryUi';
 import type { OrderSummary } from '../types';
@@ -22,7 +22,7 @@ const METHODS = ['RFID', 'QR', 'PIN', 'STUDENT_ID', 'AUTHORIZED_PERSON'];
  * terisi ID order-nya.
  */
 export default function LaundryDeliveryPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ order_id: '', mode: 'pickup' as 'pickup' | 'deliver', verification_method: 'RFID', verification_value: '', receiver_name: '', dormitory_id: '', notes: '' });
   const [modalOpen, setModalOpen] = useState(false);

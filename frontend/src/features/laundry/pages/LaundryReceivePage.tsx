@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, Field, Money, PageHeader, Panel, StatusPill, Weight, newIdempotencyKey, readError } from '../components/LaundryUi';
 import type { OrderSummary } from '../types';
@@ -21,7 +21,7 @@ import type { OrderSummary } from '../types';
  * drawer samping agar daftar order tetap terlihat sebagai konteks.
  */
 export default function LaundryReceivePage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
   const [uid, setUid] = useState('');
   const [orderForm, setOrderForm] = useState({ student_id: '', laundry_service_id: '', submitted_by: '', notes: '' });

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { SideModal } from '@/components/ui/SideModal';
-import { useAuthStore } from '@/stores/authStore';
+import { usePermission } from '@/hooks/usePermission';
 import { laundryApi } from '../api/laundryApi';
 import { DataTable, DateOnly, Field, Money, PageHeader, Panel, StatusPill, Weight, readError } from '../components/LaundryUi';
 import type { LaundryMachine, LaundryService } from '../types';
@@ -38,7 +38,7 @@ const EMPTY_VERSION: VersionForm = {
 };
 
 export default function LaundryMasterPage() {
-  const can = useAuthStore((state) => state.can);
+  const { can } = usePermission();
   const queryClient = useQueryClient();
 
   const [serviceForm, setServiceForm] = useState<ServiceForm>(EMPTY_SERVICE);
