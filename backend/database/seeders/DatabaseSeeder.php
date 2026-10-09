@@ -16,6 +16,7 @@ use App\Modules\Activity\Database\Seeders\ActivityMasterSeeder;
 use App\Modules\Activity\Database\Seeders\ActivityPermissionSeeder;
 use App\Modules\SchoolOperations\Competitions\Database\Seeders\CompetitionMasterSeeder;
 use App\Modules\SchoolOperations\Competitions\Database\Seeders\CompetitionPermissionSeeder;
+use App\Modules\SchoolOperations\Religious\Database\Seeders\ReligiousMasterSeeder;
 use App\Modules\Asset\Database\Seeders\AssetMasterSeeder;
 use App\Modules\Asset\Database\Seeders\AssetPermissionSeeder;
 use App\Modules\Workflow\Database\Seeders\WorkflowPermissionSeeder;
@@ -60,6 +61,11 @@ class DatabaseSeeder extends Seeder
             AssetMasterSeeder::class,
             ActivityPermissionSeeder::class,
             CompetitionPermissionSeeder::class,
+            // Modul Religious & Mosque Management: izin granular religious.*,
+            // peran RELIGIOUS_*/MOSQUE_ADMIN/IMAM/... , serta data acuan (jenis
+            // shalat, jenis penilaian, kategori khutbah). Tanpa ini, seluruh
+            // endpoint /api/v1/religious menolak 403 karena izinnya tidak ada.
+            ReligiousMasterSeeder::class,
             // Modul Workflow: permission granular workflow.* + peran approver.
             WorkflowPermissionSeeder::class,
             // Modul HRD: izin granular hr.* + 13 peran (HR_ADMIN, HR_MANAGER,

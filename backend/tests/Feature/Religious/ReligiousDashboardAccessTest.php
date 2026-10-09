@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -57,5 +58,19 @@ class ReligiousDashboardAccessTest extends TestCase
             ->assertJsonPath('data.student.id', $student->id);
 
         $this->getJson('/api/v1/religious/students/'.$otherStudent->id.'/dashboard')->assertForbidden();
+    }
+
+    public function test_super_admin_tidak_terhalang_403_di_endpoint_religious(): void
+    {
+        // Regresi: izin `religious.*` hanya dibuat ReligiousMasterSeeder. Bila
+        // seeder itu belum dijalankan, super-admin harus tetap lolos lewat
+        // bypass Gate (bukan 403) — bug yang membuat modul Religious/Masjid
+        // tidak dapat dipakai administrator.
+        $admin = User::factory()->create(['is_active' => true]);
+        $admin->assignRole(Role::findOrCreate('super-admin', 'web'));
+        Sanctum::actingAs($admin, ['*']);
+
+        $this->getJson('/api/v1/religious/meta')->assertOk();
+        $this->getJson('/api/v1/religious/integrations')->assertOk();
     }
 }

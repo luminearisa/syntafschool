@@ -51,13 +51,27 @@ class ReligiousMasterSeeder extends Seeder
             $roleInstance->syncPermissions($permissions);
         }
 
-        // Peran tingkat yayasan/administrator mendapat seluruh izin modul.
-        foreach (['SUPER_ADMIN', 'FOUNDATION_ADMIN', 'HR_DIRECTOR', 'SCHOOL_ADMIN'] as $role) {
-            $instance = $roleModel::query()->where('name', $role)->first();
-            if ($instance) {
-                $instance->givePermissionTo($all);
-            }
+        // Peran administrator umum memakai penamaan yang benar-benar dibuat
+        // RolePermissionSeeder (huruf kecil). Sebelumnya seeder ini menulis
+        // SUPER_ADMIN/SCHOOL_ADMIN (huruf besar) yang tidak pernah ada,
+        // sehingga admin sekolah pun tidak mendapat izin modul.
+        $adminRoles = ['super-admin', 'admin-sekolah'];
+        foreach ($adminRoles as $role) {
+            $instance = $roleModel::query()->where('name', $role)->where('guard_name', 'web')->first();
+            $instance?->givePermissionTo($all);
         }
+
+        // Kepala sekolah memantau modul (hanya baca).
+        $readOnly = $all->filter(fn ($permission): bool => str_ends_with($permission->name, '.view')
+            || in_array($permission->name, [
+                'religious.report.view', 'religious.report.export',
+                'religious.analytics.view', 'religious.audit.view',
+            ], true));
+        $roleModel::query()
+            ->where('name', 'kepala-sekolah')
+            ->where('guard_name', 'web')
+            ->first()
+            ?->givePermissionTo($readOnly);
     }
 
     protected function seedPrayerTypes(): void

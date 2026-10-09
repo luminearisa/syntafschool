@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\RecordScheduledTaskFailure;
 use App\Models\Library;
+use App\Models\User;
 use App\Policies\LibraryPolicy;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Support\Facades\Event;
@@ -26,6 +27,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Super-admin selalu lolos pemeriksaan izin apa pun (pola standar
+        // spatie). Tanpa ini, peran `super-admin` hanya memegang izin yang
+        // *kebetulan* sudah ada saat RolePermissionSeeder berjalan, sehingga
+        // setiap modul yang izinnya di-seed belakangan (atau lupa didaftarkan
+        // di DatabaseSeeder) menolak super-admin dengan 403 — persis yang
+        // terjadi pada modul Religious/Masjid. Peran lain tetap mengikuti
+        // izin & policy yang berlaku; bypass ini hanya untuk super-admin.
+        Gate::before(function (?User $user): ?bool {
+            return $user?->hasRole('super-admin') ? true : null;
+        });
+
         // Didaftarkan eksplisit agar tidak bergantung pada auto-discovery.
         Gate::policy(Library::class, LibraryPolicy::class);
 
