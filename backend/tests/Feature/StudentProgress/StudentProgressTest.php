@@ -75,7 +75,7 @@ class StudentProgressTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -519,7 +519,7 @@ class StudentProgressTest extends TestCase
             'userable_id' => $employee->id,
         ])->save();
         $user->syncRoles(['admin-sekolah']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $created = $this->postJson('/api/v1/student-violations', $this->violationPayload())
             ->assertCreated()->json('data.violation');

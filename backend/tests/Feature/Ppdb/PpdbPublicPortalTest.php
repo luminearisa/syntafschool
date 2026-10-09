@@ -358,7 +358,7 @@ class PpdbPublicPortalTest extends TestCase
         $account = $this->account(PpdbParentAccount::STATUS_PENDING);
         $this->assertFalse($account->canTransact());
 
-        Sanctum::actingAs($account->user);
+        Sanctum::actingAs($account->user, ['*']);
 
         $this->getJson('/api/v1/ppdb/portal/notifications')->assertOk();
         $this->getJson('/api/v1/ppdb/portal/notifications/unread-count')->assertOk();
@@ -493,7 +493,7 @@ class PpdbPublicPortalTest extends TestCase
 
         // Akun terblokir: kotak masuk tetap terbaca (pesan blokir sampai),
         // aksi tulis portal ditolak.
-        Sanctum::actingAs($account->user);
+        Sanctum::actingAs($account->user, ['*']);
         $this->getJson('/api/v1/ppdb/portal/notifications')->assertOk()->assertJsonCount(1, 'data');
         $this->postJson('/api/v1/ppdb/portal/notifications/read-all')->assertForbidden();
 
@@ -579,7 +579,7 @@ class PpdbPublicPortalTest extends TestCase
             ->where('data->title', 'Pendaftaran A2 terverifikasi')
             ->sole();
 
-        Sanctum::actingAs($parentA->user);
+        Sanctum::actingAs($parentA->user, ['*']);
 
         $this->getJson('/api/v1/ppdb/portal/notifications/unread-count')
             ->assertOk()
@@ -632,7 +632,7 @@ class PpdbPublicPortalTest extends TestCase
         $this->assertNull($foreign->refresh()->read_at);
 
         // Pengguna tanpa akun PPDB: penolakan bersih, bukan 500.
-        Sanctum::actingAs($this->user());
+        Sanctum::actingAs($this->user(), ['*']);
         $refused = $this->getJson('/api/v1/ppdb/portal/notifications')->assertForbidden();
         $this->assertStringContainsString('Akun PPDB Anda tidak ditemukan', (string) $refused->json('message'));
         $this->getJson('/api/v1/ppdb/portal/notifications/unread-count')->assertForbidden();
@@ -709,7 +709,7 @@ class PpdbPublicPortalTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'name' => ucfirst($role), 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

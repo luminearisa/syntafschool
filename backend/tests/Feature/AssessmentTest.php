@@ -495,6 +495,72 @@ class AssessmentTest extends TestCase
         );
     }
 
+    public function test_penilaian_yang_dibuka_revisi_dapat_diajukan_ulang_dan_difinalisasi(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+
+        $this->actingAsRole('guru');
+        $this->gradeAll($assessment, $world);
+        $this->postJson("/api/v1/assessments/{$assessment->id}/submit")->assertOk();
+
+        $this->actingAsRole('admin-sekolah');
+        $this->postJson("/api/v1/assessments/{$assessment->id}/finalize")->assertOk();
+        $this->postJson("/api/v1/assessments/{$assessment->id}/reopen", ['reason' => 'Perbaikan nilai.'])
+            ->assertOk()
+            ->assertJsonPath('data.status', Assessment::STATUS_REVISION_REQUESTED);
+
+        // Status revision_requested tidak boleh jadi jalan buntu.
+        $this->actingAsRole('guru');
+        $this->postJson("/api/v1/assessments/{$assessment->id}/submit")
+            ->assertOk()
+            ->assertJsonPath('data.status', Assessment::STATUS_SUBMITTED);
+
+        $this->actingAsRole('admin-sekolah');
+        $this->postJson("/api/v1/assessments/{$assessment->id}/finalize")
+            ->assertOk()
+            ->assertJsonPath('data.status', Assessment::STATUS_FINALIZED);
+    }
+
+    public function test_memperbarui_catatan_saja_tidak_menghapus_nilai(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+        $this->actingAsRole('guru');
+
+        $created = $this->postJson($this->scoreRoute($assessment), [
+            'student_id' => $world['students'][0]->id,
+            'score' => 82,
+        ])->assertCreated();
+
+        $scoreId = $created->json('data.id');
+
+        $this->patchJson("/api/v1/assessments/{$assessment->id}/scores/{$scoreId}", [
+            'student_id' => $world['students'][0]->id,
+            'notes' => 'Hanya mengubah catatan.',
+        ])->assertOk();
+
+        $this->assertSame(82.0, (float) Score::query()->whereKey($scoreId)->value('score'));
+    }
+
+    public function test_statistik_gradebook_menghitung_siswa_bernilai_nol(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+        $this->actingAsRole('guru');
+
+        $this->postJson($this->scoreRoute($assessment).'/bulk', ['entries' => [
+            ['student_id' => $world['students'][0]->id, 'score' => 0],
+            ['student_id' => $world['students'][1]->id, 'score' => 80],
+        ]])->assertOk();
+
+        $gradebook = $this->getJson($this->gradebookRoute($world))->assertOk()->json('data');
+
+        $this->assertSame(2, $gradebook['summary']['scored']);
+        $this->assertFloat(0.0, $gradebook['summary']['lowest']);
+        $this->assertFloat(40.0, $gradebook['summary']['average']);
+    }
+
     public function test_hanya_nilai_terverifikasi_atau_terkunci_yang_bisa_dibuka_kembali(): void
     {
         $world = $this->world();
@@ -1438,7 +1504,7 @@ class AssessmentTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

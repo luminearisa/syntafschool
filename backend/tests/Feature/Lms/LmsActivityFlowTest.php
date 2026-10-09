@@ -88,7 +88,7 @@ class LmsActivityFlowTest extends LmsTestCase
         $this->assertFalse($submission['late']);
 
         // ---------------- Guru menilai
-        \Laravel\Sanctum\Sanctum::actingAs($teacherUser);
+        \Laravel\Sanctum\Sanctum::actingAs($teacherUser, ['*']);
 
         $overview = $this->getJson("/api/v1/lms/activities/{$activityId}/assignment/overview")
             ->assertOk()->json('data');
@@ -227,7 +227,7 @@ class LmsActivityFlowTest extends LmsTestCase
         $this->assertGreaterThan(0, (float) $progress['progress_percent'], 'Progres course harus bertambah setelah kuis selesai.');
 
         // ---------------- Guru memeriksa statistik & nilai
-        \Laravel\Sanctum\Sanctum::actingAs($teacherUser);
+        \Laravel\Sanctum\Sanctum::actingAs($teacherUser, ['*']);
 
         $statistics = $this->getJson("/api/v1/lms/activities/{$activity['id']}/quiz/statistics")
             ->assertOk()->json('data');
@@ -291,7 +291,7 @@ class LmsActivityFlowTest extends LmsTestCase
         $this->assertSame('PENDING', $discussion['status']);
 
         // ---------------- Guru memoderasi
-        \Laravel\Sanctum\Sanctum::actingAs($teacherUser);
+        \Laravel\Sanctum\Sanctum::actingAs($teacherUser, ['*']);
 
         $this->postJson("/api/v1/lms/forum-moderation/discussion/{$discussion['id']}/approve")->assertOk();
 
@@ -317,7 +317,7 @@ class LmsActivityFlowTest extends LmsTestCase
             ->assertJsonPath('data.participation.meets_requirement', true);
 
         // ---------------- Guru memeriksa statistik forum
-        \Laravel\Sanctum\Sanctum::actingAs($teacherUser);
+        \Laravel\Sanctum\Sanctum::actingAs($teacherUser, ['*']);
 
         $statistics = $this->getJson("/api/v1/lms/activities/{$activity['id']}/forum/statistics")
             ->assertOk()->json('data');

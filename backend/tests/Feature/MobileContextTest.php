@@ -182,7 +182,7 @@ class MobileContextTest extends TestCase
     {
         $admin = $this->user('admin2@syntaf.test');
         $admin->syncRoles(['super-admin']);
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
 
         $employee = Employee::create(['full_name' => 'Bu Sari', 'phone' => '081234567890']);
         $owner = $this->user('sari@syntaf.test', $employee);

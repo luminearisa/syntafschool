@@ -257,7 +257,7 @@ class FinanceStandardApiTest extends TestCase
 
         // Permohonan dibuat OLEH PENGAJU: memisahkan tugas hanya bermakna bila
         // pengajunya memang orang yang berbeda dari pemutusnya.
-        Sanctum::actingAs($pengaju);
+        Sanctum::actingAs($pengaju, ['*']);
 
         $this->getJson(self::BASE.'/period-reopen-requests')->assertOk();
 
@@ -280,7 +280,7 @@ class FinanceStandardApiTest extends TestCase
             'approved' => true,
         ])->assertStatus(422)->assertJsonStructure(['errors' => ['decided_by']]);
 
-        Sanctum::actingAs($pemutus);
+        Sanctum::actingAs($pemutus, ['*']);
 
         $keputusan = $this->postJson(self::BASE.'/period-reopen-requests/'.$permohonan['id'].'/decide', [
             'approved' => true,
@@ -314,7 +314,7 @@ class FinanceStandardApiTest extends TestCase
         ], ['date' => now(), 'created_by' => $pengaju->id, 'sumber_modul' => SumberModul::TAGIHAN_LAIN]);
 
         // Permohonan diajukan oleh pengaju, diputuskan orang lain.
-        Sanctum::actingAs($pengaju);
+        Sanctum::actingAs($pengaju, ['*']);
 
         $this->getJson(self::BASE.'/journal-void-requests')->assertOk();
 
@@ -326,7 +326,7 @@ class FinanceStandardApiTest extends TestCase
         $this->postJson(self::BASE.'/journal-void-requests/'.$permohonan['id'].'/decide', ['approved' => true])
             ->assertStatus(422)->assertJsonStructure(['errors' => ['decided_by']]);
 
-        Sanctum::actingAs($pemutus);
+        Sanctum::actingAs($pemutus, ['*']);
 
         $keputusanVoid = $this->postJson(self::BASE.'/journal-void-requests/'.$permohonan['id'].'/decide', [
             'approved' => true,
@@ -542,7 +542,7 @@ class FinanceStandardApiTest extends TestCase
     public function test_pengguna_tanpa_izin_ditolak_dan_permintaan_tidak_sah_ditolak(): void
     {
         $polos = User::factory()->create(['is_active' => true]);
-        Sanctum::actingAs($polos);
+        Sanctum::actingAs($polos, ['*']);
 
         foreach ([
             self::BASE.'/business-units',
@@ -583,7 +583,7 @@ class FinanceStandardApiTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncPermissions(Permission::query()->pluck('name')->all());
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

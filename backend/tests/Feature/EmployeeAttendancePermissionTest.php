@@ -25,7 +25,7 @@ class EmployeeAttendancePermissionTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->givePermissionTo(['employee.view', 'employee.create']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $status = AttendanceStatus::create(['code' => 'H', 'name' => 'Hadir', 'color' => '#16a34a']);
         LeaveType::create(['name' => 'Izin Keluarga', 'requires_attachment' => false]);

@@ -1023,7 +1023,7 @@ class PpdbReportTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -1031,7 +1031,7 @@ class PpdbReportTest extends TestCase
     private function actingWithoutPermissions(): User
     {
         $user = User::factory()->create(['is_active' => true]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

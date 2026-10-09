@@ -64,7 +64,7 @@ class CompetitionFlowTest extends TestCase
         $role = Role::findOrCreate('COMPETITION_ADMIN', 'web');
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->syncRoles([$role]);
-        Sanctum::actingAs($this->admin);
+        Sanctum::actingAs($this->admin, ['*']);
 
         $catalog = app(CompetitionCatalogService::class);
         $typeId = CompetitionType::query()->where('code', 'OLYMPIAD')->value('id');
@@ -140,7 +140,7 @@ class CompetitionFlowTest extends TestCase
         $this->operations->checkIn($this->edition, ['participant_id' => $this->participantTwo->id, 'idempotency_key' => 'checkin-102'], $this->admin);
         $match = $this->operations->transitionMatch($match, $this->admin, 'START');
 
-        Sanctum::actingAs($judgeUser);
+        Sanctum::actingAs($judgeUser, ['*']);
         $first = $this->scoring->saveScorecard($match, $judgeUser, [
             'participant_id' => $this->participantOne->id,
             'scores' => [
@@ -156,12 +156,12 @@ class CompetitionFlowTest extends TestCase
             ],
         ], true);
 
-        Sanctum::actingAs($this->admin);
+        Sanctum::actingAs($this->admin, ['*']);
         $first = $this->scoring->finalizeScorecard($first, $this->admin, 'Nilai diperiksa.');
         $second = $this->scoring->finalizeScorecard($second, $this->admin, 'Nilai diperiksa.');
         $this->assertSame('LOCKED', $first->status);
         $this->assertSame(1, CompetitionScoreVersion::query()->where('scorecard_id', $first->id)->count());
-        Sanctum::actingAs($judgeUser);
+        Sanctum::actingAs($judgeUser, ['*']);
         $amendment = $this->scoring->createAmendment($first, $judgeUser, [
             'reason' => 'Rubric entry diperiksa ulang.',
             'scores' => [
@@ -169,7 +169,7 @@ class CompetitionFlowTest extends TestCase
                 ['criterion_id' => $this->criterionId('METHOD'), 'score' => 90],
             ],
         ]);
-        Sanctum::actingAs($this->admin);
+        Sanctum::actingAs($this->admin, ['*']);
         $first = $this->scoring->decideAmendment($amendment, $this->admin, 'APPROVE');
         $this->assertSame('AMENDED', $first->status);
         $this->assertSame(2, (int) $first->current_version);
@@ -213,7 +213,7 @@ class CompetitionFlowTest extends TestCase
         $this->operations->assignJudge($this->edition, $judge, ['match_id' => $match->id], $this->admin);
         $match->forceFill(['status' => 'RUNNING'])->save();
 
-        Sanctum::actingAs($judgeUser);
+        Sanctum::actingAs($judgeUser, ['*']);
         try {
             $this->scoring->saveScorecard($match, $judgeUser, [
                 'participant_id' => $this->participantOne->id,

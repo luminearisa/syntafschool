@@ -33,7 +33,7 @@ class RbacTest extends TestCase
     public function test_super_admin_can_access_all_rbac_endpoints(): void
     {
         $admin = $this->makeUser('super-admin');
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
 
         $this->getJson('/api/v1/users')->assertOk();
         $this->getJson('/api/v1/roles')->assertOk();
@@ -43,7 +43,7 @@ class RbacTest extends TestCase
     public function test_guru_is_forbidden_from_user_management(): void
     {
         $guru = $this->makeUser('guru');
-        Sanctum::actingAs($guru);
+        Sanctum::actingAs($guru, ['*']);
 
         $this->getJson('/api/v1/users')->assertForbidden();
         $this->getJson('/api/v1/roles')->assertForbidden();
@@ -52,7 +52,7 @@ class RbacTest extends TestCase
     public function test_guru_without_master_data_permission_is_forbidden(): void
     {
         $guru = $this->makeUser('guru');
-        Sanctum::actingAs($guru);
+        Sanctum::actingAs($guru, ['*']);
 
         $this->getJson('/api/v1/master/subjects')->assertForbidden();
     }
@@ -65,7 +65,7 @@ class RbacTest extends TestCase
     public function test_super_admin_can_create_user_with_role_via_api(): void
     {
         $admin = $this->makeUser('super-admin');
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
 
         $payload = [
             'name' => 'Guru Baru',
@@ -88,7 +88,7 @@ class RbacTest extends TestCase
     public function test_super_admin_can_create_role_with_permissions(): void
     {
         $admin = $this->makeUser('super-admin');
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
 
         $this->postJson('/api/v1/roles', [
             'name' => 'operator-perpus',

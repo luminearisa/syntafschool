@@ -879,7 +879,7 @@ class FinanceNotificationTest extends TestCase
     private function actingAsRole(string $role): User
     {
         $user = $this->userOfRole($role);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

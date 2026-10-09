@@ -503,7 +503,7 @@ class PpdbInvoiceLifecycleTest extends TestCase
 
     private function as(User $actor): static
     {
-        Sanctum::actingAs($actor);
+        Sanctum::actingAs($actor, ['*']);
 
         return $this;
     }

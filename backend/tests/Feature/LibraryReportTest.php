@@ -38,7 +38,7 @@ class LibraryReportTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -263,7 +263,7 @@ class LibraryReportTest extends TestCase
         $this->assertSame(2, $user->notifications()->count());
 
         // Endpoint notifikasi milik pengguna sendiri.
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $this->getJson('/api/v1/library/notifications')->assertOk()->assertJsonPath('meta.total', 2);
         $this->getJson('/api/v1/library/notifications/unread-count')->assertOk()->assertJsonPath('data.count', 2);

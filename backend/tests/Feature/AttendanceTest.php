@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\AttendanceCorrection;
 use App\Models\AttendanceStatus;
 use App\Models\ClassStudent;
+use App\Models\EducationLevel;
 use App\Models\EffectiveDay;
 use App\Models\Employee;
 use App\Models\EmployeeAttendance;
@@ -92,7 +93,7 @@ class AttendanceTest extends TestCase
             'is_active' => true,
         ]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -592,6 +593,41 @@ class AttendanceTest extends TestCase
             ->assertJsonPath('data.effective_days', null)
             ->assertJsonPath('data.recorded_days', 1)
             ->assertJsonPath('data.percentage', 100);
+    }
+
+    public function test_student_recap_uses_its_own_education_level_effective_days(): void
+    {
+        $this->actingAsRole();
+        $world = $this->world();
+        $student = $world['students'][0];
+
+        $levelA = EducationLevel::create(['name' => 'Kelas 10', 'jenjang' => 'SMA', 'level_number' => 10, 'is_active' => true]);
+        $levelB = EducationLevel::create(['name' => 'Kelas 11', 'jenjang' => 'SMA', 'level_number' => 11, 'is_active' => true]);
+
+        $world['class']->update(['education_level_id' => $levelA->id]);
+
+        foreach (['2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10'] as $date) {
+            EffectiveDay::create([
+                'semester_id' => $world['semester']->id,
+                'education_level_id' => $levelA->id,
+                'date' => $date,
+                'is_school_day' => true,
+            ]);
+        }
+
+        for ($i = 1; $i <= 10; $i++) {
+            EffectiveDay::create([
+                'semester_id' => $world['semester']->id,
+                'education_level_id' => $levelB->id,
+                'date' => '2026-10-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT),
+                'is_school_day' => true,
+            ]);
+        }
+
+        $this->getJson("/api/v1/attendance-recap/student/{$student->id}?semester_id={$world['semester']->id}")
+            ->assertOk()
+            ->assertJsonPath('data.effective_days', 4)
+            ->assertJsonPath('data.basis', 'effective_days');
     }
 
     public function test_class_recap_aggregates_every_student(): void

@@ -1240,7 +1240,7 @@ class PpdbScenarioTest extends TestCase
     /** `as()` menerima User atau hasil `registerParent()` (array user+token). */
     private function as(User|array $actor): static
     {
-        Sanctum::actingAs($actor instanceof User ? $actor : $actor['user']);
+        Sanctum::actingAs($actor instanceof User ? $actor : $actor['user'], ['*']);
 
         return $this;
     }

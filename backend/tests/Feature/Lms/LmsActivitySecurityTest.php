@@ -124,7 +124,7 @@ class LmsActivitySecurityTest extends LmsTestCase
         // Guru lain: akun guru tanpa kaitan dengan course ini.
         $outsider = User::factory()->create(['is_active' => true]);
         $outsider->syncRoles(['guru']);
-        \Laravel\Sanctum\Sanctum::actingAs($outsider);
+        \Laravel\Sanctum\Sanctum::actingAs($outsider, ['*']);
 
         $this->postJson("/api/v1/lms/submissions/{$submission['id']}/grade", ['grade' => 90])->assertForbidden();
     }

@@ -83,14 +83,14 @@ abstract class BkTestCase extends TestCase
     {
         $user = User::factory()->create(['is_active' => true, ...$attributes]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
 
     protected function actAs(User $user): User
     {
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

@@ -40,7 +40,7 @@ class LibraryMembershipTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -302,7 +302,7 @@ class LibraryMembershipTest extends TestCase
         $this->postJson("/api/v1/library/members/{$memberId}/card/generate")->assertCreated();
 
         // Pengguna tersebut membuka halaman "Kartu Saya" tanpa permission modul.
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $this->getJson('/api/v1/library/members/me/card')
             ->assertOk()

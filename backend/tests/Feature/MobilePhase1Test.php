@@ -83,7 +83,7 @@ class MobilePhase1Test extends TestCase
         ClassSubject::create(['school_class_id' => $mine->id, 'subject_id' => $subject->id, 'employee_id' => $employee->id, 'academic_year_id' => $sem->academic_year_id]);
         $s1 = $this->enroll($mine, $sem, 'N1');
         $s2 = $this->enroll($other, $sem, 'N2');
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $payload = fn (SchoolClass $c, Student $s) => [
             'class_id' => $c->id, 'semester_id' => $sem->id, 'date' => '2026-10-05',
@@ -114,11 +114,11 @@ class MobilePhase1Test extends TestCase
         ]);
         $body = ['entries' => [['student_id' => $student->id, 'score' => 80]]];
 
-        Sanctum::actingAs($rival);
+        Sanctum::actingAs($rival, ['*']);
         $this->postJson("/api/v1/assessments/{$assessment->id}/scores/bulk", $body)->assertStatus(403);
         $this->postJson("/api/v1/assessments/{$assessment->id}/submit")->assertStatus(403);
 
-        Sanctum::actingAs($owner);
+        Sanctum::actingAs($owner, ['*']);
         $this->postJson("/api/v1/assessments/{$assessment->id}/scores/bulk", $body)->assertOk();
     }
 
@@ -130,7 +130,7 @@ class MobilePhase1Test extends TestCase
         DB::table('student_guardians')->insert(['student_id' => $child->id, 'guardian_id' => $guardian->id, 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()]);
         $user = User::factory()->create(['email' => 'wali@syntaf.test', 'is_active' => true, 'userable_type' => $guardian->getMorphClass(), 'userable_id' => $guardian->id]);
         $user->syncRoles(['wali-murid']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $this->getJson("/api/v1/students/{$child->id}/scores")->assertOk();
         $this->getJson("/api/v1/students/{$stranger->id}/scores")->assertStatus(404);
@@ -142,7 +142,7 @@ class MobilePhase1Test extends TestCase
     {
         $student = Student::create(['nis' => 'K3', 'full_name' => 'Siapa Saja']);
         [$teacher] = $this->teacher('gurux@syntaf.test');
-        Sanctum::actingAs($teacher);
+        Sanctum::actingAs($teacher, ['*']);
 
         $this->getJson("/api/v1/students/{$student->id}/scores")->assertOk();
     }
@@ -151,7 +151,7 @@ class MobilePhase1Test extends TestCase
     {
         $this->seed(WorkflowPermissionSeeder::class);
         [$teacher] = $this->teacher('inbox@syntaf.test');
-        Sanctum::actingAs($teacher);
+        Sanctum::actingAs($teacher, ['*']);
 
         $this->getJson('/api/v1/workflows/inbox/counter')->assertOk();
         $this->getJson('/api/v1/workflows/inbox/approvals')->assertOk();
@@ -173,12 +173,12 @@ class MobilePhase1Test extends TestCase
             'assigned_date' => '2026-10-01', 'due_date' => '2026-10-08',
         ];
 
-        Sanctum::actingAs($owner);
+        Sanctum::actingAs($owner, ['*']);
         $this->postJson('/api/v1/assignments', $payload($rivalEmp->id))->assertStatus(403);
         $id = $this->postJson('/api/v1/assignments', $payload($ownerEmp->id))->assertCreated()->json('data.id');
         $this->postJson("/api/v1/assignments/{$id}/publish")->assertOk();
 
-        Sanctum::actingAs($rival);
+        Sanctum::actingAs($rival, ['*']);
         $this->postJson("/api/v1/assignments/{$id}/close")->assertStatus(403);
     }
 }

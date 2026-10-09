@@ -229,7 +229,7 @@ class PromotionTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->syncRoles(['admin-sekolah']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -238,7 +238,7 @@ class PromotionTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -246,7 +246,7 @@ class PromotionTest extends TestCase
     private function noRole(): User
     {
         $user = User::factory()->create(['is_active' => true]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

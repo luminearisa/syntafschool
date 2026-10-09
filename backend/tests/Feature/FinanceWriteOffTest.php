@@ -48,7 +48,7 @@ class FinanceWriteOffTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -265,7 +265,7 @@ class FinanceWriteOffTest extends TestCase
         // di controller yang harus menahan.
         $user = User::factory()->create(['email' => 'hanya-adjustment@schoolerp.test', 'is_active' => true]);
         $user->syncPermissions(['finance.view', 'finance.adjustment.create']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $this->postJson('/api/v1/finance/adjustments', [
             'kind' => FinanceAdjustment::KIND_WRITE_OFF,
@@ -291,7 +291,7 @@ class FinanceWriteOffTest extends TestCase
             'finance.write_off.request',
             'finance.write_off.approve',
         ]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $id = (int) $this->postJson("/api/v1/finance/invoices/{$invoice->id}/write-off", [
             'amount' => 150000,

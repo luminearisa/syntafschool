@@ -161,7 +161,7 @@ class PpdbLookupTest extends TestCase
 
     private function as(User $user): static
     {
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $this;
     }

@@ -43,7 +43,7 @@ class BoardingViolationTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -363,7 +363,7 @@ class BoardingViolationTest extends TestCase
         $user = User::factory()->create(['email' => 'wali.kamar2@schoolerp.test', 'is_active' => true]);
         $user->syncRoles(['wali-kamar']);
         $this->makeWaliKamarOf($user, 'A101');
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $trlmbt = $this->seededTypeId('TRLMBT');
 

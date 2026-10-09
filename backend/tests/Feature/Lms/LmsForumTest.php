@@ -198,7 +198,7 @@ class LmsForumTest extends LmsTestCase
         Notification::assertSentTo($teacherUser, \App\Modules\LMS\Notifications\LmsForumPostNotification::class);
 
         // Berhenti berlangganan (hanya langganan guru tersebut yang terhapus).
-        \Laravel\Sanctum\Sanctum::actingAs($teacherUser);
+        \Laravel\Sanctum\Sanctum::actingAs($teacherUser, ['*']);
         $this->deleteJson("/api/v1/lms/activities/{$activity->id}/forum/subscribe")->assertOk();
 
         $this->assertSame(0, LmsForumSubscription::query()

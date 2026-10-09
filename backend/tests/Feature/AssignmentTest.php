@@ -46,7 +46,7 @@ class AssignmentTest extends TestCase
             'is_active' => true,
         ]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

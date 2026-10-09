@@ -32,7 +32,7 @@ class DashboardAnalyticsTest extends TestCase
     {
         $user = User::factory()->create();
         $user->givePermissionTo($permissions);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

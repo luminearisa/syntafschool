@@ -111,7 +111,7 @@ class LmsStandaloneModeTest extends LmsTestCase
 
         // Permintaan terautentikasi berikutnya memakai identitas itu
         // (di suite ini via actingAs; token di atas sudah diverifikasi).
-        Sanctum::actingAs($issued->tokenable);
+        Sanctum::actingAs($issued->tokenable, ['*']);
 
         $this->getJson('/api/v1/lms/auth/me')
             ->assertOk()
@@ -145,7 +145,7 @@ class LmsStandaloneModeTest extends LmsTestCase
         ]);
 
         // Admin membuat kategori & course (tanpa mapel SIAKAD).
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
 
         $category = $this->postJson('/api/v1/lms/categories', ['name' => 'Bahasa Inggris'])
             ->assertCreated()->json('data.id');
@@ -185,7 +185,7 @@ class LmsStandaloneModeTest extends LmsTestCase
 
         // Siswa belajar: struktur, buka materi, tandai selesai.
         $this->app['auth']->forgetGuards();
-        Sanctum::actingAs($student);
+        Sanctum::actingAs($student, ['*']);
 
         $this->getJson("/api/v1/lms/courses/{$courseId}/learn")
             ->assertOk()
@@ -228,7 +228,7 @@ class LmsStandaloneModeTest extends LmsTestCase
             'code' => 'G-900', 'name' => 'Guru Publik', 'is_active' => true,
         ]);
 
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
         $publicId = (int) $this->postJson('/api/v1/lms/courses', [
             'name' => 'Kursus Publik', 'short_description' => 'Kursus terbuka untuk umum',
             'course_type' => 'GENERAL', 'visibility' => 'PUBLIC',
@@ -246,7 +246,7 @@ class LmsStandaloneModeTest extends LmsTestCase
 
         $this->postJson("/api/v1/lms/courses/{$publicId}/publish")->assertOk();
 
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs($admin, ['*']);
         $privateId = (int) $this->postJson('/api/v1/lms/courses', [
             'name' => 'Kursus Internal', 'course_type' => 'GENERAL', 'visibility' => 'ENROLLED_ONLY',
         ])->assertCreated()->json('data.id');

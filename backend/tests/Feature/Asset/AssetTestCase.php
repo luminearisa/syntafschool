@@ -109,7 +109,7 @@ abstract class AssetTestCase extends TestCase
 
     protected function actAs(User $user): static
     {
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $this;
     }

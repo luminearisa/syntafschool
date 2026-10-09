@@ -98,7 +98,7 @@ class FinancePortalTest extends TestCase
         $this->issuedInvoice($orangLain['student'], '2026-09', 'PKT-PT-A');
 
         // Wali: tanpa satu pun permission finance.
-        Sanctum::actingAs($milikA['parent_user']);
+        Sanctum::actingAs($milikA['parent_user'], ['*']);
 
         $children = $this->getJson('/api/v1/finance/portal/children')
             ->assertOk()
@@ -127,7 +127,7 @@ class FinancePortalTest extends TestCase
 
         // Dan akun yang sama sekali tidak punya anak.
         $solo = User::factory()->create(['email' => 'solo@schoolerp.test', 'is_active' => true]);
-        Sanctum::actingAs($solo);
+        Sanctum::actingAs($solo, ['*']);
 
         $this->assertSame([], $this->getJson('/api/v1/finance/portal/children')->assertOk()->json('data'));
         $this->getJson('/api/v1/finance/portal/children/'.$milikA['student']->id.'/invoices')->assertNotFound();
@@ -169,7 +169,7 @@ class FinancePortalTest extends TestCase
         $juli->forceFill(['issue_date' => Carbon::create(2026, 7, 5)])->save();
         $this->pay($juli, 900000);
 
-        Sanctum::actingAs($family['parent_user']);
+        Sanctum::actingAs($family['parent_user'], ['*']);
 
         $summary = $this->getJson('/api/v1/finance/portal/children/'.$student->id.'/summary')
             ->assertOk()
@@ -224,7 +224,7 @@ class FinancePortalTest extends TestCase
             'student_id' => $student->id,
         ]))->assertCreated();
 
-        Sanctum::actingAs($family['parent_user']);
+        Sanctum::actingAs($family['parent_user'], ['*']);
         $base = '/api/v1/finance/portal/children/'.$student->id.'/invoices';
 
         // "SPP" dan "Tagihan Lain" adalah filter jenis biaya, bukan golongan
@@ -271,7 +271,7 @@ class FinancePortalTest extends TestCase
             'start_date' => Carbon::create(2026, 10, 5)->toDateString(),
         ])->assertCreated();
 
-        Sanctum::actingAs($family['parent_user']);
+        Sanctum::actingAs($family['parent_user'], ['*']);
 
         // Pembayaran + riwayat + kuitansi (§9): satu pembayaran lunas = satu kuitansi.
         $payments = $this->getJson('/api/v1/finance/portal/children/'.$student->id.'/payments')
@@ -443,7 +443,7 @@ class FinancePortalTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

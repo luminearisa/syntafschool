@@ -48,7 +48,7 @@ abstract class SupTestCase extends TestCase
     {
         $user = User::factory()->create(['is_active' => true, ...$attributes]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -80,7 +80,7 @@ abstract class SupTestCase extends TestCase
     /** Autentikasi sebagai akun tertentu (mengembalikan test case agar mudah dirantai). */
     protected function actingAsUser(User $user): static
     {
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $this;
     }

@@ -33,7 +33,7 @@ class ReportCardTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

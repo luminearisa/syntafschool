@@ -63,7 +63,7 @@ class BoardingDashboardReportPortalTest extends TestCase
             ?? User::factory()->create(['email' => $email, 'is_active' => true]);
 
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -196,7 +196,7 @@ class BoardingDashboardReportPortalTest extends TestCase
             'start_date' => now()->subDay()->toDateString(),
             'status' => \App\Models\BoardingMusyrif::STATUS_ACTIVE,
         ]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $this->getJson('/api/v1/boarding/monitoring')
             ->assertOk()
@@ -328,7 +328,7 @@ class BoardingDashboardReportPortalTest extends TestCase
         $parent->syncRoles(['wali-murid']);
         $this->makeParentOf($parent, $anak);
 
-        Sanctum::actingAs($parent);
+        Sanctum::actingAs($parent, ['*']);
 
         // Orang tua tidak punya permission boarding sama sekali.
         $this->getJson('/api/v1/boarding/violations')->assertForbidden();
@@ -383,7 +383,7 @@ class BoardingDashboardReportPortalTest extends TestCase
             'date' => now()->toDateString(),
         ])->assertCreated();
 
-        Sanctum::actingAs($parent);
+        Sanctum::actingAs($parent, ['*']);
         $this->getJson('/api/v1/boarding/portal/children/'.$anak->id.'/summary')
             ->assertOk()
             ->assertJsonPath('data.unread_notifications', 1);
@@ -425,7 +425,7 @@ class BoardingDashboardReportPortalTest extends TestCase
         ))->assertCreated()->json('data.id');
         $this->postJson('/api/v1/boarding/permissions/'.$b.'/submit')->assertOk();
 
-        Sanctum::actingAs($parent);
+        Sanctum::actingAs($parent, ['*']);
         $this->getJson('/api/v1/boarding/portal/children/'.$anak->id.'/summary')
             ->assertOk()
             ->assertJsonPath('data.counts.permissions', 1)

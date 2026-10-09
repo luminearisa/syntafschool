@@ -71,7 +71,7 @@ class CbtTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $user->syncRoles(['guru']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -115,7 +115,7 @@ class CbtTest extends TestCase
 
     public function test_siswa_tidak_bisa_membuat_soal(): void
     {
-        Sanctum::actingAs($this->studentUser);
+        Sanctum::actingAs($this->studentUser, ['*']);
 
         $this->postJson('/api/v1/cbt/questions', [
             'question_type' => 'essay',
@@ -203,7 +203,7 @@ class CbtTest extends TestCase
 
         $token = CbtSession::find($session['id'])->access_token;
 
-        Sanctum::actingAs($this->studentUser);
+        Sanctum::actingAs($this->studentUser, ['*']);
 
         $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/start', ['token' => 'SALAH'])
             ->assertStatus(422);
@@ -266,7 +266,7 @@ class CbtTest extends TestCase
         $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/close')->assertOk();
         $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/release')->assertOk();
 
-        Sanctum::actingAs($this->studentUser);
+        Sanctum::actingAs($this->studentUser, ['*']);
         $this->getJson('/api/v1/cbt/attempts/'.$attempt->id.'/review')
             ->assertOk()
             ->assertJsonPath('data.attempt.passed', $attempt->passed);
@@ -317,7 +317,7 @@ class CbtTest extends TestCase
         ])->assertOk();
         $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/open')->assertOk();
 
-        Sanctum::actingAs($this->studentUser);
+        Sanctum::actingAs($this->studentUser, ['*']);
         $player = $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/start', [])
             ->assertOk()->json('data');
 
@@ -382,7 +382,7 @@ class CbtTest extends TestCase
         $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/enroll', ['student_ids' => [$this->student->id]])->assertOk();
         $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/open')->assertOk();
 
-        Sanctum::actingAs($this->studentUser);
+        Sanctum::actingAs($this->studentUser, ['*']);
         $player = $this->postJson('/api/v1/cbt/sessions/'.$session['id'].'/start')->assertOk()->json('data');
         $id = $player['attempt']['id'];
 
@@ -426,7 +426,7 @@ class CbtTest extends TestCase
         $user = User::factory()->create(['is_active' => true]);
         $employee = Employee::create(['full_name' => 'Pengawas', 'employee_type' => 'staf', 'is_teacher' => false]);
         $user->syncRoles(['guru']);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $q = $this->postJson('/api/v1/cbt/questions', [
             'question_type' => 'true_false',

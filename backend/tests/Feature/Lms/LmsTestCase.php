@@ -54,7 +54,7 @@ abstract class LmsTestCase extends TestCase
     {
         $user = User::factory()->create(['is_active' => true, ...$attributes]);
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -71,7 +71,7 @@ abstract class LmsTestCase extends TestCase
         $user ??= User::factory()->create(['is_active' => true]);
         $user->forceFill(['userable_type' => Student::class, 'userable_id' => $student->id])->save();
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -82,7 +82,7 @@ abstract class LmsTestCase extends TestCase
         $user = User::factory()->create(['is_active' => true]);
         $user->forceFill(['userable_type' => Employee::class, 'userable_id' => $employee->id])->save();
         $user->syncRoles([$role]);
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }
@@ -99,7 +99,7 @@ abstract class LmsTestCase extends TestCase
             'account_status' => 'active',
         ]);
 
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         return $user;
     }

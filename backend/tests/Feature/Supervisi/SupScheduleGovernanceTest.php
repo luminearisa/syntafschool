@@ -109,7 +109,7 @@ class SupScheduleGovernanceTest extends SupTestCase
         }
 
         $user = $this->employeeWithAccount($mine, 'guru');
-        Sanctum::actingAs($user);
+        Sanctum::actingAs($user, ['*']);
 
         $response = $this->getJson('/api/v1/supervisi/schedules')->assertOk();
 
@@ -119,7 +119,7 @@ class SupScheduleGovernanceTest extends SupTestCase
         // Tanpa kaitan data pegawai, jadwal tidak boleh terlihat sama sekali.
         $lonely = \App\Models\User::factory()->create(['is_active' => true]);
         $lonely->syncRoles(['guru']);
-        Sanctum::actingAs($lonely);
+        Sanctum::actingAs($lonely, ['*']);
 
         $this->getJson('/api/v1/supervisi/schedules')->assertOk()->assertJsonCount(0, 'data');
     }
