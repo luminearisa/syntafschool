@@ -99,8 +99,10 @@ class StudentAttendanceController extends BaseApiController
         );
     }
 
-    public function show(StudentAttendance $attendance): JsonResponse
+    public function show(Request $request, StudentAttendance $attendance): JsonResponse
     {
+        $this->assertMayRecordClass($request, (int) $attendance->school_class_id);
+
         return $this->successResponse(
             new StudentAttendanceResource($attendance->load($this->with)),
             'Detail presensi siswa berhasil diambil',
@@ -149,6 +151,14 @@ class StudentAttendanceController extends BaseApiController
 
         $data = $request->validated();
 
+        $this->assertMayRecordClass($request, (int) $attendance->school_class_id);
+
+        if ((int) $data['student_id'] !== (int) $attendance->student_id) {
+            throw ValidationException::withMessages([
+                'student_id' => 'Catatan presensi ini milik siswa lain. Hapus lalu buat presensi untuk siswa yang dituju.',
+            ]);
+        }
+
         $this->assertStudentInClass((int) $data['student_id'], (int) $data['class_id']);
         $this->assertDateInSemester((int) $data['semester_id'], $data['date']);
         $this->assertSchoolDay((int) $data['semester_id'], $data['date']);
@@ -172,8 +182,10 @@ class StudentAttendanceController extends BaseApiController
         );
     }
 
-    public function destroy(StudentAttendance $attendance): JsonResponse
+    public function destroy(Request $request, StudentAttendance $attendance): JsonResponse
     {
+        $this->assertMayRecordClass($request, (int) $attendance->school_class_id);
+
         if ($attendance->isLocked()) {
             throw ValidationException::withMessages([
                 'status' => 'Presensi ini terkunci dan tidak bisa dihapus.',
@@ -368,9 +380,42 @@ class StudentAttendanceController extends BaseApiController
         }
 
         return $this->successResponse(
-            $this->recap->forStudent((int) $student->id, (int) $semesterId),
+            $this->recap->forStudent(
+                (int) $student->id,
+                (int) $semesterId,
+                $this->educationLevelForStudent($student, (int) $semesterId),
+            ),
             'Rekap presensi siswa berhasil diambil',
         );
+    }
+
+    /**
+     * Jenjang kelas aktif siswa pada semester tertentu.
+     *
+     * Tanpa ini, rekap siswa menjumlahkan hari efektif seluruh jenjang sehingga
+     * persentase kehadirannya tampak mendekati nol.
+     */
+    protected function educationLevelForStudent(Student $student, int $semesterId): ?int
+    {
+        $academicYearId = Semester::query()->whereKey($semesterId)->value('academic_year_id');
+
+        if ($academicYearId === null) {
+            return null;
+        }
+
+        $classId = ClassStudent::query()
+            ->where('student_id', $student->id)
+            ->where('academic_year_id', $academicYearId)
+            ->where('status', 'aktif')
+            ->value('school_class_id');
+
+        if ($classId === null) {
+            return null;
+        }
+
+        $levelId = SchoolClass::query()->whereKey($classId)->value('education_level_id');
+
+        return $levelId === null ? null : (int) $levelId;
     }
 
     /**

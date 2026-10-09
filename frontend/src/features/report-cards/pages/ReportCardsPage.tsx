@@ -40,6 +40,7 @@ export function ReportCardsPage() {
   const [classId, setClassId] = useState<number | ''>('');
   const [semesterId, setSemesterId] = useState<number | ''>('');
   const [reportType, setReportType] = useState('semester');
+  const [generateType, setGenerateType] = useState('semester');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -68,7 +69,7 @@ export function ReportCardsPage() {
     if (selectedId) queryClient.invalidateQueries({ queryKey: ['report-card', selectedId] });
   };
   const generateMutation = useMutation({
-    mutationFn: () => reportCardsApi.generate({ class_id: Number(classId), semester_id: Number(semesterId), type: reportType }),
+    mutationFn: () => reportCardsApi.generate({ class_id: Number(classId), semester_id: Number(semesterId), type: generateType }),
     onSuccess: (result) => { toast.success(`${result.generated} rapor berhasil digenerate sebagai draft`); setPage(1); invalidate(); },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -95,7 +96,7 @@ export function ReportCardsPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div><label className="mb-1 block text-xs font-medium text-slate-600">Kelas</label><Select value={classId} onChange={(event) => { setClassId(event.target.value ? Number(event.target.value) : ''); const current = classes.find((row) => row.id === Number(event.target.value)); if (current) { const suggested = semesters.find((semester) => semester.academic_year_id === current.academic_year_id); if (suggested) setSemesterId(suggested.id); } }}><option value="">Pilih kelas</option>{classes.map((row) => <option key={row.id} value={row.id}>{row.name} · {row.code}</option>)}</Select></div>
             <div><label className="mb-1 block text-xs font-medium text-slate-600">Semester</label><Select value={semesterId} onChange={(event) => setSemesterId(event.target.value ? Number(event.target.value) : '')}><option value="">Pilih semester</option>{semesters.map((row) => <option key={row.id} value={row.id}>{row.name} · {row.academic_year?.name ?? ''}</option>)}</Select></div>
-            <div><label className="mb-1 block text-xs font-medium text-slate-600">Jenis Rapor</label><Select value={reportType} onChange={(event) => setReportType(event.target.value)}>{REPORT_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></div>
+            <div><label className="mb-1 block text-xs font-medium text-slate-600">Jenis Rapor</label><Select value={generateType} onChange={(event) => setGenerateType(event.target.value)}>{REPORT_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</Select></div>
             <div className="flex items-end"><Can perm="report-card.generate"><Button className="w-full" onClick={() => { if (!classId || !semesterId) { toast.error('Pilih kelas dan semester terlebih dahulu.'); return; } generateMutation.mutate(); }} loading={generateMutation.isPending}>Generate Draft</Button></Can></div>
           </div>
         )}

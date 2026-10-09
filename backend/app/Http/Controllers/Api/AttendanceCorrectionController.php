@@ -6,6 +6,7 @@ use App\Http\Requests\Attendance\AttendanceCorrectionRequest;
 use App\Http\Requests\Attendance\RejectCorrectionRequest;
 use App\Http\Resources\AttendanceCorrectionResource;
 use App\Models\AttendanceCorrection;
+use App\Models\AttendanceStatus;
 use App\Models\StudentAttendance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class AttendanceCorrectionController extends BaseApiController
     /** Kolom yang boleh difilter lewat query string. */
     protected array $filterable = ['status', 'student_attendance_id'];
 
-    protected array $with = ['attendance.student', 'oldStatus', 'newStatus', 'requester', 'approver'];
+    protected array $with = ['attendance.student', 'oldStatus', 'newStatus', 'leaveType', 'requester', 'approver'];
 
     public function index(Request $request): JsonResponse
     {
@@ -86,10 +87,21 @@ class AttendanceCorrectionController extends BaseApiController
             ]);
         }
 
+        // Status Sakit/Izin wajib membawa jenis izin — sama seperti jalur presensi biasa.
+        $newStatus = AttendanceStatus::find((int) $data['new_status_id']);
+
+        if ($newStatus && in_array($newStatus->code, AttendanceStatus::CODES_REQUIRING_LEAVE_TYPE, true)
+            && empty($data['leave_type_id'])) {
+            throw ValidationException::withMessages([
+                'leave_type_id' => 'Jenis izin wajib dipilih untuk status sakit/izin.',
+            ]);
+        }
+
         $correction = AttendanceCorrection::create([
             'student_attendance_id' => $attendance->id,
             'old_status_id' => $attendance->attendance_status_id,
             'new_status_id' => $data['new_status_id'],
+            'leave_type_id' => $data['leave_type_id'] ?? null,
             'reason' => $data['reason'],
             'requested_by' => $request->user()?->id,
             'status' => AttendanceCorrection::STATUS_PENDING,
@@ -119,6 +131,7 @@ class AttendanceCorrectionController extends BaseApiController
         if ($attendance) {
             $attendance->update([
                 'attendance_status_id' => $correction->new_status_id,
+                'leave_type_id' => $correction->leave_type_id,
                 'verified_by' => $request->user()?->id,
                 'verified_at' => now(),
                 'status' => StudentAttendance::STATUS_VERIFIED,

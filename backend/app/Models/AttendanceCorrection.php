@@ -43,6 +43,11 @@ class AttendanceCorrection extends BaseModel
         return $this->belongsTo(AttendanceStatus::class, 'new_status_id');
     }
 
+    public function leaveType(): BelongsTo
+    {
+        return $this->belongsTo(LeaveType::class);
+    }
+
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');

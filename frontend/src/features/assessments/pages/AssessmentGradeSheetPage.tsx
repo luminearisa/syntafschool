@@ -28,6 +28,7 @@ export function AssessmentGradeSheetPage() {
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
+  const [saveReason, setSaveReason] = useState('');
 
   const sheetQuery = useQuery({
     queryKey: ['assessment-sheet', assessmentId],
@@ -46,8 +47,8 @@ export function AssessmentGradeSheetPage() {
     queryClient.invalidateQueries({ queryKey: ['assessments'] });
   };
   const saveMutation = useMutation({
-    mutationFn: (entries: BulkScoreEntry[]) => assessmentsApi.saveScores(assessmentId, entries),
-    onSuccess: (result) => { toast.success(`Nilai tersimpan (${result.total} siswa)`); invalidate(); },
+    mutationFn: (entries: BulkScoreEntry[]) => assessmentsApi.saveScores(assessmentId, entries, saveReason),
+    onSuccess: (result) => { toast.success(`Nilai tersimpan (${result.total} siswa)`); setSaveReason(''); invalidate(); },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
   const transitionMutation = useMutation({
@@ -73,6 +74,10 @@ export function AssessmentGradeSheetPage() {
 
   const submitScores = (event: FormEvent) => {
     event.preventDefault();
+    if (status !== 'draft' && !saveReason.trim()) {
+      toast.error('Alasan perubahan wajib diisi karena nilai sudah diajukan/diverifikasi.');
+      return;
+    }
     const entries = items.map((item) => {
       const value = scores[item.student_id] ?? '';
       return {
@@ -97,6 +102,7 @@ export function AssessmentGradeSheetPage() {
         {sheet && <div className="flex flex-wrap gap-2">
           <Can perm="academic.grade"><Button variant="outline" onClick={submitScores} disabled={isLocked || saveMutation.isPending}><Save className="h-4 w-4" /> {saveButtonText}</Button></Can>
           {status === 'draft' && <Can perm="academic.grade"><Button onClick={() => { if (pending > 0) { toast.error(`Masih ada ${pending} siswa yang belum dinilai.`); return; } transitionMutation.mutate('submit'); }} loading={transitionMutation.isPending}><Send className="h-4 w-4" /> Ajukan Nilai</Button></Can>}
+          {status === 'revision_requested' && <Can perm="academic.grade"><Button onClick={() => { if (pending > 0) { toast.error(`Masih ada ${pending} siswa yang belum dinilai.`); return; } transitionMutation.mutate('submit'); }} loading={transitionMutation.isPending}><Send className="h-4 w-4" /> Ajukan Ulang</Button></Can>}
           {status === 'submitted' && <Can perm="academic.approve"><Button variant="outline" onClick={() => transitionMutation.mutate('verify')} loading={transitionMutation.isPending}><Check className="h-4 w-4" /> Verifikasi</Button></Can>}
           {['submitted', 'verified'].includes(status) && <Can perm="academic.approve"><Button onClick={() => { if (pending > 0) { toast.error(`Masih ada ${pending} siswa yang belum dinilai.`); return; } transitionMutation.mutate('finalize'); }} loading={transitionMutation.isPending}><LockKeyhole className="h-4 w-4" /> Finalisasi</Button></Can>}
           {['verified', 'finalized'].includes(status) && <Can perm="academic.approve"><Button variant="outline" onClick={() => setReopenOpen(true)}><UnlockKeyhole className="h-4 w-4" /> Buka Revisi</Button></Can>}
@@ -113,6 +119,10 @@ export function AssessmentGradeSheetPage() {
               <Card className="p-4"><p className="text-xs text-slate-500">Belum dinilai</p><p className="mt-1 text-xl font-semibold text-amber-700">{sheet.pending}</p></Card>
             </div>
             {sheet.passing_grade !== null && <p className="text-xs text-slate-500">KKTP: {sheet.passing_grade} · Nilai maksimum penilaian: {sheet.max_score}</p>}
+            {!isLocked && status !== 'draft' && <Card className="p-3">
+              <label className="mb-1 block text-xs font-medium text-slate-600">Alasan perubahan nilai (wajib — tercatat pada riwayat)</label>
+              <Textarea value={saveReason} onChange={(event) => setSaveReason(event.target.value)} placeholder="Contoh: memperbaiki nilai yang salah input" />
+            </Card>}
             <Card>
               {items.length === 0 ? <EmptyState title="Kelas belum memiliki siswa aktif" /> : <form id="score-sheet-form" onSubmit={submitScores}>
                 <div className="overflow-x-auto"><table className="w-full text-sm">

@@ -315,6 +315,8 @@ class ScheduleController extends BaseApiController
 
             $data['new_start_time'] .= ':00';
             $data['new_end_time'] .= ':00';
+
+            $this->assertMoveFree($schedule, $data);
         }
 
         $data['created_by'] = $request->user()?->id;
@@ -548,6 +550,63 @@ class ScheduleController extends BaseApiController
                     'Guru pengganti sudah mengajar %s di %s pada jam yang sama (%s–%s).',
                     $clash->subject?->name ?? 'mapel lain',
                     $clash->schoolClass?->name ?? 'kelas lain',
+                    substr($clash->start_time, 0, 5),
+                    substr($clash->end_time, 0, 5),
+                ),
+            ]);
+        }
+    }
+
+    /**
+     * Jadwal yang dipindah tidak boleh bentrok dengan kelas, guru pengampu, atau
+     * ruang tujuan pada hari/jam barunya — sama seperti saat menjadwalkan biasa.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function assertMoveFree(Schedule $schedule, array $data): void
+    {
+        $dayId = (int) ($data['new_day_id'] ?? $schedule->day_id);
+        $start = $data['new_start_time'];
+        $end = $data['new_end_time'];
+        $roomId = $data['new_room_id'] ?? $schedule->room_id;
+
+        $base = fn () => Schedule::query()
+            ->with(['subject:id,name', 'schoolClass:id,name'])
+            ->where('id', '!=', $schedule->id)
+            ->where('day_id', $dayId)
+            ->where('semester_id', $schedule->semester_id)
+            ->where('start_time', '<', $end)
+            ->where('end_time', '>', $start);
+
+        if ($clash = $base()->where('school_class_id', $schedule->school_class_id)->first()) {
+            throw ValidationException::withMessages([
+                'new_start_time' => sprintf(
+                    'Kelas ini sudah punya %s pada jam %s–%s.',
+                    $clash->subject?->name ?? 'pelajaran lain',
+                    substr($clash->start_time, 0, 5),
+                    substr($clash->end_time, 0, 5),
+                ),
+            ]);
+        }
+
+        if ($schedule->employee_id && ($clash = $base()->where('employee_id', $schedule->employee_id)->first())) {
+            throw ValidationException::withMessages([
+                'new_start_time' => sprintf(
+                    'Guru pengampu sudah mengajar %s di %s pada jam %s–%s.',
+                    $clash->subject?->name ?? 'mapel lain',
+                    $clash->schoolClass?->name ?? 'kelas lain',
+                    substr($clash->start_time, 0, 5),
+                    substr($clash->end_time, 0, 5),
+                ),
+            ]);
+        }
+
+        if ($roomId && ($clash = $base()->where('room_id', $roomId)->first())) {
+            throw ValidationException::withMessages([
+                'new_start_time' => sprintf(
+                    'Ruang ini sudah dipakai %s (%s) pada jam %s–%s.',
+                    $clash->schoolClass?->name ?? 'kelas lain',
+                    $clash->subject?->name ?? 'mapel lain',
                     substr($clash->start_time, 0, 5),
                     substr($clash->end_time, 0, 5),
                 ),

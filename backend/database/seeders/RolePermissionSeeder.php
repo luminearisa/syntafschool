@@ -256,7 +256,7 @@ class RolePermissionSeeder extends Seeder
             'wallet:withdrawal.view', 'wallet:ledger.view',
         ],
         // Guru Tahfiz: lihat, catat setoran, dan menilai. Tidak menghapus data.
-        'guru' => ['academic:view', 'academic:grade', 'academic:attendance', 'student:view', 'assessment', 'report-card:view', 'report-card:generate', 'report-card:update', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
+        'guru' => ['academic:view', 'academic:grade', 'academic:attendance', 'student:view', 'assessment', 'report-card:view', 'report-card:generate', 'report-card:update', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess', 'master-data:view', 'employee:view'],
         // Musyrif/musyrifah: memantau seluruh halaqah (view + laporan) DAN seluruh
         // hak wali kamar asrama, ditambah wewenang yang hanya boleh dipakai
         // pengasuh tetap: menyetujui izin/kepulangan, mencatat prestasi, dan
@@ -325,7 +325,7 @@ class RolePermissionSeeder extends Seeder
             'boarding:view', 'boarding:health.view', 'boarding:health.manage',
             'boarding:visitor.view', 'boarding:permission.view',
         ],
-        'wali-kelas' => ['academic:view', 'academic:grade', 'academic:attendance', 'academic:approve', 'student:view', 'assessment', 'report-card:view', 'report-card:generate', 'report-card:update', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess'],
+        'wali-kelas' => ['academic:view', 'academic:grade', 'academic:attendance', 'academic:approve', 'student:view', 'assessment', 'report-card:view', 'report-card:generate', 'report-card:update', 'report:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:setoran', 'tahfiz:assess', 'master-data:view', 'employee:view'],
         'staf' => ['master-data:view', 'student:view', 'employee:view', 'tahfiz:view', 'tahfiz:create', 'tahfiz:update'],
         // Peserta Tahfiz (termasuk siswa yang mengikuti program): lihat progress sendiri.
         // `siswa` dan `wali-murid` sengaja TIDAK diberi permission boarding apa

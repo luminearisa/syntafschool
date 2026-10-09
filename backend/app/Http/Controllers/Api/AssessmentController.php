@@ -139,6 +139,7 @@ class AssessmentController extends BaseApiController
 
     public function update(AssessmentRequest $request, Assessment $assessment): JsonResponse
     {
+        $this->assertMayGrade($request, $assessment);
         $this->assertNotLocked($assessment);
 
         $data = $request->payload();
@@ -163,13 +164,24 @@ class AssessmentController extends BaseApiController
         );
     }
 
-    public function destroy(Assessment $assessment): JsonResponse
+    public function destroy(Request $request, Assessment $assessment): JsonResponse
     {
+        $this->assertMayGrade($request, $assessment);
         $this->assertNotLocked($assessment);
 
         $assessment->delete();
 
         return $this->successResponse(null, 'Penilaian berhasil dihapus');
+    }
+
+    /**
+     * Guru hanya mengubah penilaian yang diampu kelasnya (lihat TeachingAccess).
+     */
+    protected function assertMayGrade(Request $request, Assessment $assessment): void
+    {
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayGrade($request->user(), $assessment)) {
+            abort(403, 'Anda bukan pengampu penilaian ini.');
+        }
     }
 
     /**
@@ -249,7 +261,7 @@ class AssessmentController extends BaseApiController
             abort(403, 'Anda bukan pengampu penilaian ini.');
         }
 
-        if ($assessment->status !== Assessment::STATUS_DRAFT) {
+        if (! in_array($assessment->status, [Assessment::STATUS_DRAFT, Assessment::STATUS_REVISION_REQUESTED], true)) {
             throw ValidationException::withMessages([
                 'status' => "Penilaian ini sudah berstatus {$assessment->status} dan tidak perlu diserahkan lagi.",
             ]);

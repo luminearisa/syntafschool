@@ -136,15 +136,25 @@ class TimeSlotController extends BaseApiController
                         continue;
                     }
 
+                    $payload = [
+                        'label' => $slot['label'],
+                        'start_time' => $slot['start_time'].':00',
+                        'end_time' => $slot['end_time'].':00',
+                        'type' => $slot['type'],
+                    ];
+
+                    // Jangan biarkan template membuat jam yang beririsan.
+                    $this->assertNoOverlap(['day_id' => $dayId] + $payload, $existing);
+
+                    // Hanya slot baru yang diaktifkan; slot lama yang sengaja
+                    // dinonaktifkan tidak dihidupkan paksa oleh generate.
+                    if (! $existing) {
+                        $payload['is_active'] = true;
+                    }
+
                     TimeSlot::updateOrCreate(
                         ['day_id' => $dayId, 'slot_number' => $slot['slot_number']],
-                        [
-                            'label' => $slot['label'],
-                            'start_time' => $slot['start_time'].':00',
-                            'end_time' => $slot['end_time'].':00',
-                            'type' => $slot['type'],
-                            'is_active' => true,
-                        ],
+                        $payload,
                     );
 
                     $existing ? $updated++ : $created++;

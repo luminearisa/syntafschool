@@ -80,7 +80,7 @@ class GradingService
             $decimals,
         ))->values();
 
-        $finals = $rows->map->final_score->filter()->values()->all();
+        $finals = $rows->map->final_score->filter(fn ($value) => $value !== null)->values()->all();
         $tuntas = $rows->filter(fn (array $r) => $r['tuntas'] === true)->count();
         $scored = $rows->filter(fn (array $r) => $r['final_score'] !== null)->count();
 

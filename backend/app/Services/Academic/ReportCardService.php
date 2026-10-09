@@ -79,16 +79,20 @@ class ReportCardService
             $subject->id => $this->grading->build($class, $subject, $semester),
         ]);
 
-        $existingPublished = ReportCard::withTrashed()
+        $existingLocked = ReportCard::withTrashed()
             ->where('school_class_id', $class->id)
             ->where('semester_id', $semester->id)
             ->where('type', $type)
-            ->where('status', ReportCard::STATUS_PUBLISHED)
+            ->whereIn('status', [
+                ReportCard::STATUS_READY,
+                ReportCard::STATUS_APPROVED,
+                ReportCard::STATUS_PUBLISHED,
+            ])
             ->exists();
 
-        if ($existingPublished) {
+        if ($existingLocked) {
             throw ValidationException::withMessages([
-                'type' => 'Rapor yang sudah diterbitkan tidak dapat dibuat ulang.',
+                'type' => 'Rapor yang sudah diajukan/disetujui/diterbitkan tidak dapat dibuat ulang.',
             ]);
         }
 
@@ -102,9 +106,13 @@ class ReportCardService
                     ->where('type', $type)
                     ->first();
 
-                if ($existing?->status === ReportCard::STATUS_PUBLISHED) {
+                if (in_array($existing?->status, [
+                    ReportCard::STATUS_READY,
+                    ReportCard::STATUS_APPROVED,
+                    ReportCard::STATUS_PUBLISHED,
+                ], true)) {
                     throw ValidationException::withMessages([
-                        'type' => 'Rapor yang sudah diterbitkan tidak dapat dibuat ulang.',
+                        'type' => 'Rapor yang sudah diajukan/disetujui/diterbitkan tidak dapat dibuat ulang.',
                     ]);
                 }
 

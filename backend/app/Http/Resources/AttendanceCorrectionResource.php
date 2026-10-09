@@ -17,6 +17,7 @@ class AttendanceCorrectionResource extends JsonResource
             'student_attendance_id' => $this->student_attendance_id,
             'old_status_id' => $this->old_status_id,
             'new_status_id' => $this->new_status_id,
+            'leave_type_id' => $this->leave_type_id,
             'old_status_name' => $this->oldStatus?->name,
             'new_status_name' => $this->newStatus?->name,
             'reason' => $this->reason,

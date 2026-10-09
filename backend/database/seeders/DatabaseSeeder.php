@@ -43,6 +43,12 @@ class DatabaseSeeder extends Seeder
             \App\Modules\Hrd\Strategic\Database\Seeders\HrdPhase3MasterSeeder::class,
             // --- Fondasi referensi -------------------------------------
             RolePermissionSeeder::class,
+            // Modul Promotion (kenaikan kelas & kelulusan) dan Mutation (mutasi
+            // siswa): izin granular promotion.*/graduation.*/mutation.*. Tanpa
+            // ini, seluruh endpoint modul tersebut menolak 403 bagi peran selain
+            // super-admin karena izinnya tidak pernah dibuat.
+            \App\Modules\Promotion\Database\Seeders\PromotionPermissionSeeder::class,
+            \App\Modules\Mutation\Database\Seeders\MutationPermissionSeeder::class,
             // Modul LMS: permission granular lms.* (§35).
             LmsPermissionSeeder::class,
             // Modul Supervisi: permission granular supervisi.* + instrumen bawaan.

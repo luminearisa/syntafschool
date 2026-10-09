@@ -117,10 +117,10 @@ class RemedialController extends BaseApiController
         $this->assertWithinMax($assessment, $data);
 
         $remedial->update([
-            'score_before' => $data['score_before'] ?? $remedial->score_before,
-            'score_after' => $data['score_after'] ?? $remedial->score_after,
-            'date' => $data['date'] ?? $remedial->date,
-            'notes' => $data['notes'] ?? $remedial->notes,
+            'score_before' => array_key_exists('score_before', $data) ? $data['score_before'] : $remedial->score_before,
+            'score_after' => array_key_exists('score_after', $data) ? $data['score_after'] : $remedial->score_after,
+            'date' => array_key_exists('date', $data) ? $data['date'] : $remedial->date,
+            'notes' => array_key_exists('notes', $data) ? $data['notes'] : $remedial->notes,
         ]);
 
         return $this->successResponse(

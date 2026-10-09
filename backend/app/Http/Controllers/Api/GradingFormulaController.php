@@ -57,7 +57,13 @@ class GradingFormulaController extends BaseApiController
     {
         [$data, $settings] = $this->validateData($request, $formula);
 
-        $formula->update($data + ['settings' => $settings]);
+        // Pertahankan pengaturan lama bila tidak dikirim, dan gabungkan bila
+        // hanya sebagian yang diubah — supaya decimals/remedial tidak tereset.
+        if ($settings !== null) {
+            $data['settings'] = array_merge($formula->settings ?? [], $settings);
+        }
+
+        $formula->update($data);
 
         return $this->successResponse($formula->refresh(), 'Formula penilaian berhasil diperbarui');
     }

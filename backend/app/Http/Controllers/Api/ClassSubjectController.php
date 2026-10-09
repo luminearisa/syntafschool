@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Resources\ClassSubjectResource;
 use App\Models\ClassSubject;
 use App\Models\Employee;
+use App\Models\Schedule;
 use App\Models\SchoolClass;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -109,6 +110,17 @@ class ClassSubjectController extends BaseApiController
     public function destroy(SchoolClass $class, ClassSubject $classSubject): JsonResponse
     {
         $this->assertBelongsToClass($class, $classSubject);
+
+        $usedBySchedule = Schedule::query()
+            ->where('school_class_id', $class->id)
+            ->where('subject_id', $classSubject->subject_id)
+            ->exists();
+
+        if ($usedBySchedule) {
+            throw ValidationException::withMessages([
+                'class_subject' => 'Mapel ini masih dipakai pada jadwal pelajaran. Hapus jadwalnya terlebih dahulu.',
+            ]);
+        }
 
         $classSubject->delete();
 

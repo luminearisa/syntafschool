@@ -122,6 +122,23 @@ class AssessmentWeightController extends BaseApiController
             'weight' => 'bobot',
         ]);
 
+        $class = SchoolClass::findOrFail($weight->school_class_id);
+        $year = AcademicYear::findOrFail($weight->academic_year_id);
+
+        // Hitung total dengan mengganti bobot baris ini dengan nilai baru,
+        // supaya satu perubahan pun tidak bisa membuat total lewat 100%.
+        $entries = AssessmentWeight::query()
+            ->where('school_class_id', $class->id)
+            ->where('academic_year_id', $year->id)
+            ->get()
+            ->map(fn (AssessmentWeight $row) => [
+                'assessment_type_id' => $row->assessment_type_id,
+                'weight' => $row->id === $weight->id ? (float) $data['weight'] : (float) $row->weight,
+            ])
+            ->all();
+
+        $this->assertNotExceedingTotal($entries, $class, $year);
+
         $weight->update($data);
 
         return $this->successResponse($weight->refresh(), 'Bobot penilaian berhasil diperbarui');

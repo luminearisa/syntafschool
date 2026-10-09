@@ -44,10 +44,10 @@ export const assessmentsApi = {
     return response.data.data;
   },
 
-  async saveScores(id: number, entries: BulkScoreEntry[]) {
+  async saveScores(id: number, entries: BulkScoreEntry[], reason?: string) {
     const response = await api.post<ApiResponse<{ created: number; updated: number; total: number }>>(
       `/assessments/${id}/scores/bulk`,
-      { entries },
+      { entries, reason: reason || undefined },
     );
     return response.data.data;
   },

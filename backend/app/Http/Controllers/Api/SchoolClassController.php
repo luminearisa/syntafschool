@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Requests\Academic\SchoolClassRequest;
 use App\Http\Resources\SchoolClassResource;
 use App\Models\ClassStudent;
+use App\Models\Schedule;
 use App\Models\SchoolClass;
 use App\Models\Student;
 use Illuminate\Http\JsonResponse;
@@ -103,6 +104,19 @@ class SchoolClassController extends BaseApiController
 
     public function destroy(SchoolClass $class): JsonResponse
     {
+        $hasStudents = ClassStudent::query()
+            ->where('school_class_id', $class->id)
+            ->where('status', 'aktif')
+            ->exists();
+        $hasSubjects = $class->classSubjects()->exists();
+        $hasSchedules = Schedule::query()->where('school_class_id', $class->id)->exists();
+
+        if ($hasStudents || $hasSubjects || $hasSchedules) {
+            throw ValidationException::withMessages([
+                'class' => 'Kelas masih memiliki siswa, mata pelajaran, atau jadwal. Kosongkan terlebih dahulu sebelum menghapus.',
+            ]);
+        }
+
         $class->delete();
 
         return $this->successResponse(null, 'Kelas berhasil dihapus');

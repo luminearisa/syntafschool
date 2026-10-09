@@ -83,8 +83,8 @@ class ScoreController extends BaseApiController
         $updated = $this->recorder->put(
             $assessment,
             $score->student_id,
-            $data['score'] ?? null,
-            $data['notes'] ?? null,
+            array_key_exists('score', $data) ? $data['score'] : $score->score,
+            array_key_exists('notes', $data) ? $data['notes'] : $score->notes,
             $request->user()?->id,
             $data['reason'] ?? null,
         );
