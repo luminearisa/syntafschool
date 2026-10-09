@@ -561,6 +561,40 @@ class AssessmentTest extends TestCase
         $this->assertFloat(40.0, $gradebook['summary']['average']);
     }
 
+    public function test_formula_penilaian_mengikuti_tahun_ajaran_penilaian(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+
+        // Formula berlaku umum (tahun ajaran penilaian) dan formula versi baru
+        // yang baru efektif tahun ajaran berikutnya.
+        GradingFormula::create([
+            'code' => 'OLD', 'name' => 'Formula Lama',
+            'formula_type' => GradingFormula::TYPE_WEIGHTED_AVERAGE,
+            'settings' => ['decimals' => 0], 'is_active' => true, 'version' => 1,
+        ]);
+        $nextYear = AcademicYear::create([
+            'name' => '2027/2028', 'start_date' => '2027-07-01',
+            'end_date' => '2028-06-30', 'is_active' => false,
+        ]);
+        GradingFormula::create([
+            'code' => 'NEW', 'name' => 'Formula Baru',
+            'formula_type' => GradingFormula::TYPE_WEIGHTED_AVERAGE,
+            'settings' => ['decimals' => 4], 'is_active' => true, 'version' => 99,
+            'effective_academic_year_id' => $nextYear->id,
+        ]);
+
+        $this->actingAsRole('guru');
+        $this->gradeAll($assessment, $world, 88);
+
+        $gradebook = $this->getJson($this->gradebookRoute($world))->assertOk()->json('data');
+
+        // Harus memakai formula tahun penilaian (desimal 0), bukan versi 99
+        // milik tahun ajaran berikutnya.
+        $this->assertSame('OLD', $gradebook['formula']['code']);
+        $this->assertSame(0, $gradebook['formula']['decimals']);
+    }
+
     public function test_hanya_nilai_terverifikasi_atau_terkunci_yang_bisa_dibuka_kembali(): void
     {
         $world = $this->world();
@@ -586,7 +620,11 @@ class AssessmentTest extends TestCase
             'score' => 86,
         ])->assertCreated();
 
-        $this->actingAsRole('siswa');
+        $siswa = $this->actingAsRole('siswa');
+        $siswa->update([
+            'userable_type' => $world['students'][0]->getMorphClass(),
+            'userable_id' => $world['students'][0]->id,
+        ]);
 
         $this->postJson($this->scoreRoute($assessment), [
             'student_id' => $world['students'][0]->id,

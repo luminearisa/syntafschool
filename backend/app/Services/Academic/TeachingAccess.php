@@ -6,6 +6,7 @@ use App\Models\Assessment;
 use App\Models\Assignment;
 use App\Models\ClassSubject;
 use App\Models\Employee;
+use App\Models\ReportCard;
 use App\Models\Schedule;
 use App\Models\SchoolClass;
 use App\Models\User;
@@ -69,6 +70,19 @@ class TeachingAccess
         $teacherId = $this->restrictedTeacherId($user);
 
         return $teacherId === null || (int) $assignment->teacher_id === $teacherId;
+    }
+
+    /**
+     * Guru hanya melihat/mengubah rapor kelas yang ia ampu atau walikelasinya.
+     *
+     * Tanpa batas ini, permission `report-card.update` membuat guru mana pun
+     * dapat menyunting catatan rapor kelas guru lain.
+     */
+    public function mayManageReportCard(?User $user, ReportCard $reportCard): bool
+    {
+        $teacherId = $this->restrictedTeacherId($user);
+
+        return $teacherId === null || $this->teachesClass($teacherId, (int) $reportCard->school_class_id);
     }
 
     /** Tugas baru atas nama guru lain hanya boleh dibuat pengelola. */

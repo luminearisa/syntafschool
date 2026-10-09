@@ -52,8 +52,10 @@ class ReportCardController extends BaseApiController
         );
     }
 
-    public function show(ReportCard $reportCard): JsonResponse
+    public function show(Request $request, ReportCard $reportCard): JsonResponse
     {
+        $this->assertMayManage($request, $reportCard);
+
         $reportCard->load(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject', 'publishedBy']);
 
         return $this->successResponse(new ReportCardResource($reportCard), 'Detail rapor berhasil diambil');
@@ -85,6 +87,8 @@ class ReportCardController extends BaseApiController
 
     public function update(Request $request, ReportCard $reportCard): JsonResponse
     {
+        $this->assertMayManage($request, $reportCard);
+
         $data = $request->validate([
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'homeroom_note' => ['sometimes', 'nullable', 'string', 'max:5000'],
@@ -98,8 +102,10 @@ class ReportCardController extends BaseApiController
         return $this->successResponse(new ReportCardResource($updated), 'Catatan rapor berhasil disimpan');
     }
 
-    public function ready(ReportCard $reportCard): JsonResponse
+    public function ready(Request $request, ReportCard $reportCard): JsonResponse
     {
+        $this->assertMayManage($request, $reportCard);
+
         return $this->successResponse(
             new ReportCardResource($this->reports->markReady($reportCard)),
             'Rapor diajukan untuk review',
@@ -122,8 +128,10 @@ class ReportCardController extends BaseApiController
         );
     }
 
-    public function pdf(ReportCard $reportCard): Response
+    public function pdf(Request $request, ReportCard $reportCard): Response
     {
+        $this->assertMayManage($request, $reportCard);
+
         $reportCard->load(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject']);
         $school = School::query()->where('is_active', true)->orderBy('id')->first();
         $filename = 'rapor-'.$reportCard->student?->nis.'-'.$reportCard->semester?->name.'.pdf';
@@ -131,5 +139,16 @@ class ReportCardController extends BaseApiController
         return Pdf::loadView('pdf.academic-report-card', compact('reportCard', 'school'))
             ->setPaper('a4')
             ->download($filename);
+    }
+
+    /**
+     * Guru hanya menyentuh rapor kelas yang ia ampu/walikelasinya; admin dan
+     * pengelola akademik tidak dibatasi (lihat TeachingAccess).
+     */
+    protected function assertMayManage(Request $request, ReportCard $reportCard): void
+    {
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayManageReportCard($request->user(), $reportCard)) {
+            abort(403, 'Anda bukan wali kelas atau pengampu kelas ini.');
+        }
     }
 }

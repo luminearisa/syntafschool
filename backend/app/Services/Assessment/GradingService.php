@@ -42,7 +42,8 @@ class GradingService
         ['label' => '90-100', 'min' => 90, 'max' => 100.01],
     ];
 
-    protected ?GradingFormula $defaultFormula = null;
+    /** Cache formula per tahun ajaran (kunci 0 = formula global/bawaan). */
+    protected array $defaultFormula = [];
 
     /**
      * Susun nilai akhir satu mapel di satu kelas pada satu semester.
@@ -53,7 +54,7 @@ class GradingService
     {
         $assessments = Assessment::query()
             ->forContext($class->id, $subject->id, $semester->id)
-            ->with(['assessmentType', 'gradingFormula'])
+            ->with(['assessmentType', 'gradingFormula', 'semester'])
             ->orderBy('date')
             ->orderBy('id')
             ->get();
@@ -65,7 +66,7 @@ class GradingService
         $scale = GradeScale::resolveFor($class->education_level_id);
         $rule = PassingGradeRule::resolveFor($subject->id, $class->education_level_id, $semester->academic_year_id);
         $passingScore = $rule?->min_score !== null ? (float) $rule->min_score : null;
-        $decimals = $this->formula()->decimals();
+        $decimals = $this->formula($semester->academic_year_id)->decimals();
 
         $students = $this->studentsOf($class);
 
@@ -98,7 +99,7 @@ class GradingService
                 'code' => $scale->code,
                 'name' => $scale->name,
             ],
-            'formula' => $this->formulaAttributes(),
+            'formula' => $this->formulaAttributes($semester->academic_year_id),
             'weights' => $assessments->map(fn (Assessment $a) => [
                 'assessment_id' => $a->id,
                 'name' => $a->name,
@@ -436,31 +437,62 @@ class GradingService
 
     public function formulaFor(Assessment $assessment): GradingFormula
     {
-        return $assessment->gradingFormula ?? $this->formula();
+        if ($assessment->gradingFormula !== null) {
+            return $assessment->gradingFormula;
+        }
+
+        $yearId = $assessment->semester?->academic_year_id
+            ?? $assessment->schoolClass?->academic_year_id;
+
+        return $this->formula($yearId === null ? null : (int) $yearId);
     }
 
     /**
-     * Formula aktif yang dipakai bila sebuah penilaian tidak menentukan sendiri.
+     * Formula aktif untuk sebuah tahun ajaran.
+     *
+     * Versi formula berlaku mulai `effective_academic_year_id`: formula tanpa
+     * tahun efektif (global) atau tahun efektif <= tahun penilaian, ambil yang
+     * paling baru. Tanpa ini, formula versi baru retroaktif mengubah nilai ujian
+     * tahun-tahun sebelumnya.
+     *
+     * ID tahun ajaran dipakai sebagai urutan kronologis karena dibuat berurutan;
+     * penilaian yang menentukan formulanya sendiri tetap menang (lihat formulaFor).
      */
-    protected function formula(): GradingFormula
+    protected function formula(?int $academicYearId = null): GradingFormula
     {
-        if ($this->defaultFormula !== null) {
-            return $this->defaultFormula;
+        $key = $academicYearId ?? 0;
+
+        if (isset($this->defaultFormula[$key])) {
+            return $this->defaultFormula[$key];
         }
 
-        $this->defaultFormula = GradingFormula::query()->where('is_active', true)->orderByDesc('version')->first()
+        $query = GradingFormula::query()->where('is_active', true);
+
+        if ($academicYearId !== null) {
+            $query->where(function ($q) use ($academicYearId): void {
+                $q->whereNull('effective_academic_year_id')
+                    ->orWhere('effective_academic_year_id', '<=', $academicYearId);
+            })
+                ->orderByRaw('effective_academic_year_id IS NULL')
+                ->orderByDesc('effective_academic_year_id')
+                ->orderByDesc('version');
+        } else {
+            $query->orderByDesc('version');
+        }
+
+        $formula = $query->first()
             ?? GradingFormula::query()->orderBy('id')->first()
             ?? new GradingFormula();
 
-        return $this->defaultFormula;
+        return $this->defaultFormula[$key] = $formula;
     }
 
     /**
      * @return array<string, mixed>
      */
-    protected function formulaAttributes(): array
+    protected function formulaAttributes(?int $academicYearId = null): array
     {
-        $formula = $this->formula();
+        $formula = $this->formula($academicYearId);
 
         return [
             'id' => $formula->id,

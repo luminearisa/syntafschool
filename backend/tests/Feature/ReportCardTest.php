@@ -7,6 +7,7 @@ use App\Models\Assessment;
 use App\Models\AssessmentType;
 use App\Models\ClassStudent;
 use App\Models\ClassSubject;
+use App\Models\Employee;
 use App\Models\ReportCard;
 use App\Models\Score;
 use App\Models\SchoolClass;
@@ -188,6 +189,64 @@ class ReportCardTest extends TestCase
             'semester_id' => $world['semester']->id,
             'type' => ReportCard::TYPE_SEMESTER,
         ])->assertUnprocessable()->assertJsonValidationErrors('type');
+    }
+
+    public function test_guru_tidak_bisa_menyentuh_rapor_kelas_yang_bukan_ampunya(): void
+    {
+        $world = $this->world();
+        $this->finalizedAssessment($world);
+
+        $this->actingAsRole();
+        $cardId = (int) $this->postJson('/api/v1/report-cards/generate', [
+            'class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'type' => ReportCard::TYPE_SEMESTER,
+        ])->assertOk()->json('data.reports.0.id');
+
+        $teacher = Employee::create([
+            'full_name' => 'Guru Lain', 'employee_type' => 'guru',
+            'employment_status' => 'PNS', 'is_teacher' => true, 'is_active' => true,
+        ]);
+        $guru = User::factory()->create([
+            'is_active' => true,
+            'userable_type' => $teacher->getMorphClass(),
+            'userable_id' => $teacher->id,
+        ]);
+        $guru->syncRoles(['guru']);
+        Sanctum::actingAs($guru, ['*']);
+
+        $this->getJson("/api/v1/report-cards/{$cardId}")->assertForbidden();
+        $this->patchJson("/api/v1/report-cards/{$cardId}", ['notes' => 'coba'])->assertForbidden();
+        $this->postJson("/api/v1/report-cards/{$cardId}/ready")->assertForbidden();
+    }
+
+    public function test_wali_kelas_bisa_mengubah_rapor_kelasnya(): void
+    {
+        $world = $this->world();
+        $this->finalizedAssessment($world);
+
+        $this->actingAsRole();
+        $cardId = (int) $this->postJson('/api/v1/report-cards/generate', [
+            'class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'type' => ReportCard::TYPE_SEMESTER,
+        ])->assertOk()->json('data.reports.0.id');
+
+        $teacher = Employee::create([
+            'full_name' => 'Bu Wali', 'employee_type' => 'guru',
+            'employment_status' => 'PNS', 'is_teacher' => true, 'is_active' => true,
+        ]);
+        $world['class']->update(['homeroom_teacher_id' => $teacher->id]);
+
+        $wali = User::factory()->create([
+            'is_active' => true,
+            'userable_type' => $teacher->getMorphClass(),
+            'userable_id' => $teacher->id,
+        ]);
+        $wali->syncRoles(['wali-kelas']);
+        Sanctum::actingAs($wali, ['*']);
+
+        $this->patchJson("/api/v1/report-cards/{$cardId}", ['notes' => 'Pertahankan semangat.'])->assertOk();
     }
 
     public function test_pdf_rapor_dapat_diunduh(): void
