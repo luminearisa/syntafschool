@@ -670,7 +670,7 @@ class AssessmentTest extends TestCase
         $this->assertSame(0, $gradebook['formula']['decimals']);
     }
 
-    public function test_hanya_nilai_terverifikasi_atau_terkunci_yang_bisa_dibuka_kembali(): void
+    public function test_nilai_draft_tidak_bisa_dibuka_kembali(): void
     {
         $world = $this->world();
         $assessment = $this->makeAssessment($world);
@@ -681,7 +681,46 @@ class AssessmentTest extends TestCase
         ]);
 
         $response->assertUnprocessable()->assertJsonValidationErrors('status');
-        $this->assertErrorContains($response, 'status', 'diverifikasi atau difinalisasi');
+        $this->assertErrorContains($response, 'status', 'diserahkan, diverifikasi, atau difinalisasi');
+    }
+
+    public function test_nilai_yang_baru_diserahkan_bisa_langsung_dikembalikan_ke_revisi(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+        $assessment->update(['status' => Assessment::STATUS_SUBMITTED]);
+
+        // Verifikator menemukan masalah sebelum memverifikasi; ia tidak perlu
+        // memverifikasi dulu (yang justru mengesahkan nilai bermasalah).
+        $this->actingAsRole('admin-sekolah');
+
+        $this->postJson("/api/v1/assessments/{$assessment->id}/reopen", [
+            'reason' => 'Ada nilai yang belum lengkap.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', Assessment::STATUS_REVISION_REQUESTED)
+            ->assertJsonPath('data.extra.reopened.from_status', Assessment::STATUS_SUBMITTED);
+    }
+
+    public function test_riwayat_reopen_ditambahkan_bukan_ditimpa(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+
+        $this->actingAsRole('admin-sekolah');
+
+        $assessment->update(['status' => Assessment::STATUS_FINALIZED]);
+        $this->postJson("/api/v1/assessments/{$assessment->id}/reopen", ['reason' => 'Revisi pertama.'])
+            ->assertOk();
+
+        // Kembalikan ke status terkunci untuk membuka lagi, lalu pastikan
+        // riwayat lama tetap tersimpan.
+        $assessment->refresh()->update(['status' => Assessment::STATUS_FINALIZED]);
+
+        $this->postJson("/api/v1/assessments/{$assessment->id}/reopen", ['reason' => 'Revisi kedua.'])
+            ->assertOk()
+            ->assertJsonPath('data.extra.reopened.reason', 'Revisi kedua.')
+            ->assertJsonCount(2, 'data.extra.reopenings');
     }
 
     public function test_siswa_boleh_membaca_nilainya_tetapi_tidak_menulis(): void

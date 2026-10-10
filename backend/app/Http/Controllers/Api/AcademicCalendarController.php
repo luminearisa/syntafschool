@@ -11,6 +11,7 @@ use App\Models\AcademicEvent;
 use App\Models\EffectiveDay;
 use App\Models\Semester;
 use App\Services\EffectiveDayGenerator;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,6 +109,7 @@ class AcademicCalendarController extends BaseApiController
 
         $this->assertSemesterMatchesYear($data);
         $this->assertNoHolidayOverlap($data);
+        $this->assertEventWithinSemester($data);
 
         $event = AcademicEvent::create($data);
 
@@ -139,6 +141,7 @@ class AcademicCalendarController extends BaseApiController
 
         $this->assertSemesterMatchesYear($data);
         $this->assertNoHolidayOverlap($data, $academicEvent->id);
+        $this->assertEventWithinSemester($data);
 
         $academicEvent->update($data);
 
@@ -245,6 +248,7 @@ class AcademicCalendarController extends BaseApiController
         $data['education_level_id'] = $data['education_level_id'] ?? null;
         $data['is_school_day'] = $request->boolean('is_school_day', true);
 
+        $this->assertDateWithinSemester((int) $data['semester_id'], $data['date']);
         $this->assertNoDuplicateEffectiveDay($data);
 
         $day = EffectiveDay::create($data);
@@ -272,6 +276,7 @@ class AcademicCalendarController extends BaseApiController
             $data['is_school_day'] = $request->boolean('is_school_day');
         }
 
+        $this->assertDateWithinSemester((int) ($data['semester_id'] ?? $effectiveDay->semester_id), $data['date'] ?? $effectiveDay->date?->toDateString());
         $this->assertNoDuplicateEffectiveDay($data, $effectiveDay->id);
 
         $effectiveDay->update($data);
@@ -380,6 +385,61 @@ class AcademicCalendarController extends BaseApiController
         if ($semester && (int) $semester->academic_year_id !== (int) $data['academic_year_id']) {
             throw ValidationException::withMessages([
                 'semester_id' => 'Semester yang dipilih bukan milik tahun ajaran tersebut.',
+            ]);
+        }
+    }
+
+    /**
+     * Event akademik harus berada di dalam rentang semester-nya.
+     *
+     * Tanpa ini, event bisa "menggantung" di luar semester (mis. akhir tahun
+     * yang salah) sehingga kalender bulanan dan rekap hari efektif tidak
+     * konsisten.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function assertEventWithinSemester(array $data): void
+    {
+        $semester = Semester::find($data['semester_id'] ?? null);
+
+        if (! $semester || ! $semester->start_date || ! $semester->end_date) {
+            return;
+        }
+
+        $start = Carbon::parse($data['start_date'])->toDateString();
+        $end = Carbon::parse($data['end_date'])->toDateString();
+        $from = $semester->start_date->toDateString();
+        $to = $semester->end_date->toDateString();
+
+        if ($start < $from || $end > $to) {
+            throw ValidationException::withMessages([
+                'start_date' => "Tanggal event harus berada di dalam rentang semester ({$from} s/d {$to}).",
+            ]);
+        }
+    }
+
+    /**
+     * Hari efektif harus berada di dalam rentang semester-nya.
+     */
+    protected function assertDateWithinSemester(int $semesterId, ?string $date): void
+    {
+        if (! $date) {
+            return;
+        }
+
+        $semester = Semester::find($semesterId);
+
+        if (! $semester || ! $semester->start_date || ! $semester->end_date) {
+            return;
+        }
+
+        $value = Carbon::parse($date)->toDateString();
+        $from = $semester->start_date->toDateString();
+        $to = $semester->end_date->toDateString();
+
+        if ($value < $from || $value > $to) {
+            throw ValidationException::withMessages([
+                'date' => "Tanggal harus berada di dalam rentang semester ({$from} s/d {$to}).",
             ]);
         }
     }

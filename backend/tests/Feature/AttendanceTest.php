@@ -1058,4 +1058,146 @@ class AttendanceTest extends TestCase
         $this->postJson('/api/v1/student-attendances/bulk', [])->assertUnauthorized();
         $this->getJson('/api/v1/attendance-corrections')->assertUnauthorized();
     }
+
+    // -----------------------------------------------------------------
+    // Pengerasan: status tak bisa diakali & pemisahan tugas
+    // -----------------------------------------------------------------
+
+    public function test_client_cannot_force_verified_status_on_create(): void
+    {
+        $this->actingAsRole();
+        $world = $this->world();
+
+        // Klien mencoba menandai presensi langsung "verified"/"locked" lewat
+        // payload; controller harus mengabaikannya dan tetap memakai `recorded`.
+        $this->postJson('/api/v1/student-attendances', $this->payload($world, [
+            'status' => StudentAttendance::STATUS_VERIFIED,
+        ]))
+            ->assertCreated()
+            ->assertJsonPath('data.status', StudentAttendance::STATUS_RECORDED);
+
+        $this->assertDatabaseHas('student_attendances', [
+            'student_id' => $world['students'][0]->id,
+            'status' => StudentAttendance::STATUS_RECORDED,
+        ]);
+
+        $this->assertDatabaseMissing('student_attendances', [
+            'student_id' => $world['students'][0]->id,
+            'status' => StudentAttendance::STATUS_VERIFIED,
+        ]);
+    }
+
+    public function test_client_cannot_force_locked_status_on_update(): void
+    {
+        $this->actingAsRole();
+        $world = $this->world();
+
+        $this->postJson('/api/v1/student-attendances', $this->payload($world))->assertCreated();
+
+        $attendance = StudentAttendance::where('student_id', $world['students'][0]->id)->firstOrFail();
+
+        $this->putJson("/api/v1/student-attendances/{$attendance->id}", $this->payload($world, [
+            'attendance_status_id' => $this->statusId('A'),
+            'status' => StudentAttendance::STATUS_LOCKED,
+        ]))->assertOk();
+
+        $this->assertDatabaseHas('student_attendances', [
+            'id' => $attendance->id,
+            'status' => StudentAttendance::STATUS_RECORDED,
+        ]);
+    }
+
+    public function test_requester_cannot_approve_own_correction(): void
+    {
+        $actor = $this->actingAsRole('wali-kelas');
+        $world = $this->world();
+
+        $attendance = StudentAttendance::create([
+            'student_id' => $world['students'][0]->id,
+            'school_class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'date' => '2026-09-10',
+            'attendance_status_id' => $this->statusId('A'),
+        ]);
+
+        $correction = AttendanceCorrection::create([
+            'student_attendance_id' => $attendance->id,
+            'old_status_id' => $this->statusId('A'),
+            'new_status_id' => $this->statusId('H'),
+            'reason' => 'Siswa hadir.',
+            'status' => AttendanceCorrection::STATUS_PENDING,
+            'requested_by' => $actor->id,
+        ]);
+
+        $this->postJson("/api/v1/attendance-corrections/{$correction->id}/approve")
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('attendance_corrections', [
+            'id' => $correction->id,
+            'status' => AttendanceCorrection::STATUS_PENDING,
+        ]);
+    }
+
+    public function test_requester_cannot_reject_own_correction(): void
+    {
+        $actor = $this->actingAsRole('wali-kelas');
+        $world = $this->world();
+
+        $attendance = StudentAttendance::create([
+            'student_id' => $world['students'][0]->id,
+            'school_class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'date' => '2026-09-10',
+            'attendance_status_id' => $this->statusId('A'),
+        ]);
+
+        $correction = AttendanceCorrection::create([
+            'student_attendance_id' => $attendance->id,
+            'old_status_id' => $this->statusId('A'),
+            'new_status_id' => $this->statusId('H'),
+            'reason' => 'Siswa hadir.',
+            'status' => AttendanceCorrection::STATUS_PENDING,
+            'requested_by' => $actor->id,
+        ]);
+
+        $this->postJson("/api/v1/attendance-corrections/{$correction->id}/reject", [
+            'reason' => 'Bukti kurang.',
+        ])->assertForbidden();
+    }
+
+    public function test_reject_stores_decision_note_without_overwriting_reason(): void
+    {
+        $this->actingAsRole();
+        $world = $this->world();
+
+        $attendance = StudentAttendance::create([
+            'student_id' => $world['students'][0]->id,
+            'school_class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'date' => '2026-09-10',
+            'attendance_status_id' => $this->statusId('A'),
+        ]);
+
+        $correction = AttendanceCorrection::create([
+            'student_attendance_id' => $attendance->id,
+            'old_status_id' => $this->statusId('A'),
+            'new_status_id' => $this->statusId('H'),
+            'reason' => 'Siswa hadir.',
+            'status' => AttendanceCorrection::STATUS_PENDING,
+        ]);
+
+        $this->postJson("/api/v1/attendance-corrections/{$correction->id}/reject", [
+            'reason' => 'Bukti kurang.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', AttendanceCorrection::STATUS_REJECTED)
+            ->assertJsonPath('data.reason', 'Siswa hadir.')
+            ->assertJsonPath('data.decision_note', 'Bukti kurang.');
+
+        $this->assertDatabaseHas('attendance_corrections', [
+            'id' => $correction->id,
+            'reason' => 'Siswa hadir.',
+            'decision_note' => 'Bukti kurang.',
+        ]);
+    }
 }

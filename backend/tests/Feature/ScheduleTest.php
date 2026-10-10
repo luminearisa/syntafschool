@@ -589,6 +589,91 @@ class ScheduleTest extends TestCase
             ->assertJsonValidationErrors('substitute_employee_id');
     }
 
+    public function test_substitute_already_assigned_via_change_is_rejected(): void
+    {
+        $this->actingAsRole('super-admin');
+        $world = $this->world();
+        $schedule = $this->makeSchedule($world, ['day_id' => 1]); // Senin
+
+        $kelasLain = $this->makeClass($world['semester'], 'X-IPA-2', 'X IPA 2');
+        $lain = $this->makeSubject('FIS', 'Fisika');
+        $guruLain = $this->makeEmployee('Guru Mapel Lain');
+        $this->registerSubject($kelasLain, $lain, $guruLain);
+
+        $scheduleLain = Schedule::create([
+            'school_class_id' => $kelasLain->id,
+            'subject_id' => $lain->id,
+            'employee_id' => $guruLain->id,
+            'day_id' => 1,
+            'semester_id' => $world['semester']->id,
+            'start_time' => '07:00:00',
+            'end_time' => '07:45:00',
+        ]);
+
+        $pengganti = $this->makeEmployee('Guru Pengganti');
+
+        // 2026-09-14 adalah hari Senin.
+        $this->postJson("/api/v1/schedules/{$scheduleLain->id}/changes", [
+            'date' => '2026-09-14',
+            'type' => 'pengganti',
+            'substitute_employee_id' => $pengganti->id,
+        ])->assertCreated();
+
+        // Menugaskan guru yang sama menggantikan jadwal lain pada jam & tanggal
+        // yang sama harus ditolak — jadwal pokok tak menangkap kasus ini.
+        $this->postJson("/api/v1/schedules/{$schedule->id}/changes", [
+            'date' => '2026-09-14',
+            'type' => 'pengganti',
+            'substitute_employee_id' => $pengganti->id,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('substitute_employee_id');
+    }
+
+    public function test_move_colliding_with_other_moved_change_is_rejected(): void
+    {
+        $this->actingAsRole('super-admin');
+        $world = $this->world();
+        $schedule = $this->makeSchedule($world, ['day_id' => 1]); // Senin
+
+        $kelasLain = $this->makeClass($world['semester'], 'X-IPA-2', 'X IPA 2');
+        $lain = $this->makeSubject('FIS', 'Fisika');
+        $guruLain = $this->makeEmployee('Guru Mapel Lain');
+        $this->registerSubject($kelasLain, $lain, $guruLain);
+
+        $scheduleLain = Schedule::create([
+            'school_class_id' => $kelasLain->id,
+            'subject_id' => $lain->id,
+            'employee_id' => $guruLain->id,
+            'room_id' => $world['room']->id,
+            'day_id' => 1,
+            'semester_id' => $world['semester']->id,
+            'start_time' => '08:00:00',
+            'end_time' => '08:45:00',
+        ]);
+
+        // Pindahkan jadwal lain ke 10:00–10:45 pada 2026-09-14.
+        $this->postJson("/api/v1/schedules/{$scheduleLain->id}/changes", [
+            'date' => '2026-09-14',
+            'type' => 'pindah',
+            'new_start_time' => '10:00',
+            'new_end_time' => '10:45',
+            'reason' => 'Ruang dipakai ujian',
+        ])->assertCreated();
+
+        // Pindahkan jadwal ini ke slot yang sama pada tanggal yang sama: bentrok
+        // ruang yang hanya terlihat dari `schedule_changes`.
+        $this->postJson("/api/v1/schedules/{$schedule->id}/changes", [
+            'date' => '2026-09-14',
+            'type' => 'pindah',
+            'new_start_time' => '10:00',
+            'new_end_time' => '10:45',
+            'reason' => 'Ruang dipakai ujian',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('new_start_time');
+    }
+
     public function test_can_cancel_schedule_for_a_date(): void
     {
         $this->actingAsRole('super-admin');

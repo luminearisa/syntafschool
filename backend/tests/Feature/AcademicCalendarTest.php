@@ -529,17 +529,17 @@ class AcademicCalendarTest extends TestCase
 
         $this->postJson('/api/v1/effective-days', [
             'semester_id' => $semester->id,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => true,
             'note' => 'Hari pertama',
         ])
             ->assertCreated()
-            ->assertJsonPath('data.date', '2026-07-20')
+            ->assertJsonPath('data.date', '2026-07-16')
             ->assertJsonPath('data.is_school_day', true);
 
         $this->assertTrue(
             EffectiveDay::where('semester_id', $semester->id)
-                ->whereDate('date', '2026-07-20')
+                ->whereDate('date', '2026-07-16')
                 ->where('is_school_day', true)
                 ->exists()
         );
@@ -554,13 +554,13 @@ class AcademicCalendarTest extends TestCase
         EffectiveDay::create([
             'semester_id' => $semester->id,
             'education_level_id' => null,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => true,
         ]);
 
         $this->postJson('/api/v1/effective-days', [
             'semester_id' => $semester->id,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => true,
         ])
             ->assertStatus(422)
@@ -577,14 +577,14 @@ class AcademicCalendarTest extends TestCase
         EffectiveDay::create([
             'semester_id' => $semester->id,
             'education_level_id' => null,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => true,
         ]);
 
         $this->postJson('/api/v1/effective-days', [
             'semester_id' => $semester->id,
             'education_level_id' => $level->id,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => true,
         ])->assertCreated();
     }
@@ -699,13 +699,13 @@ class AcademicCalendarTest extends TestCase
         $day = EffectiveDay::create([
             'semester_id' => $semester->id,
             'education_level_id' => null,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => true,
         ]);
 
         $this->putJson("/api/v1/effective-days/{$day->id}", [
             'semester_id' => $semester->id,
-            'date' => '2026-07-20',
+            'date' => '2026-07-16',
             'is_school_day' => false,
             'note' => 'Dibuat libur',
         ])
@@ -714,6 +714,37 @@ class AcademicCalendarTest extends TestCase
 
         $this->deleteJson("/api/v1/effective-days/{$day->id}")->assertOk();
         $this->assertDatabaseMissing('effective_days', ['id' => $day->id]);
+    }
+
+    public function test_event_outside_semester_is_rejected(): void
+    {
+        $this->actingAsRole('admin-sekolah');
+        $year = $this->makeYear();
+        $semester = $this->makeSemester($year);
+        $type = $this->makeEventType();
+
+        // Semester 2026-07-06..07-19: tanggal di luar rentang harus ditolak.
+        $this->postJson('/api/v1/academic-events', $this->eventPayload($semester, $type, [
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-02',
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('start_date');
+    }
+
+    public function test_effective_day_outside_semester_is_rejected(): void
+    {
+        $this->actingAsRole('admin-sekolah');
+        $year = $this->makeYear();
+        $semester = $this->makeSemester($year);
+
+        $this->postJson('/api/v1/effective-days', [
+            'semester_id' => $semester->id,
+            'date' => '2026-08-01',
+            'is_school_day' => true,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('date');
     }
 
     // =================================================================

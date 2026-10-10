@@ -555,6 +555,32 @@ class ScheduleController extends BaseApiController
                 ),
             ]);
         }
+
+        // Guru yang sama mungkin sudah ditugaskan menggantikan jadwal lain pada
+        // tanggal itu lewat `schedule_changes` — jadwal pokok tidak menangkapnya.
+        $changeClash = ScheduleChange::query()
+            ->with(['schedule.subject:id,name', 'schedule.schoolClass:id,name'])
+            ->whereDate('date', $date)
+            ->where('type', 'pengganti')
+            ->where('substitute_employee_id', $employeeId)
+            ->where('schedule_id', '!=', $schedule->id)
+            ->whereHas('schedule', function ($q) use ($schedule): void {
+                $q->where('start_time', '<', $schedule->end_time)
+                    ->where('end_time', '>', $schedule->start_time);
+            })
+            ->first();
+
+        if ($changeClash) {
+            throw ValidationException::withMessages([
+                'substitute_employee_id' => sprintf(
+                    'Guru pengganti sudah ditugaskan menggantikan %s di %s pada tanggal tersebut (%s–%s).',
+                    $changeClash->schedule?->subject?->name ?? 'mapel lain',
+                    $changeClash->schedule?->schoolClass?->name ?? 'kelas lain',
+                    substr((string) $changeClash->schedule?->start_time, 0, 5),
+                    substr((string) $changeClash->schedule?->end_time, 0, 5),
+                ),
+            ]);
+        }
     }
 
     /**
@@ -612,5 +638,69 @@ class ScheduleController extends BaseApiController
                 ),
             ]);
         }
+
+        // Jadwal lain yang juga dipindah ke tanggal & slot yang sama lewat
+        // `schedule_changes` tidak terlihat pada jadwal pokok di atas.
+        if ($date = $data['date'] ?? null) {
+            if ($clash = $this->movedChangeClash($schedule, $date, $dayId, $start, $end, $roomId)) {
+                throw ValidationException::withMessages([
+                    'new_start_time' => sprintf(
+                        'Jadwal %s (%s) sudah dipindah ke slot yang sama pada tanggal tersebut.',
+                        $clash->schedule?->schoolClass?->name ?? 'kelas lain',
+                        $clash->schedule?->subject?->name ?? 'mapel lain',
+                    ),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Cari perubahan "pindah" lain pada tanggal yang sama yang slot barunya
+     * bentrok untuk kelas, guru, atau ruang yang sama.
+     */
+    protected function movedChangeClash(
+        Schedule $schedule,
+        string $date,
+        int $dayId,
+        string $start,
+        string $end,
+        ?int $roomId,
+    ): ?ScheduleChange {
+        $changes = ScheduleChange::query()
+            ->with(['schedule:id,school_class_id,employee_id,room_id,day_id,subject_id', 'schedule.schoolClass:id,name', 'schedule.subject:id,name'])
+            ->whereDate('date', $date)
+            ->where('type', 'pindah')
+            ->where('schedule_id', '!=', $schedule->id)
+            ->whereNotNull('new_start_time')
+            ->whereNotNull('new_end_time')
+            ->where('new_start_time', '<', $end)
+            ->where('new_end_time', '>', $start)
+            ->get();
+
+        foreach ($changes as $change) {
+            $other = $change->schedule;
+
+            if ($other === null) {
+                continue;
+            }
+
+            $otherDay = (int) ($change->new_day_id ?? $other->day_id);
+
+            if ($otherDay !== $dayId) {
+                continue;
+            }
+
+            $otherRoom = (int) ($change->new_room_id ?? $other->room_id);
+
+            $sameClass = (int) $other->school_class_id === (int) $schedule->school_class_id;
+            $sameTeacher = $schedule->employee_id && (int) $other->employee_id === (int) $schedule->employee_id;
+            $sameRoom = $roomId && $otherRoom === (int) $roomId;
+
+            if ($sameClass || $sameTeacher || $sameRoom) {
+                return $change;
+            }
+        }
+
+        return null;
     }
 }

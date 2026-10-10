@@ -119,11 +119,19 @@ class AttendanceCorrectionController extends BaseApiController
     public function approve(Request $request, AttendanceCorrection $correction): JsonResponse
     {
         $this->assertPending($correction);
+        $this->assertNotSelfDecision($request, $correction);
+
+        $data = $request->validate([
+            'note' => ['nullable', 'string', 'max:500'],
+        ], [], [
+            'note' => 'catatan keputusan',
+        ]);
 
         $correction->update([
             'status' => AttendanceCorrection::STATUS_APPROVED,
             'approved_by' => $request->user()?->id,
             'approved_at' => now(),
+            'decision_note' => $data['note'] ?? null,
         ]);
 
         $attendance = $correction->attendance;
@@ -150,20 +158,38 @@ class AttendanceCorrectionController extends BaseApiController
     public function reject(RejectCorrectionRequest $request, AttendanceCorrection $correction): JsonResponse
     {
         $this->assertPending($correction);
+        $this->assertNotSelfDecision($request, $correction);
 
         $data = $request->validated();
 
+        // Alasan penolakan disimpan terpisah (`decision_note`) supaya alasan
+        // pengajuan asli tetap utuh dan dapat diaudit berdampingan.
         $correction->update([
             'status' => AttendanceCorrection::STATUS_REJECTED,
             'approved_by' => $request->user()?->id,
             'approved_at' => now(),
-            'reason' => trim($correction->reason."\n\nDitolak: ".$data['reason']),
+            'decision_note' => $data['reason'],
         ]);
 
         return $this->successResponse(
             new AttendanceCorrectionResource($correction->refresh()->load($this->with)),
             'Koreksi presensi ditolak',
         );
+    }
+
+    /**
+     * Pemisahan tugas: pengaju koreksi tidak boleh menyetujui/menolak koreksinya
+     * sendiri meski ia kebetulan memegang `academic.approve`.
+     */
+    protected function assertNotSelfDecision(Request $request, AttendanceCorrection $correction): void
+    {
+        if ($correction->requested_by === null) {
+            return;
+        }
+
+        if ((int) $correction->requested_by === (int) $request->user()?->id) {
+            abort(403, 'Pengaju koreksi tidak boleh memutuskan koreksinya sendiri.');
+        }
     }
 
     protected function assertPending(AttendanceCorrection $correction): void

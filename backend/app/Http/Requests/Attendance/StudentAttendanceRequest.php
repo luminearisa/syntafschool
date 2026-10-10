@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests\Attendance;
 
-use App\Models\StudentAttendance;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 /**
  * Validasi presensi siswa satuan.
@@ -36,7 +34,10 @@ class StudentAttendanceRequest extends FormRequest
             'leave_type_id' => ['nullable', 'integer', 'exists:leave_types,id'],
             'time_in' => ['nullable', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:500'],
-            'status' => ['nullable', Rule::in(StudentAttendance::STATUSES)],
+            // `status` (recorded/verified/locked) SENGAJA tidak dapat diisi klien:
+            // nilainya hanya berubah lewat alur koreksi/persetujuan, supaya guru
+            // tidak bisa menandai presensinya sendiri "verified"/"locked" lewat
+            // payload lalu menghindari proses koreksi.
         ];
     }
 

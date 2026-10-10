@@ -127,7 +127,9 @@ class StudentAttendanceController extends BaseApiController
         $data = $this->mapClassColumn($data);
 
         $data['recorded_by'] = $request->user()?->id;
-        $data['status'] = $data['status'] ?? StudentAttendance::STATUS_RECORDED;
+        // Status awal selalu `recorded`; `verified`/`locked` hanya lewat alur
+        // koreksi & persetujuan, bukan dari payload klien.
+        $data['status'] = StudentAttendance::STATUS_RECORDED;
 
         if (! empty($data['time_in'])) {
             $data['time_in'] .= ':00';

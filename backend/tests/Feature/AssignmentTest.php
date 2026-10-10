@@ -744,12 +744,15 @@ class AssignmentTest extends TestCase
             ->assertJsonPath('data.status', AssignmentSubmission::STATUS_GRADED);
     }
 
-    public function test_siswa_cannot_create_assignment(): void
+    public function test_siswa_cannot_access_staff_assignment_api(): void
     {
         $this->actingAsRole('siswa');
         $world = $this->world();
 
-        $this->getJson('/api/v1/assignments')->assertOk();
+        // Daftar tugas tingkat sekolah bukan untuk siswa: setelah pengetatan
+        // `academic.view`, siswa memakai portal kepemilikan
+        // `/students/{student}/assignments` (academic.portal).
+        $this->getJson('/api/v1/assignments')->assertForbidden();
 
         $this->postJson('/api/v1/assignments', $this->payload($world))->assertForbidden();
     }

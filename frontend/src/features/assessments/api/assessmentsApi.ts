@@ -52,8 +52,8 @@ export const assessmentsApi = {
     return response.data.data;
   },
 
-  async submit(id: number) {
-    const response = await api.post<ApiResponse<AssessmentRow>>(`/assessments/${id}/submit`);
+  async submit(id: number, payload: { force?: boolean; reason?: string } = {}) {
+    const response = await api.post<ApiResponse<AssessmentRow>>(`/assessments/${id}/submit`, payload);
     return response.data.data;
   },
 
@@ -62,8 +62,8 @@ export const assessmentsApi = {
     return response.data.data;
   },
 
-  async finalize(id: number) {
-    const response = await api.post<ApiResponse<AssessmentRow>>(`/assessments/${id}/finalize`);
+  async finalize(id: number, payload: { force?: boolean; reason?: string } = {}) {
+    const response = await api.post<ApiResponse<AssessmentRow>>(`/assessments/${id}/finalize`, payload);
     return response.data.data;
   },
 

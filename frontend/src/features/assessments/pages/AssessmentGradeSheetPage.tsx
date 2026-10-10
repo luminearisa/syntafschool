@@ -29,6 +29,8 @@ export function AssessmentGradeSheetPage() {
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reopenReason, setReopenReason] = useState('');
   const [saveReason, setSaveReason] = useState('');
+  const [forceAction, setForceAction] = useState<'submit' | 'finalize' | null>(null);
+  const [forceReason, setForceReason] = useState('');
 
   const sheetQuery = useQuery({
     queryKey: ['assessment-sheet', assessmentId],
@@ -58,6 +60,12 @@ export function AssessmentGradeSheetPage() {
       return assessmentsApi.finalize(assessmentId);
     },
     onSuccess: (_, action) => { toast.success(action === 'submit' ? 'Nilai diajukan untuk verifikasi' : action === 'verify' ? 'Nilai berhasil diverifikasi' : 'Nilai berhasil difinalisasi'); invalidate(); },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+  const forceMutation = useMutation({
+    mutationFn: ({ action, reason }: { action: 'submit' | 'finalize'; reason: string }) =>
+      action === 'submit' ? assessmentsApi.submit(assessmentId, { force: true, reason }) : assessmentsApi.finalize(assessmentId, { force: true, reason }),
+    onSuccess: (_, { action }) => { toast.success(action === 'submit' ? 'Nilai diajukan (paksa) — alasan tercatat' : 'Nilai difinalisasi (paksa) — alasan tercatat'); setForceAction(null); setForceReason(''); invalidate(); },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
   const reopenMutation = useMutation({
@@ -101,10 +109,9 @@ export function AssessmentGradeSheetPage() {
         </div>
         {sheet && <div className="flex flex-wrap gap-2">
           <Can perm="academic.grade"><Button variant="outline" onClick={submitScores} disabled={isLocked || saveMutation.isPending}><Save className="h-4 w-4" /> {saveButtonText}</Button></Can>
-          {status === 'draft' && <Can perm="academic.grade"><Button onClick={() => { if (pending > 0) { toast.error(`Masih ada ${pending} siswa yang belum dinilai.`); return; } transitionMutation.mutate('submit'); }} loading={transitionMutation.isPending}><Send className="h-4 w-4" /> Ajukan Nilai</Button></Can>}
-          {status === 'revision_requested' && <Can perm="academic.grade"><Button onClick={() => { if (pending > 0) { toast.error(`Masih ada ${pending} siswa yang belum dinilai.`); return; } transitionMutation.mutate('submit'); }} loading={transitionMutation.isPending}><Send className="h-4 w-4" /> Ajukan Ulang</Button></Can>}
+          {['draft', 'revision_requested'].includes(status) && <Can perm="academic.grade"><Button onClick={() => { if (pending > 0) { setForceAction('submit'); return; } transitionMutation.mutate('submit'); }} loading={transitionMutation.isPending}><Send className="h-4 w-4" /> {status === 'draft' ? 'Ajukan Nilai' : 'Ajukan Ulang'}</Button></Can>}
           {status === 'submitted' && <Can perm="academic.approve"><Button variant="outline" onClick={() => transitionMutation.mutate('verify')} loading={transitionMutation.isPending}><Check className="h-4 w-4" /> Verifikasi</Button></Can>}
-          {['submitted', 'verified'].includes(status) && <Can perm="academic.approve"><Button onClick={() => { if (pending > 0) { toast.error(`Masih ada ${pending} siswa yang belum dinilai.`); return; } transitionMutation.mutate('finalize'); }} loading={transitionMutation.isPending}><LockKeyhole className="h-4 w-4" /> Finalisasi</Button></Can>}
+          {['submitted', 'verified'].includes(status) && <Can perm="academic.approve"><Button onClick={() => { if (pending > 0) { setForceAction('finalize'); return; } transitionMutation.mutate('finalize'); }} loading={transitionMutation.isPending}><LockKeyhole className="h-4 w-4" /> Finalisasi</Button></Can>}
           {['verified', 'finalized'].includes(status) && <Can perm="academic.approve"><Button variant="outline" onClick={() => setReopenOpen(true)}><UnlockKeyhole className="h-4 w-4" /> Buka Revisi</Button></Can>}
         </div>}
       </div>
@@ -137,6 +144,10 @@ export function AssessmentGradeSheetPage() {
 
       <Modal open={reopenOpen} onClose={() => setReopenOpen(false)} title="Buka Kembali Nilai" footer={<><Button variant="outline" onClick={() => setReopenOpen(false)}>Batal</Button><Button onClick={() => { if (!reopenReason.trim()) { toast.error('Alasan wajib diisi.'); return; } reopenMutation.mutate(reopenReason.trim()); }} loading={reopenMutation.isPending}>Buka untuk Revisi</Button></>}>
         <div className="space-y-3"><p className="text-sm text-slate-600">Pembukaan kembali akan dicatat pada riwayat penilaian. Jelaskan alasan perubahan.</p><Textarea value={reopenReason} onChange={(event) => setReopenReason(event.target.value)} placeholder="Alasan revisi nilai (wajib)" /></div>
+      </Modal>
+
+      <Modal open={forceAction !== null} onClose={() => { setForceAction(null); setForceReason(''); }} title={forceAction === 'finalize' ? 'Finalisasi Tanpa Lengkap' : 'Ajukan Tanpa Lengkap'} footer={<><Button variant="outline" onClick={() => { setForceAction(null); setForceReason(''); }}>Batal</Button><Button onClick={() => { if (!forceReason.trim()) { toast.error('Alasan wajib diisi.'); return; } if (forceAction) forceMutation.mutate({ action: forceAction, reason: forceReason.trim() }); }} loading={forceMutation.isPending}>{forceAction === 'finalize' ? 'Finalisasi (paksa)' : 'Ajukan (paksa)'}</Button></>}>
+        <div className="space-y-3"><p className="text-sm text-slate-600">Masih ada {pending} siswa yang belum dinilai. Bila tetap diteruskan, tindakan ini dicatat beserta alasan untuk keperluan audit.</p><Textarea value={forceReason} onChange={(event) => setForceReason(event.target.value)} placeholder="Alasan menyerahkan/memfinalisasi tanpa nilai lengkap (wajib)" /></div>
       </Modal>
     </div>
   );

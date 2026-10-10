@@ -45,16 +45,16 @@ Route::get('assignments/{assignment}/submissions', [AssignmentController::class,
     ->middleware('permission:academic.view')->name('assignments.submissions.index');
 
 Route::post('assignments/{assignment}/submissions', [AssignmentSubmissionController::class, 'store'])
-    ->middleware('permission:academic.create')->name('assignments.submissions.store');
+    ->middleware('permission:academic.create|academic.grade')->name('assignments.submissions.store');
 
 Route::match(['put', 'patch'], 'assignments/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'update'])
-    ->middleware('permission:academic.update')->name('assignments.submissions.update');
+    ->middleware('permission:academic.update|academic.grade')->name('assignments.submissions.update');
 
 Route::post('assignments/{assignment}/submissions/{submission}/grade', [AssignmentSubmissionController::class, 'grade'])
     ->middleware('permission:academic.grade')->name('assignments.submissions.grade');
 
 Route::delete('assignments/{assignment}/submissions/{submission}', [AssignmentSubmissionController::class, 'destroy'])
-    ->middleware('permission:academic.delete')->name('assignments.submissions.destroy');
+    ->middleware('permission:academic.delete|academic.grade')->name('assignments.submissions.destroy');
 
 // -------------------------------------------- Tugas milik satu siswa
 Route::get('students/{student}/assignments', [AssignmentSubmissionController::class, 'studentAssignments'])

@@ -366,23 +366,34 @@ class AssessmentController extends BaseApiController
     {
         $this->assertMayApprove($request, $assessment);
 
+        // `submitted` ikut diizinkan: verifikator yang menemukan masalah sebelum
+        // memverifikasi bisa mengembalikan langsung ke revisi tanpa harus
+        // memverifikasi dulu (yang justru mengesahkan nilai bermasalah).
         $this->assertStatus(
             $assessment,
-            [Assessment::STATUS_VERIFIED, Assessment::STATUS_FINALIZED],
-            'Hanya nilai yang sudah diverifikasi atau difinalisasi yang bisa dibuka kembali.',
+            [Assessment::STATUS_SUBMITTED, Assessment::STATUS_VERIFIED, Assessment::STATUS_FINALIZED],
+            'Hanya nilai yang sudah diserahkan, diverifikasi, atau difinalisasi yang bisa dibuka kembali.',
         );
 
         $data = $this->validateTransition($request, requireReason: true);
 
+        // Riwayat reopen ditambahkan, bukan ditimpa: `reopened` menyimpan yang
+        // terbaru (kompatibel), `reopenings` menyimpan seluruh riwayat.
+        $event = [
+            'at' => now()->toIso8601String(),
+            'by' => $request->user()?->id,
+            'reason' => $data['reason'],
+            'from_status' => $assessment->status,
+        ];
+
+        $history = $assessment->extra['reopenings'] ?? [];
+        $history[] = $event;
+
         $assessment->update([
             'status' => Assessment::STATUS_REVISION_REQUESTED,
             'extra' => array_merge($assessment->extra ?? [], [
-                'reopened' => [
-                    'at' => now()->toIso8601String(),
-                    'by' => $request->user()?->id,
-                    'reason' => $data['reason'],
-                    'from_status' => $assessment->status,
-                ],
+                'reopened' => $event,
+                'reopenings' => $history,
             ]),
         ]);
 
