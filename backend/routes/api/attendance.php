@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AcademicExportController;
 use App\Http\Controllers\Api\AttendanceCorrectionController;
 use App\Http\Controllers\Api\EmployeeAttendanceController;
 use App\Http\Controllers\Api\StudentAttendanceController;
@@ -49,6 +50,9 @@ Route::get('attendance-recap/student/{student}', [StudentAttendanceController::c
 
 Route::get('attendance-recap/class/{class}', [StudentAttendanceController::class, 'recapClass'])
     ->middleware('permission:academic.view')->name('attendance-recap.class');
+
+Route::get('attendance-recap/export', [AcademicExportController::class, 'attendanceRecap'])
+    ->middleware('permission:academic.view')->name('attendance-recap.export');
 
 // Referensi status/izin/semester dapat dibaca staf kepegawaian atau akademik.
 Route::get('attendance-lookups', [EmployeeAttendanceController::class, 'lookups'])

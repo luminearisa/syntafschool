@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, LockKeyhole, RefreshCw, Save, Send, UnlockKeyhole } from 'lucide-react';
+import { ArrowLeft, Check, Download, LockKeyhole, RefreshCw, Save, Send, UnlockKeyhole } from 'lucide-react';
 import { toast } from 'sonner';
 import { assessmentsApi } from '../api/assessmentsApi';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +31,7 @@ export function AssessmentGradeSheetPage() {
   const [saveReason, setSaveReason] = useState('');
   const [forceAction, setForceAction] = useState<'submit' | 'finalize' | null>(null);
   const [forceReason, setForceReason] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const sheetQuery = useQuery({
     queryKey: ['assessment-sheet', assessmentId],
@@ -99,6 +100,28 @@ export function AssessmentGradeSheetPage() {
 
   const saveButtonText = useMemo(() => saveMutation.isPending ? 'Menyimpan...' : 'Simpan Semua Nilai', [saveMutation.isPending]);
 
+  const exportCsv = async () => {
+    if (!sheet) return;
+    setExporting(true);
+    try {
+      const blob = await assessmentsApi.gradebookExport({
+        class_id: sheet.assessment.class_id,
+        subject_id: sheet.assessment.subject_id,
+        semester_id: sheet.assessment.semester_id,
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `nilai-${sheet.assessment.school_class?.code ?? sheet.assessment.class_id}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -108,6 +131,7 @@ export function AssessmentGradeSheetPage() {
           <p className="text-sm text-slate-500">{sheet ? `${sheet.assessment.name} · ${sheet.assessment.school_class?.name ?? ''} · ${sheet.assessment.subject?.name ?? ''}` : 'Lembar nilai per siswa'}</p>
         </div>
         {sheet && <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => void exportCsv()} loading={exporting}><Download className="h-4 w-4" /> Ekspor CSV</Button>
           <Can perm="academic.grade"><Button variant="outline" onClick={submitScores} disabled={isLocked || saveMutation.isPending}><Save className="h-4 w-4" /> {saveButtonText}</Button></Can>
           {['draft', 'revision_requested'].includes(status) && <Can perm="academic.grade"><Button onClick={() => { if (pending > 0) { setForceAction('submit'); return; } transitionMutation.mutate('submit'); }} loading={transitionMutation.isPending}><Send className="h-4 w-4" /> {status === 'draft' ? 'Ajukan Nilai' : 'Ajukan Ulang'}</Button></Can>}
           {status === 'submitted' && <Can perm="academic.approve"><Button variant="outline" onClick={() => transitionMutation.mutate('verify')} loading={transitionMutation.isPending}><Check className="h-4 w-4" /> Verifikasi</Button></Can>}

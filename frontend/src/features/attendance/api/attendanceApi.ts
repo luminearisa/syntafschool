@@ -124,6 +124,14 @@ export const attendanceRecapApi = {
     });
     return res.data.data;
   },
+
+  /** Unduh rekap presensi kelas sebagai CSV. */
+  async exportCsv(classId: number, semesterId?: number | '') {
+    const params: Record<string, unknown> = { class_id: classId };
+    if (semesterId) params.semester_id = semesterId;
+    const res = await api.get<Blob>('/attendance-recap/export', { params, responseType: 'blob' });
+    return res.data;
+  },
 };
 
 /** Presensi pegawai (guru & staf) */

@@ -71,4 +71,10 @@ export const assessmentsApi = {
     const response = await api.post<ApiResponse<AssessmentRow>>(`/assessments/${id}/reopen`, { reason });
     return response.data.data;
   },
+
+  /** Unduh rekap nilai (buku nilai) satu mapel-kelas-semester sebagai CSV. */
+  async gradebookExport(params: { class_id: number; subject_id: number; semester_id?: number }) {
+    const response = await api.get<Blob>('/gradebook/export', { params, responseType: 'blob' });
+    return response.data;
+  },
 };

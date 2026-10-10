@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Eye, RefreshCw, Users } from 'lucide-react';
+import { Download, Eye, RefreshCw, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import { attendanceRecapApi } from '../api/attendanceApi';
 import { StudentRecapModal } from '../components/StudentRecapModal';
 import { percentageTone } from '../hooks/useAttendanceStatuses';
@@ -28,6 +29,7 @@ export function AttendanceRecapPage() {
   const [classId, setClassId] = useState<number | ''>('');
   const [semesterId, setSemesterId] = useState<number | ''>('');
   const [detail, setDetail] = useState<ClassRecapItem | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const { options: semesterOptions } = useOptions('semesters');
 
@@ -62,6 +64,27 @@ export function AttendanceRecapPage() {
 
   const recap = recapQuery.data;
 
+  const handleExport = async () => {
+    if (!classId) {
+      toast.error('Pilih kelas terlebih dahulu.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const blob = await attendanceRecapApi.exportCsv(classId as number, semesterId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `presensi-${classId}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -71,15 +94,25 @@ export function AttendanceRecapPage() {
             Persentase kehadiran dihitung terhadap hari efektif semester, bukan hari kalender.
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          title="Muat ulang"
-          disabled={!classId || !semesterId}
-          onClick={() => recapQuery.refetch()}
-        >
-          <RefreshCw className={recapQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            disabled={!classId || !semesterId}
+            onClick={() => void handleExport()}
+            loading={exporting}
+          >
+            <Download className="h-4 w-4" /> Ekspor CSV
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Muat ulang"
+            disabled={!classId || !semesterId}
+            onClick={() => recapQuery.refetch()}
+          >
+            <RefreshCw className={recapQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+          </Button>
+        </div>
       </div>
 
       <Card className="p-3">

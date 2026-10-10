@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AcademicExportController;
 use App\Http\Controllers\Api\AssessmentController;
 use App\Http\Controllers\Api\AssessmentTypeController;
 use App\Http\Controllers\Api\AssessmentWeightController;
@@ -148,6 +149,8 @@ Route::get('gradebook', [GradebookController::class, 'index'])
     ->middleware('permission:assessment.view')->name('gradebook.index');
 Route::get('gradebook/overview', [GradebookController::class, 'overview'])
     ->middleware('permission:assessment.view')->name('gradebook.overview');
+Route::get('gradebook/export', [AcademicExportController::class, 'gradebook'])
+    ->middleware('permission:assessment.view')->name('gradebook.export');
 
 // Nilai milik satu siswa (portal siswa & wali murid memakai endpoint ini).
 // `assessment.view` untuk staf; `academic.portal` untuk akun keluarga (siswa/
