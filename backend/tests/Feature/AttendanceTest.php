@@ -1038,8 +1038,15 @@ class AttendanceTest extends TestCase
 
     public function test_siswa_can_view_recap(): void
     {
-        $this->actingAsRole('siswa');
         $world = $this->world();
+
+        // Akun siswa harus tertaut ke data siswa agar pagar kepemilikan
+        // (RestrictFamilyStudentAccess) mengenalinya sebagai dirinya sendiri.
+        $siswa = $this->actingAsRole('siswa');
+        $siswa->update([
+            'userable_type' => $world['students'][0]->getMorphClass(),
+            'userable_id' => $world['students'][0]->id,
+        ]);
 
         $this->getJson("/api/v1/attendance-recap/student/{$world['students'][0]->id}?semester_id={$world['semester']->id}")
             ->assertOk();

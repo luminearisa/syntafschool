@@ -185,6 +185,20 @@ class AssessmentController extends BaseApiController
     }
 
     /**
+     * Aksi persetujuan nilai (verifikasi/finalisasi/buka kembali) dibatasi untuk
+     * pengampu/wali kelas yang bersangkutan; pengelola akademik tetap bebas.
+     *
+     * Tanpa batas ini, wali kelas A (pemegang `academic.approve`) dapat
+     * memfinalisasi atau membuka nilai kelas wali kelas B.
+     */
+    protected function assertMayApprove(Request $request, Assessment $assessment): void
+    {
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayGrade($request->user(), $assessment)) {
+            abort(403, 'Anda hanya dapat menyetujui penilaian kelas atau mapel yang Anda ampu.');
+        }
+    }
+
+    /**
      * Lembar nilai: daftar siswa kelas ini beserta skor yang sudah tercatat.
      *
      * Siswa yang belum dinilai tetap muncul agar guru tahu siapa yang belum
@@ -281,8 +295,10 @@ class AssessmentController extends BaseApiController
     /**
      * Verifikasi oleh wali kelas / koordinator akademik.
      */
-    public function verify(Assessment $assessment): JsonResponse
+    public function verify(Request $request, Assessment $assessment): JsonResponse
     {
+        $this->assertMayApprove($request, $assessment);
+
         $this->assertStatus(
             $assessment,
             [Assessment::STATUS_SUBMITTED],
@@ -302,6 +318,8 @@ class AssessmentController extends BaseApiController
      */
     public function finalize(Request $request, Assessment $assessment): JsonResponse
     {
+        $this->assertMayApprove($request, $assessment);
+
         $this->assertStatus(
             $assessment,
             [Assessment::STATUS_SUBMITTED, Assessment::STATUS_VERIFIED],
@@ -327,6 +345,8 @@ class AssessmentController extends BaseApiController
      */
     public function reopen(Request $request, Assessment $assessment): JsonResponse
     {
+        $this->assertMayApprove($request, $assessment);
+
         $this->assertStatus(
             $assessment,
             [Assessment::STATUS_VERIFIED, Assessment::STATUS_FINALIZED],

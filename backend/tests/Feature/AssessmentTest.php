@@ -495,6 +495,46 @@ class AssessmentTest extends TestCase
         );
     }
 
+    public function test_wali_kelas_tidak_bisa_menyetujui_penilaian_kelas_lain(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+        $assessment->update(['status' => Assessment::STATUS_SUBMITTED]);
+
+        // Wali kelas dari pegawai lain (bukan pengampu/wali kelas ini).
+        $other = $this->makeTeacher('Guru Wali Lain');
+        $wali = User::factory()->create(['is_active' => true]);
+        $wali->forceFill([
+            'userable_type' => $other->getMorphClass(),
+            'userable_id' => $other->id,
+        ])->save();
+        $wali->syncRoles(['wali-kelas']);
+        Sanctum::actingAs($wali, ['*']);
+
+        $this->postJson("/api/v1/assessments/{$assessment->id}/verify")->assertForbidden();
+        $this->postJson("/api/v1/assessments/{$assessment->id}/finalize")->assertForbidden();
+    }
+
+    public function test_pengampu_bisa_memverifikasi_penilaian_kelasnya(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+        $assessment->update(['status' => Assessment::STATUS_SUBMITTED]);
+
+        // Wali kelas yang sekaligus pengampu penilaian ini.
+        $wali = User::factory()->create(['is_active' => true]);
+        $wali->forceFill([
+            'userable_type' => $world['teacher']->getMorphClass(),
+            'userable_id' => $world['teacher']->id,
+        ])->save();
+        $wali->syncRoles(['wali-kelas']);
+        Sanctum::actingAs($wali, ['*']);
+
+        $this->postJson("/api/v1/assessments/{$assessment->id}/verify")
+            ->assertOk()
+            ->assertJsonPath('data.status', Assessment::STATUS_VERIFIED);
+    }
+
     public function test_penilaian_yang_dibuka_revisi_dapat_diajukan_ulang_dan_difinalisasi(): void
     {
         $world = $this->world();
