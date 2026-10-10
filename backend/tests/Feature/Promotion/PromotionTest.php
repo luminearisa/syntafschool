@@ -251,7 +251,7 @@ class PromotionTest extends TestCase
         return $user;
     }
 
-    private function bulkDecisions(): array
+    private function bulkDecisions(): \Illuminate\Testing\TestResponse
     {
         return $this->postJson('/api/v1/promotion-decisions/bulk', [
             'class_id' => $this->class7a->id,
@@ -337,7 +337,7 @@ class PromotionTest extends TestCase
         $this->assertSame('naik', $response['students'][0]['suggested_decision']);
         $this->assertSame('tinggal', $response['students'][1]['suggested_decision']);
         $this->assertEquals(85.0, $response['students'][0]['snapshot']['average_score']);
-        $this->assertSame(100.0, $response['students'][0]['snapshot']['attendance_percent']);
+        $this->assertEquals(100.0, $response['students'][0]['snapshot']['attendance_percent']);
 
         $this->assertDatabaseCount('promotion_decisions', 0);
     }
