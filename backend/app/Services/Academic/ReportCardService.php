@@ -4,6 +4,7 @@ namespace App\Services\Academic;
 
 use App\Models\Assessment;
 use App\Models\ClassStudent;
+use App\Models\PassingGradeRule;
 use App\Models\ReportCard;
 use App\Models\ReportCardItem;
 use App\Models\SchoolClass;
@@ -210,7 +211,45 @@ class ReportCardService
             'published_by' => $userId,
         ]);
 
-        return $card->fresh(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject']);
+        $fresh = $card->fresh(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject']);
+
+        $this->notifyGuardiansAfterPublish($fresh);
+
+        return $fresh;
+    }
+
+    /**
+     * Beri tahu wali murid bahwa rapor sudah diterbitkan. Mata pelajaran dengan
+     * nilai akhir di bawah KKTP dicantumkan agar wali tahu di mana perlu
+     * pendampingan. Notifikasi dikirim setelah status tersimpan agar tidak ikut
+     * ter-rollback bila transaksi pemanggil gagal di tengah.
+     */
+    private function notifyGuardiansAfterPublish(ReportCard $card): void
+    {
+        $educationLevelId = $card->schoolClass?->education_level_id;
+        $educationLevelId = $educationLevelId === null ? null : (int) $educationLevelId;
+
+        $belowKktp = [];
+
+        foreach ($card->items as $item) {
+            if ($item->score === null || $item->subject_id === null) {
+                continue;
+            }
+
+            $rule = PassingGradeRule::resolveFor(
+                (int) $item->subject_id,
+                $educationLevelId,
+                (int) $card->academic_year_id,
+            );
+
+            $minScore = $rule?->min_score;
+
+            if ($minScore !== null && (float) $item->score < (float) $minScore) {
+                $belowKktp[] = (string) ($item->subject?->name ?? 'Mata pelajaran');
+            }
+        }
+
+        app(GuardianNotifier::class)->notifyReportPublished($card, $belowKktp);
     }
 
     /**

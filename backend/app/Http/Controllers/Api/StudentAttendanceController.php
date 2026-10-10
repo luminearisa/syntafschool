@@ -12,6 +12,7 @@ use App\Models\SchoolClass;
 use App\Models\Semester;
 use App\Models\Student;
 use App\Models\StudentAttendance;
+use App\Services\Academic\GuardianNotifier;
 use App\Services\Attendance\AttendanceRecapService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -365,6 +366,8 @@ class StudentAttendanceController extends BaseApiController
             }
         });
 
+        $this->notifyConsecutiveAbsences($data, $statuses);
+
         return $this->successResponse([
             'class_id' => (int) $data['class_id'],
             'semester_id' => (int) $data['semester_id'],
@@ -373,6 +376,89 @@ class StudentAttendanceController extends BaseApiController
             'updated' => $updated,
             'total' => $created + $updated,
         ], 'Presensi kelas berhasil disimpan');
+    }
+
+    /**
+     * Setelah presensi disimpan, beri tahu wali siswa yang kini alpa berturut.
+     *
+     * Ambang batas 3 hari dan dikirim *tepat* saat mencapai ambang (bukan tiap
+     * hari berikutnya) supaya tidak membanjiri wali; jika siswa kembali hadir
+     * lalu alpa lagi, rentetan baru akan memicu notifikasi baru.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  \Illuminate\Support\Collection<int, AttendanceStatus>  $statuses
+     */
+    protected function notifyConsecutiveAbsences(array $data, $statuses): void
+    {
+        $absentStatusId = $statuses->firstWhere('code', AttendanceStatus::CODE_ABSENT)?->id;
+
+        if ($absentStatusId === null) {
+            return;
+        }
+
+        $threshold = 3;
+        $notifier = app(GuardianNotifier::class);
+
+        foreach ($data['entries'] as $entry) {
+            if ((int) $entry['attendance_status_id'] !== (int) $absentStatusId) {
+                continue;
+            }
+
+            $studentId = (int) $entry['student_id'];
+
+            $streak = $this->consecutiveAbsenceStreak($studentId, (string) $data['date'], (int) $absentStatusId);
+
+            if ($streak !== $threshold) {
+                continue;
+            }
+
+            $student = Student::query()->find($studentId);
+
+            if ($student !== null) {
+                $notifier->notifyConsecutiveAbsence($student, $streak, (string) $data['date']);
+            }
+        }
+    }
+
+    /**
+     * Hitung berapa hari berurutan (berdasarkan tanggal presensi yang tercatat,
+     * urut menurun) siswa berstatus alpa, berhenti pada hari pertama ia hadir
+     * atau tercatat izin/sakit. Hari tanpa presensi (mis. libur) otomatis
+     * terlewat karena tidak muncul di data.
+     */
+    protected function consecutiveAbsenceStreak(int $studentId, string $date, int $absentStatusId): int
+    {
+        $presentStatusIds = AttendanceStatus::query()
+            ->whereIn('code', AttendanceStatus::CODES_COUNTED_AS_PRESENT)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $byDate = StudentAttendance::query()
+            ->where('student_id', $studentId)
+            ->whereDate('date', '<=', $date)
+            ->orderByDesc('date')
+            ->get(['date', 'attendance_status_id'])
+            ->groupBy(fn (StudentAttendance $row) => $row->date->toDateString());
+
+        $streak = 0;
+
+        foreach ($byDate as $rows) {
+            $ids = $rows->pluck('attendance_status_id')->map(fn ($id) => (int) $id);
+
+            // Kehadiran pada satu sesi cukup membuat hari itu dianggap hadir.
+            if (array_intersect($ids->all(), $presentStatusIds) !== []) {
+                break;
+            }
+
+            if (! $ids->contains($absentStatusId)) {
+                break;
+            }
+
+            $streak++;
+        }
+
+        return $streak;
     }
 
     /**
