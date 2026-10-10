@@ -77,3 +77,43 @@ export interface ReportCardLookups {
   classes: { id: number; name: string; code: string; academic_year_id: number }[];
   semesters: { id: number; name: string; academic_year_id: number; academic_year?: { id: number; name: string } | null }[];
 }
+
+export interface TranscriptSubjectScore {
+  academic_year: string | null;
+  semester: string | null;
+  type: string;
+  score: number | null;
+  grade: string | null;
+  predicate: string | null;
+}
+
+export interface TranscriptSubject {
+  subject_id: number;
+  code: string | null;
+  name: string | null;
+  scores: TranscriptSubjectScore[];
+  average: number | null;
+}
+
+export interface TranscriptData {
+  student?: { id: number; nis: string | null; full_name: string };
+  scope?: { academic_year?: string | null; label?: string };
+  subjects?: TranscriptSubject[];
+  overall_average?: number | null;
+  report_card_count?: number;
+}
+
+export interface Transcript {
+  id: number;
+  student_id: number;
+  academic_year_id: number | null;
+  generated_at: string | null;
+  generated_by: number | null;
+  data: TranscriptData;
+  student?: { id: number; nis: string | null; full_name: string } | null;
+  academic_year?: { id: number; name: string } | null;
+}
+
+export interface TranscriptLookups {
+  academic_years: { id: number; name: string }[];
+}
