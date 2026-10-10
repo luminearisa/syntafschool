@@ -8,6 +8,7 @@ use App\Models\Assessment;
 use App\Models\ClassStudent;
 use App\Models\Remedial;
 use App\Models\Score;
+use App\Services\Academic\TeachingAccess;
 use App\Services\Assessment\GradingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -25,6 +26,8 @@ class RemedialController extends BaseApiController
 
     public function index(Assessment $assessment): JsonResponse
     {
+        $this->assertMayGrade($assessment);
+
         $remedials = Remedial::query()
             ->with('student')
             ->where('assessment_id', $assessment->id)
@@ -61,6 +64,8 @@ class RemedialController extends BaseApiController
      */
     public function candidates(Assessment $assessment): JsonResponse
     {
+        $this->assertMayGrade($assessment);
+
         $summary = $this->grading->summaryFor($assessment->load(['subject', 'schoolClass', 'semester']));
 
         return $this->successResponse([
@@ -80,6 +85,7 @@ class RemedialController extends BaseApiController
         $data = $request->validated();
         $studentId = (int) $data['student_id'];
 
+        $this->assertMayGrade($assessment);
         $this->assertNotLocked($assessment);
         $this->assertMember($assessment, $studentId);
         $this->assertWithinMax($assessment, $data);
@@ -111,6 +117,7 @@ class RemedialController extends BaseApiController
     public function update(RemedialRequest $request, Assessment $assessment, Remedial $remedial): JsonResponse
     {
         $this->assertBelongsTo($assessment, $remedial);
+        $this->assertMayGrade($assessment);
         $this->assertNotLocked($assessment);
 
         $data = $request->validated();
@@ -132,6 +139,7 @@ class RemedialController extends BaseApiController
     public function destroy(Assessment $assessment, Remedial $remedial): JsonResponse
     {
         $this->assertBelongsTo($assessment, $remedial);
+        $this->assertMayGrade($assessment);
         $this->assertNotLocked($assessment);
 
         $remedial->delete();
@@ -155,6 +163,14 @@ class RemedialController extends BaseApiController
             throw ValidationException::withMessages([
                 'assessment_id' => 'Nilai penilaian ini sudah difinalisasi. Buka kembali nilai untuk menambah remedial.',
             ]);
+        }
+    }
+
+    /** Guru hanya mengelola remedial penilaian yang ia ampu/walikelasinya. */
+    protected function assertMayGrade(Assessment $assessment): void
+    {
+        if (! app(TeachingAccess::class)->mayGrade(request()->user(), $assessment)) {
+            abort(403, 'Anda bukan pengampu penilaian ini.');
         }
     }
 

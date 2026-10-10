@@ -26,6 +26,7 @@ const REPORT_TYPES = [
 const REPORT_STATUSES = [
   { value: '', label: 'Semua status' },
   { value: 'draft', label: 'Draft' },
+  { value: 'in_progress', label: 'Sedang berjalan' },
   { value: 'ready_for_review', label: 'Menunggu review' },
   { value: 'approved', label: 'Disetujui' },
   { value: 'published', label: 'Diterbitkan' },

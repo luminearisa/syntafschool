@@ -535,6 +535,41 @@ class AssessmentTest extends TestCase
             ->assertJsonPath('data.status', Assessment::STATUS_VERIFIED);
     }
 
+    public function test_guru_bukan_pengampu_tidak_bisa_membuat_penilaian_kelas_lain(): void
+    {
+        $world = $this->world();
+        $type = $this->makeType($world);
+
+        // Guru yang tertaut pegawai, tetapi bukan pengampu kelas+mapel ini.
+        $other = $this->makeTeacher('Guru Mapel Lain');
+        $guru = $this->actingAsRole('guru');
+        $guru->forceFill([
+            'userable_type' => $other->getMorphClass(),
+            'userable_id' => $other->id,
+        ])->save();
+
+        $this->postJson('/api/v1/assessments', $this->assessmentPayload($world, $type))
+            ->assertForbidden();
+    }
+
+    public function test_guru_bukan_pengampu_tidak_bisa_mengelola_remedial_kelas_lain(): void
+    {
+        $world = $this->world();
+        $assessment = $this->makeAssessment($world);
+
+        $other = $this->makeTeacher('Guru Mapel Lain');
+        $guru = $this->actingAsRole('guru');
+        $guru->forceFill([
+            'userable_type' => $other->getMorphClass(),
+            'userable_id' => $other->id,
+        ])->save();
+
+        $this->postJson("/api/v1/assessments/{$assessment->id}/remedials", [
+            'student_id' => $world['students'][0]->id,
+            'score_after' => 80,
+        ])->assertForbidden();
+    }
+
     public function test_penilaian_yang_dibuka_revisi_dapat_diajukan_ulang_dan_difinalisasi(): void
     {
         $world = $this->world();

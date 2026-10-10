@@ -232,7 +232,7 @@ class RolePermissionSeeder extends Seeder
         // meski orang tuanya belum lunas" dan "ijazahnya boleh keluar dulu"
         // diambil oleh orang yang sama dengan keputusan akademiknya — bukan oleh
         // bendahara, dan bukan oleh frontend.
-        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'academic:approve', 'academic:publish', 'academic:promote', 'report-card:view', 'report-card:approve', 'report-card:publish', 'student:view', 'employee:view', 'finance:view', 'finance:eligibility.view', 'finance:eligibility.approve', 'finance:clearance.view', 'finance:clearance.approve', 'finance:clearance.waive', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export', 'boarding:view', 'boarding:dashboard.view', 'boarding:report.view'],
+        'kepala-sekolah' => ['report', 'master-data:view', 'academic:view', 'assessment:view', 'academic:approve', 'academic:publish', 'academic:promote', 'report-card:view', 'report-card:approve', 'report-card:publish', 'student:view', 'employee:view', 'finance:view', 'finance:eligibility.view', 'finance:eligibility.approve', 'finance:clearance.view', 'finance:clearance.approve', 'finance:clearance.waive', 'tahfiz:view', 'tahfiz:report', 'library:view', 'library:dashboard.view', 'wallet:view', 'wallet:ledger.view', 'wallet:report.view', 'wallet:report.export', 'boarding:view', 'boarding:dashboard.view', 'boarding:report.view'],
         // Bendahara = pengelola keuangan: top up, penarikan, adjustment, reversal.
         // Sengaja tidak menyebut modul `wallet` secara utuh — konfigurasi modul
         // (settings.*) dan penutupan wallet permanen (wallet.close) hak admin.

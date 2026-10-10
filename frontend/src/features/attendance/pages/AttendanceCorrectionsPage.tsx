@@ -231,7 +231,7 @@ export function AttendanceCorrectionsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              loading={approveMutation.isPending}
+                              loading={approveMutation.isPending && approveMutation.variables === row.id}
                               onClick={() => approveMutation.mutate(row.id)}
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" /> Setujui

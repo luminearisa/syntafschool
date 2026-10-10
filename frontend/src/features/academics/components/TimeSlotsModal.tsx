@@ -12,6 +12,7 @@ import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useOptions } from '@/hooks/useOptions';
+import { usePermission } from '@/hooks/usePermission';
 import { getErrorMessage, getValidationErrors } from '@/lib/axios';
 import type { TimeSlot, TimeSlotPayload, TimeSlotType } from '@/types';
 
@@ -66,6 +67,9 @@ export function TimeSlotsModal({
   const [overwrite, setOverwrite] = useState(false);
 
   const { options: dayOptions } = useOptions('days');
+  const { can } = usePermission();
+  const canCreate = can('academic.create');
+  const canDelete = can('academic.delete');
 
   const slotsQuery = useQuery({
     queryKey: ['time-slots'],
@@ -334,9 +338,11 @@ export function TimeSlotsModal({
                   </div>
                 </div>
               ) : (
-                <Button variant="ghost" size="sm" onClick={() => setShowGenerate(true)}>
-                  <Sparkles className="h-4 w-4" /> Isi dari template default
-                </Button>
+                canCreate && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowGenerate(true)}>
+                    <Sparkles className="h-4 w-4" /> Isi dari template default
+                  </Button>
+                )
               )}
             </div>
           </div>
@@ -372,26 +378,30 @@ export function TimeSlotsModal({
                           <td className="px-4 py-2">
                             <Badge tone={TYPE_TONE[slot.type]}>{TYPE_LABEL[slot.type]}</Badge>
                           </td>
-                          {canEdit && (
+                          {(canEdit || canDelete) && (
                             <td className="px-4 py-2 text-right">
                               <div className="flex justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="Ubah"
-                                  onClick={() => startEdit(slot)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-red-500 hover:bg-red-50"
-                                  title="Hapus"
-                                  onClick={() => removeMutation.mutate(slot.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                {canEdit && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title="Ubah"
+                                    onClick={() => startEdit(slot)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-red-500 hover:bg-red-50"
+                                    title="Hapus"
+                                    onClick={() => removeMutation.mutate(slot.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           )}

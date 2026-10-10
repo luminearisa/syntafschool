@@ -73,6 +73,11 @@ class ReportCardController extends BaseApiController
             'type' => 'jenis rapor',
         ]);
 
+        // Guru/wali kelas hanya boleh generate rapor kelas yang ia ampu.
+        if (! app(\App\Services\Academic\TeachingAccess::class)->mayRecordClass($request->user(), (int) $data['class_id'])) {
+            abort(403, 'Anda bukan wali kelas atau pengampu kelas ini.');
+        }
+
         $cards = $this->reports->generate(
             SchoolClass::query()->findOrFail((int) $data['class_id']),
             Semester::query()->findOrFail((int) $data['semester_id']),

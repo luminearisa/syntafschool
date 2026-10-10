@@ -124,6 +124,25 @@ class AssessmentController extends BaseApiController
             (int) $data['semester_id'],
         );
 
+        // Guru biasa hanya boleh membuat penilaian untuk mapel yang ia ampu
+        // (atau kelas yang ia walikelasai), dan atas namanya sendiri. Tanpa ini
+        // guru dapat membuat penilaian pada kelas/mapel guru lain lalu menilai
+        // dan memfinalisasinya sendiri (lihat TeachingAccess).
+        $access = app(\App\Services\Academic\TeachingAccess::class);
+        $teacherId = $access->restrictedTeacherId($request->user());
+        if ($teacherId !== null) {
+            $isHomeroom = SchoolClass::query()
+                ->whereKey((int) $data['school_class_id'])
+                ->where('homeroom_teacher_id', $teacherId)
+                ->exists();
+
+            if (! $isHomeroom && (int) $classSubject->employee_id !== $teacherId) {
+                abort(403, 'Anda tidak mengampu mata pelajaran ini di kelas tersebut.');
+            }
+
+            $data['employee_id'] = $teacherId;
+        }
+
         // Guru pengampu mapel menjadi default bila guru tidak dipilih eksplisit.
         $data['employee_id'] = $data['employee_id'] ?? $classSubject->employee_id;
         $data['status'] = Assessment::STATUS_DRAFT;

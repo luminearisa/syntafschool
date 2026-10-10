@@ -274,7 +274,7 @@ export function TeachingTodayPage() {
                       </td>
                       <td className="px-4 py-2">
                         <Can
-                          perm={['academic.create', 'academic.attendance']}
+                          perm={['academic.create', 'academic.attendance', 'academic.update', 'academic.approve']}
                           fallback={<span className="text-xs text-slate-400">—</span>}
                         >
                           {item.has_journal && item.journal ? (
@@ -305,9 +305,11 @@ export function TeachingTodayPage() {
                               </Button>
                             </div>
                           ) : (
-                            <Button size="sm" onClick={() => openFormFor(item)}>
-                              <CalendarCheck className="h-3.5 w-3.5" /> Catat Jurnal
-                            </Button>
+                            <Can perm={['academic.create', 'academic.attendance']}>
+                              <Button size="sm" onClick={() => openFormFor(item)}>
+                                <CalendarCheck className="h-3.5 w-3.5" /> Catat Jurnal
+                              </Button>
+                            </Can>
                           )}
                         </Can>
                       </td>

@@ -273,8 +273,8 @@ export function SchedulesPage() {
             )}
           </div>
 
-          <Can perm="academic.update">
-            <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <Can perm="academic.update">
               <button
                 type="button"
                 title="Edit jadwal"
@@ -291,6 +291,8 @@ export function SchedulesPage() {
               >
                 <CalendarClock className="h-3 w-3" />
               </button>
+            </Can>
+            <Can perm="academic.delete">
               <button
                 type="button"
                 title="Hapus jadwal"
@@ -299,8 +301,8 @@ export function SchedulesPage() {
               >
                 <Trash2 className="h-3 w-3" />
               </button>
-            </div>
-          </Can>
+            </Can>
+          </div>
         </div>
 
         {change && (
@@ -337,7 +339,7 @@ export function SchedulesPage() {
           <Button variant="ghost" size="icon" onClick={() => gridQuery.refetch()} title="Muat ulang">
             <RefreshCw className={gridQuery.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
           </Button>
-          <Can perm="academic.update">
+          <Can perm={['academic.update', 'academic.create']}>
             <Button variant="outline" onClick={() => setSlotsOpen(true)}>
               <Clock className="h-4 w-4" /> Jam Pelajaran
             </Button>
@@ -576,7 +578,7 @@ export function SchedulesPage() {
         onClose={() => setChangeTarget(null)}
       />
 
-      <TimeSlotsModal open={slotsOpen} canEdit={can('academic.update')} onClose={() => setSlotsOpen(false)} />
+      <TimeSlotsModal open={slotsOpen} canEdit={can('academic.update') || can('academic.create')} onClose={() => setSlotsOpen(false)} />
 
       <ConfirmDialog
         open={!!deleting}

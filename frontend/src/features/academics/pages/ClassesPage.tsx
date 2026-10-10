@@ -42,7 +42,7 @@ export function ClassesPage() {
   const { options: yearOptions } = useOptions('academic-years');
 
   const activeYearQuery = useQuery({
-    queryKey: ['academic', 'active'],
+    queryKey: ['academic', 'active-year'],
     queryFn: async () => {
       const res = await masterDataApi.list('academic-years', { filter: { is_active: 1 }, all: true });
       return (res.data?.[0] ?? null) as unknown as AcademicYear | null;

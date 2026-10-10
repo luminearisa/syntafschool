@@ -25,6 +25,7 @@ import { SearchSelect } from '@/components/ui/SearchSelect';
 import { ConfirmDialog } from '@/components/layout/ConfirmDialog';
 import { Can } from '@/components/common/Can';
 import { useOptions } from '@/hooks/useOptions';
+import { usePermission } from '@/hooks/usePermission';
 import { getErrorMessage, getValidationErrors } from '@/lib/axios';
 import type {
   AcademicEvent,
@@ -53,6 +54,8 @@ function monthLabel(month: string): string {
 
 export function AcademicCalendarPage() {
   const queryClient = useQueryClient();
+  const { can } = usePermission();
+  const canManageEvents = can(['academic.update', 'academic.create']);
 
   const [semesterId, setSemesterId] = useState<number | ''>('');
   const [eventTypeId, setEventTypeId] = useState<number | ''>('');
@@ -351,13 +354,17 @@ export function AcademicCalendarPage() {
                           key={`${event.id}-${date}`}
                           type="button"
                           title={event.title}
+                          disabled={!canManageEvents}
                           onClick={() => {
+                            if (!canManageEvents) return;
                             setEditing(event);
                             createMutation.reset();
                             updateMutation.reset();
                             setFormOpen(true);
                           }}
-                          className="block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium"
+                          className={`block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium ${
+                            canManageEvents ? 'cursor-pointer' : 'cursor-default'
+                          }`}
                           style={{
                             backgroundColor: `${event.event_type?.color ?? '#64748b'}20`,
                             color: event.event_type?.color ?? '#475569',

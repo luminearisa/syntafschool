@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { CheckCircle2 } from 'lucide-react';
 import { classCurriculumApi, curriculumStructuresApi } from '../api/curriculumApi';
@@ -23,6 +23,7 @@ const toId = (value: string | number | ''): number | '' => (value === '' ? '' : 
 
 /** Terapkan struktur kurikulum ke sebuah kelas. */
 export function ApplyCurriculumModal({ open, onClose }: Props) {
+  const queryClient = useQueryClient();
   const [classId, setClassId] = useState<number | ''>('');
   const [structureId, setStructureId] = useState<number | ''>('');
   const [result, setResult] = useState<ApplyCurriculumResult | null>(null);
@@ -72,6 +73,9 @@ export function ApplyCurriculumModal({ open, onClose }: Props) {
     onSuccess: (res) => {
       toast.success(res.message);
       setResult(res.data);
+      // Daftar mapel kelas berubah setelah kurikulum diterapkan.
+      queryClient.invalidateQueries({ queryKey: ['class-subjects'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
