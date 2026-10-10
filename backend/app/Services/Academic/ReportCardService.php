@@ -213,6 +213,26 @@ class ReportCardService
         return $card->fresh(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject']);
     }
 
+    /**
+     * Kembalikan rapor ke draft agar penilaian/catatan dapat diperbaiki.
+     *
+     * Rapor `ready_for_review`/`approved` dapat dikembalikan; rapor yang sudah
+     * `published` sengaja dikunci agar catatan yang telah dibagikan ke orang tua
+     * tidak berubah diam-diam.
+     */
+    public function reopen(ReportCard $card): ReportCard
+    {
+        $this->assertTransition(
+            $card,
+            [ReportCard::STATUS_READY, ReportCard::STATUS_APPROVED],
+            'Hanya rapor yang menunggu review atau sudah disetujui yang dapat dikembalikan ke draft.',
+        );
+
+        $card->update(['status' => ReportCard::STATUS_DRAFT]);
+
+        return $card->fresh(['student', 'schoolClass', 'semester', 'academicYear', 'items.subject']);
+    }
+
     public function updateNotes(ReportCard $card, array $data): ReportCard
     {
         if (in_array($card->status, [ReportCard::STATUS_APPROVED, ReportCard::STATUS_PUBLISHED], true)) {

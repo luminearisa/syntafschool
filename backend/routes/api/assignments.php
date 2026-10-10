@@ -58,4 +58,4 @@ Route::delete('assignments/{assignment}/submissions/{submission}', [AssignmentSu
 
 // -------------------------------------------- Tugas milik satu siswa
 Route::get('students/{student}/assignments', [AssignmentSubmissionController::class, 'studentAssignments'])
-    ->middleware(['permission:academic.view', 'student.family'])->name('students.assignments.index');
+    ->middleware(['permission:academic.view|academic.portal', 'student.family'])->name('students.assignments.index');

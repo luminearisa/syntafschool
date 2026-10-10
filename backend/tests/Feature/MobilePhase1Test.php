@@ -138,6 +138,28 @@ class MobilePhase1Test extends TestCase
         $this->getJson("/api/v1/attendance-recap/student/{$stranger->id}")->assertStatus(404);
     }
 
+    public function test_family_account_cannot_browse_staff_academic_endpoints(): void
+    {
+        // Akun siswa/wali hanya punya `academic.portal` (kepemilikan), bukan
+        // permission modul — jadi permukaan staf harus tertutup (403), bukan
+        // sebaliknya membocorkan nilai/presensi seluruh siswa.
+        $siswa = User::factory()->create(['email' => 'siswa.only@syntaf.test', 'is_active' => true]);
+        $siswa->syncRoles(['siswa']);
+        Sanctum::actingAs($siswa, ['*']);
+
+        $this->getJson('/api/v1/assessments')->assertForbidden();
+        $this->getJson('/api/v1/student-attendances')->assertForbidden();
+        $this->getJson('/api/v1/classes')->assertForbidden();
+
+        $wali = User::factory()->create(['email' => 'wali.only@syntaf.test', 'is_active' => true]);
+        $wali->syncRoles(['wali-murid']);
+        Sanctum::actingAs($wali, ['*']);
+
+        $this->getJson('/api/v1/students')->assertForbidden();
+        $this->getJson('/api/v1/guardians')->assertForbidden();
+        $this->getJson('/api/v1/assessments')->assertForbidden();
+    }
+
     public function test_staff_roles_are_not_restricted_by_the_family_gate(): void
     {
         $student = Student::create(['nis' => 'K3', 'full_name' => 'Siapa Saja']);

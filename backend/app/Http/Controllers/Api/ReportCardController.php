@@ -133,6 +133,16 @@ class ReportCardController extends BaseApiController
         );
     }
 
+    public function reopen(Request $request, ReportCard $reportCard): JsonResponse
+    {
+        $this->assertMayManage($request, $reportCard);
+
+        return $this->successResponse(
+            new ReportCardResource($this->reports->reopen($reportCard)),
+            'Rapor dikembalikan ke draft',
+        );
+    }
+
     public function pdf(Request $request, ReportCard $reportCard): Response
     {
         $this->assertMayManage($request, $reportCard);

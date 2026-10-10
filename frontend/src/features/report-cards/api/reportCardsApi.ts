@@ -61,6 +61,11 @@ export const reportCardsApi = {
     return response.data.data;
   },
 
+  async reopen(id: number) {
+    const response = await api.post<ApiResponse<ReportCard>>(`/report-cards/${id}/reopen`);
+    return response.data.data;
+  },
+
   async pdf(id: number) {
     const response = await api.get<Blob>(`/report-cards/${id}/pdf`, { responseType: 'blob' });
     return response.data;

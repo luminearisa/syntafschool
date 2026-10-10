@@ -150,7 +150,8 @@ Route::get('gradebook/overview', [GradebookController::class, 'overview'])
     ->middleware('permission:assessment.view')->name('gradebook.overview');
 
 // Nilai milik satu siswa (portal siswa & wali murid memakai endpoint ini).
-// `assessment.view` dipakai — bukan `student.view` — karena role `siswa` memiliki
-// permission ini tetapi tidak memiliki `student.view`.
+// `assessment.view` untuk staf; `academic.portal` untuk akun keluarga (siswa/
+// wali) yang tidak lagi memegang permission modul. Pagar kepemilikan
+// (`student.family`) tetap menahan mereka hanya pada dirinya/anaknya.
 Route::get('students/{student}/scores', [ScoreController::class, 'studentScores'])
-    ->middleware(['permission:assessment.view', 'student.family'])->name('students.scores.index');
+    ->middleware(['permission:assessment.view|academic.portal', 'student.family'])->name('students.scores.index');

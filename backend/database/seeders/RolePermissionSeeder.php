@@ -16,7 +16,7 @@ class RolePermissionSeeder extends Seeder
      */
     protected array $modules = [
         'master-data' => ['view', 'create', 'update', 'delete', 'import', 'export'],
-        'academic' => ['view', 'create', 'update', 'delete', 'publish', 'approve', 'promote', 'grade', 'attendance'],
+        'academic' => ['view', 'create', 'update', 'delete', 'publish', 'approve', 'promote', 'grade', 'attendance', 'portal'],
         'student' => ['view', 'create', 'update', 'delete'],
         'employee' => ['view', 'create', 'update', 'delete'],
         // Modul Finance/Keuangan: akuntansi double-entry + COA, tagihan/SPP,
@@ -332,12 +332,12 @@ class RolePermissionSeeder extends Seeder
         // pun: portal mereka dibatasi kepemilikan (dirinya / anak walinya), bukan
         // oleh permission modul, jadi menambah aksi di sini justru memberi akses
         // ke data santri lain.
-        'siswa' => ['academic:view', 'assessment:view', 'report:view', 'tahfiz:view'],
+        'siswa' => ['academic:portal', 'report:view', 'tahfiz:view'],
         // `wali-murid` sengaja TIDAK diberi permission finance: portal keuangan
         // orang tua (§57) dibatasi kepemilikan (tagihan anak walinya), bukan oleh
         // permission modul — sama seperti portal boarding. Memberi `finance:view`
         // di sini justru membuka menu/read data keuangan sekolah secara admin.
-        'wali-murid' => ['academic:view', 'student:view', 'assessment:view', 'report:view', 'tahfiz:view'],
+        'wali-murid' => ['academic:portal', 'report:view', 'tahfiz:view'],
         // Library Manager: mengelola konfigurasi operasional perpustakaan
         // (settings, lokasi, jam, penutupan, penomoran) — tanpa hak hapus.
         'library-manager' => [

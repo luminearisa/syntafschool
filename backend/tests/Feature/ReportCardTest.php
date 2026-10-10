@@ -132,6 +132,53 @@ class ReportCardTest extends TestCase
             ->assertJsonPath('data.homeroom_note', 'Pertahankan semangat belajar.');
     }
 
+    public function test_rapor_disetujui_dapat_dikembalikan_ke_draft_dan_digenerate_ulang(): void
+    {
+        $world = $this->world();
+        $this->finalizedAssessment($world);
+        $this->actingAsRole();
+
+        $payload = [
+            'class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'type' => ReportCard::TYPE_SEMESTER,
+        ];
+
+        $cardId = (int) $this->postJson('/api/v1/report-cards/generate', $payload)->assertOk()->json('data.reports.0.id');
+        $this->postJson("/api/v1/report-cards/{$cardId}/ready")->assertOk();
+        $this->postJson("/api/v1/report-cards/{$cardId}/approve")->assertOk();
+
+        // Selama disetujui, rapor tidak boleh dibuat ulang.
+        $this->postJson('/api/v1/report-cards/generate', $payload)
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+
+        $this->postJson("/api/v1/report-cards/{$cardId}/reopen")
+            ->assertOk()->assertJsonPath('data.status', ReportCard::STATUS_DRAFT);
+
+        // Setelah dikembalikan ke draft, generate ulang berhasil lagi.
+        $this->postJson('/api/v1/report-cards/generate', $payload)->assertOk();
+    }
+
+    public function test_rapor_terbit_tidak_dapat_dikembalikan_ke_draft(): void
+    {
+        $world = $this->world();
+        $this->finalizedAssessment($world);
+        $this->actingAsRole();
+
+        $cardId = (int) $this->postJson('/api/v1/report-cards/generate', [
+            'class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'type' => ReportCard::TYPE_SEMESTER,
+        ])->assertOk()->json('data.reports.0.id');
+
+        $this->postJson("/api/v1/report-cards/{$cardId}/ready")->assertOk();
+        $this->postJson("/api/v1/report-cards/{$cardId}/approve")->assertOk();
+        $this->postJson("/api/v1/report-cards/{$cardId}/publish")->assertOk();
+
+        $this->postJson("/api/v1/report-cards/{$cardId}/reopen")
+            ->assertUnprocessable()->assertJsonValidationErrors('status');
+    }
+
     public function test_rapor_tidak_dapat_diajukan_jika_masih_ada_mapel_tanpa_nilai(): void
     {
         $world = $this->world();

@@ -153,7 +153,7 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
     setHomeroomNote(detail.data.homeroom_note ?? '');
   }, [detail.data]);
 
-  const run = async (action: 'save' | 'ready' | 'approve' | 'publish' | 'pdf') => {
+  const run = async (action: 'save' | 'ready' | 'approve' | 'publish' | 'reopen' | 'pdf') => {
     if (id === null) return;
     setBusyAction(action);
     try {
@@ -161,6 +161,7 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
       if (action === 'ready') await reportCardsApi.ready(id);
       if (action === 'approve') await reportCardsApi.approve(id);
       if (action === 'publish') await reportCardsApi.publish(id);
+      if (action === 'reopen') await reportCardsApi.reopen(id);
       if (action === 'pdf') {
         const blob = await reportCardsApi.pdf(id);
         const url = URL.createObjectURL(blob);
@@ -171,7 +172,14 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
         URL.revokeObjectURL(url);
       }
       if (action !== 'pdf') {
-        toast.success(action === 'save' ? 'Catatan rapor disimpan' : action === 'ready' ? 'Rapor diajukan untuk review' : action === 'approve' ? 'Rapor disetujui' : 'Rapor diterbitkan');
+        const messages: Record<string, string> = {
+          save: 'Catatan rapor disimpan',
+          ready: 'Rapor diajukan untuk review',
+          approve: 'Rapor disetujui',
+          publish: 'Rapor diterbitkan',
+          reopen: 'Rapor dikembalikan ke draft',
+        };
+        toast.success(messages[action] ?? 'Berhasil');
         await queryClient.invalidateQueries({ queryKey: ['report-card', id] });
         onChanged();
       }
@@ -203,6 +211,7 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
             {canEdit && <Button variant="outline" onClick={() => void run('save')} loading={busyAction === 'save'}>Simpan Catatan</Button>}
             {report.status === 'draft' && <Can perm="report-card.update"><Button onClick={() => void run('ready')} loading={busyAction === 'ready'}>Ajukan Review</Button></Can>}
             {report.status === 'ready_for_review' && <Can perm="report-card.approve"><Button onClick={() => void run('approve')} loading={busyAction === 'approve'}>Setujui Rapor</Button></Can>}
+            {['ready_for_review', 'approved'].includes(report.status) && <Can perm="report-card.approve"><Button variant="outline" onClick={() => void run('reopen')} loading={busyAction === 'reopen'}>Kembalikan ke Draft</Button></Can>}
             {report.status === 'approved' && <Can perm="report-card.publish"><Button onClick={() => void run('publish')} loading={busyAction === 'publish'}>Terbitkan Rapor</Button></Can>}
           </div>
         </div>

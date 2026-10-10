@@ -22,4 +22,6 @@ Route::prefix('report-cards')->name('report-cards.')->group(function (): void {
         ->middleware('permission:report-card.approve')->name('approve');
     Route::post('{reportCard}/publish', [ReportCardController::class, 'publish'])
         ->middleware('permission:report-card.publish')->name('publish');
+    Route::post('{reportCard}/reopen', [ReportCardController::class, 'reopen'])
+        ->middleware('permission:report-card.approve')->name('reopen');
 });
