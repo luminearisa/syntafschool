@@ -49,6 +49,15 @@ class GradeItemService
         $course = $activity->course()->firstOrFail();
         $gradebook = app(GradebookService::class)->ensureForCourse($course, $actorId);
 
+        // Bila gradebook baru saja dibuat, `ensureForCourse` menyinkronkan
+        // aktivitas yang sudah ada dan bisa saja sudah membuat item untuk
+        // aktivitas ini — cek ulang agar tidak melanggar unique `activity_id`.
+        $existing = LmsGradeItem::query()->where('activity_id', $activity->id)->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
         $source = $this->sourceFor($activity);
         $category = $this->defaultCategory($gradebook, $source, $actorId);
 

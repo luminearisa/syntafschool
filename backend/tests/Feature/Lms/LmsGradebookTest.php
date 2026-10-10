@@ -63,6 +63,30 @@ class LmsGradebookTest extends LmsTestCase
         $this->assertNotNull($item->category_id);
     }
 
+    public function test_ensure_for_activity_tidak_membuat_item_ganda_saat_gradebook_baru(): void
+    {
+        $world = $this->world();
+        $course = $this->publishCourse($this->makeCourse($world), $world);
+        $section = $course->sections()->firstOrFail();
+
+        // Aktivitas masih DRAFT dan course belum pernah punya gradebook.
+        $activity = $this->makeActivity($section, [
+            'title' => 'Esai Literasi Digital',
+            'activity_type' => 'ASSIGNMENT',
+        ]);
+
+        $this->assertDatabaseCount('lms_gradebooks', 0);
+        $this->assertDatabaseCount('lms_grade_items', 0);
+
+        // ensureForCourse (dipanggil di dalam) membuat gradebook sekaligus
+        // menyinkronkan aktivitas ini; dulu hal itu membuat create() kedua dan
+        // melempar UniqueConstraintViolationException pada lms_grade_items.activity_id.
+        $item = app(GradeItemService::class)->ensureForActivity($activity);
+
+        $this->assertSame(1, LmsGradeItem::query()->where('activity_id', $activity->id)->count());
+        $this->assertSame((int) $activity->id, (int) $item->activity_id);
+    }
+
     public function test_grade_item_manual_tetap_tersedia_untuk_guru(): void
     {
         $world = $this->world();
