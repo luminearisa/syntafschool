@@ -1200,4 +1200,108 @@ class AttendanceTest extends TestCase
             'decision_note' => 'Bukti kurang.',
         ]);
     }
+
+    // -----------------------------------------------------------------
+    // Batas kelas: guru tertaut hanya mengakses kelasnya
+    // -----------------------------------------------------------------
+
+    private function linkTeacher(User $user, Employee $employee): void
+    {
+        $user->forceFill([
+            'userable_type' => $employee->getMorphClass(),
+            'userable_id' => $employee->id,
+        ])->save();
+    }
+
+    private function makeCorrection(array $world, int $classId): AttendanceCorrection
+    {
+        $attendance = StudentAttendance::create([
+            'student_id' => $world['students'][0]->id,
+            'school_class_id' => $classId,
+            'semester_id' => $world['semester']->id,
+            'date' => '2026-09-10',
+            'attendance_status_id' => $this->statusId('A'),
+        ]);
+
+        return AttendanceCorrection::create([
+            'student_attendance_id' => $attendance->id,
+            'old_status_id' => $this->statusId('A'),
+            'new_status_id' => $this->statusId('H'),
+            'reason' => 'Siswa hadir.',
+            'status' => AttendanceCorrection::STATUS_PENDING,
+        ]);
+    }
+
+    public function test_guru_tertaut_tidak_bisa_menyetujui_koreksi_kelas_lain(): void
+    {
+        $world = $this->world();
+        $user = $this->actingAsRole('wali-kelas');
+        $this->linkTeacher($user, $world['teacher']); // tidak mengajar kelas world
+
+        $correction = $this->makeCorrection($world, $world['class']->id);
+
+        $this->postJson("/api/v1/attendance-corrections/{$correction->id}/approve")
+            ->assertForbidden();
+    }
+
+    public function test_guru_tertaut_bisa_menyetujui_koreksi_kelas_sendiri(): void
+    {
+        $world = $this->world();
+        $world['class']->update(['homeroom_teacher_id' => $world['teacher']->id]);
+
+        $user = $this->actingAsRole('wali-kelas');
+        $this->linkTeacher($user, $world['teacher']);
+
+        $correction = $this->makeCorrection($world, $world['class']->id);
+
+        $this->postJson("/api/v1/attendance-corrections/{$correction->id}/approve")->assertOk();
+    }
+
+    public function test_daftar_koreksi_dibatasi_kelas_guru(): void
+    {
+        $world = $this->world();
+        $world['class']->update(['homeroom_teacher_id' => $world['teacher']->id]);
+
+        $kelasLain = $this->makeClass($world['semester'], 'X-IPA-2');
+        $this->makeCorrection($world, $kelasLain->id);
+        $this->makeCorrection($world, $world['class']->id);
+
+        $user = $this->actingAsRole('wali-kelas');
+        $this->linkTeacher($user, $world['teacher']);
+
+        $this->getJson('/api/v1/attendance-corrections')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_daftar_presensi_dibatasi_kelas_guru(): void
+    {
+        $world = $this->world();
+        $world['class']->update(['homeroom_teacher_id' => $world['teacher']->id]);
+
+        $kelasLain = $this->makeClass($world['semester'], 'X-IPA-2');
+
+        StudentAttendance::create([
+            'student_id' => $world['students'][0]->id,
+            'school_class_id' => $kelasLain->id,
+            'semester_id' => $world['semester']->id,
+            'date' => '2026-09-10',
+            'attendance_status_id' => $this->statusId('H'),
+        ]);
+
+        StudentAttendance::create([
+            'student_id' => $world['students'][0]->id,
+            'school_class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'date' => '2026-09-10',
+            'attendance_status_id' => $this->statusId('H'),
+        ]);
+
+        $user = $this->actingAsRole('guru');
+        $this->linkTeacher($user, $world['teacher']);
+
+        $this->getJson('/api/v1/student-attendances')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+    }
 }

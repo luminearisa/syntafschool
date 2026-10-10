@@ -8,6 +8,7 @@ use App\Http\Resources\AttendanceCorrectionResource;
 use App\Models\AttendanceCorrection;
 use App\Models\AttendanceStatus;
 use App\Models\StudentAttendance;
+use App\Services\Academic\TeachingAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -29,6 +30,14 @@ class AttendanceCorrectionController extends BaseApiController
     public function index(Request $request): JsonResponse
     {
         $query = AttendanceCorrection::query()->with($this->with);
+
+        // Guru hanya melihat koreksi untuk kelas yang ia ampu/walikelasinya;
+        // pengelola (admin, kepala sekolah) melihat seluruhnya.
+        $scope = app(TeachingAccess::class)->accessibleClassIds($request->user());
+
+        if ($scope !== null) {
+            $query->whereHas('attendance', fn ($q) => $q->whereIn('school_class_id', $scope));
+        }
 
         foreach ((array) $request->query('filter', []) as $column => $value) {
             if ($value === null || $value === '' || ! in_array($column, $this->filterable, true)) {
@@ -56,8 +65,10 @@ class AttendanceCorrectionController extends BaseApiController
         );
     }
 
-    public function show(AttendanceCorrection $correction): JsonResponse
+    public function show(Request $request, AttendanceCorrection $correction): JsonResponse
     {
+        $this->assertMayDecide($request, $correction);
+
         return $this->successResponse(
             new AttendanceCorrectionResource($correction->load($this->with)),
             'Detail koreksi presensi berhasil diambil',
@@ -120,6 +131,7 @@ class AttendanceCorrectionController extends BaseApiController
     {
         $this->assertPending($correction);
         $this->assertNotSelfDecision($request, $correction);
+        $this->assertMayDecide($request, $correction);
 
         $data = $request->validate([
             'note' => ['nullable', 'string', 'max:500'],
@@ -159,6 +171,7 @@ class AttendanceCorrectionController extends BaseApiController
     {
         $this->assertPending($correction);
         $this->assertNotSelfDecision($request, $correction);
+        $this->assertMayDecide($request, $correction);
 
         $data = $request->validated();
 
@@ -189,6 +202,23 @@ class AttendanceCorrectionController extends BaseApiController
 
         if ((int) $correction->requested_by === (int) $request->user()?->id) {
             abort(403, 'Pengaju koreksi tidak boleh memutuskan koreksinya sendiri.');
+        }
+    }
+
+    /**
+     * Guru hanya boleh memutuskan (setuju/tolak/lihat) koreksi untuk kelas yang
+     * ia ampu/walikelasinya; pengelola melihat seluruhnya.
+     */
+    protected function assertMayDecide(Request $request, AttendanceCorrection $correction): void
+    {
+        $classId = $correction->attendance?->school_class_id;
+
+        if ($classId === null) {
+            return;
+        }
+
+        if (! app(TeachingAccess::class)->mayRecordClass($request->user(), (int) $classId)) {
+            abort(403, 'Anda hanya boleh memutuskan koreksi untuk kelas yang Anda ampu/walikelasinya.');
         }
     }
 

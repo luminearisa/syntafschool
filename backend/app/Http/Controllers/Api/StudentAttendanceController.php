@@ -63,6 +63,13 @@ class StudentAttendanceController extends BaseApiController
     {
         $query = StudentAttendance::query()->with($this->with);
 
+        // Guru hanya melihat presensi kelas yang ia ampu/walikelasinya.
+        $scope = app(\App\Services\Academic\TeachingAccess::class)->accessibleClassIds($request->user());
+
+        if ($scope !== null) {
+            $query->whereIn('school_class_id', $scope);
+        }
+
         foreach ((array) $request->query('filter', []) as $column => $value) {
             if ($value === null || $value === '' || ! in_array($column, $this->filterable, true)) {
                 continue;

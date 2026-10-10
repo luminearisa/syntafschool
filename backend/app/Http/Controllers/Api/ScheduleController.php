@@ -528,56 +528,33 @@ class ScheduleController extends BaseApiController
 
     /**
      * Guru pengganti tidak boleh sedang mengajar kelas lain pada jam yang sama.
+     *
+     * Diperiksa terhadap **timetabel efektif** tanggal tersebut: jadwal pokok
+     * yang dibatalkan/dipindah pada tanggal itu tidak lagi menempati slotnya,
+     * sedangkan pengganti jadwal lain turut diperhitungkan.
      */
     protected function assertSubstituteFree(Schedule $schedule, string $date, int $employeeId): void
     {
-        // day_id memakai konvensi ISO: 1 = Senin … 7 = Minggu.
         $dayId = Carbon::parse($date)->dayOfWeekIso;
+        $start = substr((string) $schedule->start_time, 0, 5);
+        $end = substr((string) $schedule->end_time, 0, 5);
 
-        $clash = Schedule::query()
-            ->with(['subject:id,name', 'schoolClass:id,name'])
-            ->where('id', '!=', $schedule->id)
-            ->where('employee_id', $employeeId)
-            ->where('day_id', $dayId)
-            ->where('semester_id', $schedule->semester_id)
-            ->where('start_time', '<', $schedule->end_time)
-            ->where('end_time', '>', $schedule->start_time)
-            ->first();
+        foreach ($this->effectiveSlots((int) $schedule->semester_id, $date, $dayId, (int) $schedule->id) as $slot) {
+            if ((int) $slot['employee_id'] !== $employeeId) {
+                continue;
+            }
 
-        if ($clash) {
+            if (! $this->slotsOverlap($slot['start_time'], $slot['end_time'], $start, $end)) {
+                continue;
+            }
+
             throw ValidationException::withMessages([
                 'substitute_employee_id' => sprintf(
                     'Guru pengganti sudah mengajar %s di %s pada jam yang sama (%s–%s).',
-                    $clash->subject?->name ?? 'mapel lain',
-                    $clash->schoolClass?->name ?? 'kelas lain',
-                    substr($clash->start_time, 0, 5),
-                    substr($clash->end_time, 0, 5),
-                ),
-            ]);
-        }
-
-        // Guru yang sama mungkin sudah ditugaskan menggantikan jadwal lain pada
-        // tanggal itu lewat `schedule_changes` — jadwal pokok tidak menangkapnya.
-        $changeClash = ScheduleChange::query()
-            ->with(['schedule.subject:id,name', 'schedule.schoolClass:id,name'])
-            ->whereDate('date', $date)
-            ->where('type', 'pengganti')
-            ->where('substitute_employee_id', $employeeId)
-            ->where('schedule_id', '!=', $schedule->id)
-            ->whereHas('schedule', function ($q) use ($schedule): void {
-                $q->where('start_time', '<', $schedule->end_time)
-                    ->where('end_time', '>', $schedule->start_time);
-            })
-            ->first();
-
-        if ($changeClash) {
-            throw ValidationException::withMessages([
-                'substitute_employee_id' => sprintf(
-                    'Guru pengganti sudah ditugaskan menggantikan %s di %s pada tanggal tersebut (%s–%s).',
-                    $changeClash->schedule?->subject?->name ?? 'mapel lain',
-                    $changeClash->schedule?->schoolClass?->name ?? 'kelas lain',
-                    substr((string) $changeClash->schedule?->start_time, 0, 5),
-                    substr((string) $changeClash->schedule?->end_time, 0, 5),
+                    $slot['subject_name'] ?? 'mapel lain',
+                    $slot['class_name'] ?? 'kelas lain',
+                    $slot['start_time'],
+                    $slot['end_time'],
                 ),
             ]);
         }
@@ -585,69 +562,57 @@ class ScheduleController extends BaseApiController
 
     /**
      * Jadwal yang dipindah tidak boleh bentrok dengan kelas, guru pengampu, atau
-     * ruang tujuan pada hari/jam barunya — sama seperti saat menjadwalkan biasa.
+     * ruang tujuan pada hari/jam barunya — diuji terhadap **timetabel efektif**
+     * tanggal tersebut, sehingga perubahan jadwal lain ikut diperhitungkan.
      *
      * @param  array<string, mixed>  $data
      */
     protected function assertMoveFree(Schedule $schedule, array $data): void
     {
         $dayId = (int) ($data['new_day_id'] ?? $schedule->day_id);
-        $start = $data['new_start_time'];
-        $end = $data['new_end_time'];
+        $start = substr((string) $data['new_start_time'], 0, 5);
+        $end = substr((string) $data['new_end_time'], 0, 5);
         $roomId = $data['new_room_id'] ?? $schedule->room_id;
+        $date = $data['date'] ?? null;
 
-        $base = fn () => Schedule::query()
-            ->with(['subject:id,name', 'schoolClass:id,name'])
-            ->where('id', '!=', $schedule->id)
-            ->where('day_id', $dayId)
-            ->where('semester_id', $schedule->semester_id)
-            ->where('start_time', '<', $end)
-            ->where('end_time', '>', $start);
+        $slots = $this->effectiveSlots((int) $schedule->semester_id, $date, $dayId, (int) $schedule->id);
 
-        if ($clash = $base()->where('school_class_id', $schedule->school_class_id)->first()) {
-            throw ValidationException::withMessages([
-                'new_start_time' => sprintf(
-                    'Kelas ini sudah punya %s pada jam %s–%s.',
-                    $clash->subject?->name ?? 'pelajaran lain',
-                    substr($clash->start_time, 0, 5),
-                    substr($clash->end_time, 0, 5),
-                ),
-            ]);
-        }
+        foreach ($slots as $slot) {
+            if (! $this->slotsOverlap($slot['start_time'], $slot['end_time'], $start, $end)) {
+                continue;
+            }
 
-        if ($schedule->employee_id && ($clash = $base()->where('employee_id', $schedule->employee_id)->first())) {
-            throw ValidationException::withMessages([
-                'new_start_time' => sprintf(
-                    'Guru pengampu sudah mengajar %s di %s pada jam %s–%s.',
-                    $clash->subject?->name ?? 'mapel lain',
-                    $clash->schoolClass?->name ?? 'kelas lain',
-                    substr($clash->start_time, 0, 5),
-                    substr($clash->end_time, 0, 5),
-                ),
-            ]);
-        }
-
-        if ($roomId && ($clash = $base()->where('room_id', $roomId)->first())) {
-            throw ValidationException::withMessages([
-                'new_start_time' => sprintf(
-                    'Ruang ini sudah dipakai %s (%s) pada jam %s–%s.',
-                    $clash->schoolClass?->name ?? 'kelas lain',
-                    $clash->subject?->name ?? 'mapel lain',
-                    substr($clash->start_time, 0, 5),
-                    substr($clash->end_time, 0, 5),
-                ),
-            ]);
-        }
-
-        // Jadwal lain yang juga dipindah ke tanggal & slot yang sama lewat
-        // `schedule_changes` tidak terlihat pada jadwal pokok di atas.
-        if ($date = $data['date'] ?? null) {
-            if ($clash = $this->movedChangeClash($schedule, $date, $dayId, $start, $end, $roomId)) {
+            if ((int) $slot['class_id'] === (int) $schedule->school_class_id) {
                 throw ValidationException::withMessages([
                     'new_start_time' => sprintf(
-                        'Jadwal %s (%s) sudah dipindah ke slot yang sama pada tanggal tersebut.',
-                        $clash->schedule?->schoolClass?->name ?? 'kelas lain',
-                        $clash->schedule?->subject?->name ?? 'mapel lain',
+                        'Kelas ini sudah punya %s pada jam %s–%s.',
+                        $slot['subject_name'] ?? 'pelajaran lain',
+                        $slot['start_time'],
+                        $slot['end_time'],
+                    ),
+                ]);
+            }
+
+            if ($schedule->employee_id && (int) $slot['employee_id'] === (int) $schedule->employee_id) {
+                throw ValidationException::withMessages([
+                    'new_start_time' => sprintf(
+                        'Guru pengampu sudah mengajar %s di %s pada jam %s–%s.',
+                        $slot['subject_name'] ?? 'mapel lain',
+                        $slot['class_name'] ?? 'kelas lain',
+                        $slot['start_time'],
+                        $slot['end_time'],
+                    ),
+                ]);
+            }
+
+            if ($roomId && (int) $slot['room_id'] === (int) $roomId) {
+                throw ValidationException::withMessages([
+                    'new_start_time' => sprintf(
+                        'Ruang ini sudah dipakai %s (%s) pada jam %s–%s.',
+                        $slot['class_name'] ?? 'kelas lain',
+                        $slot['subject_name'] ?? 'mapel lain',
+                        $slot['start_time'],
+                        $slot['end_time'],
                     ),
                 ]);
             }
@@ -655,52 +620,116 @@ class ScheduleController extends BaseApiController
     }
 
     /**
-     * Cari perubahan "pindah" lain pada tanggal yang sama yang slot barunya
-     * bentrok untuk kelas, guru, atau ruang yang sama.
+     * Slot jadwal **efektif** pada satu tanggal setelah menerapkan
+     * `schedule_changes`:
+     * - `batal`   → slot asli hilang pada tanggal itu;
+     * - `pindah`  → slot asli berpindah ke jam/hari/ruang baru (bila hari
+     *               tujuan bukan hari ini, slot keluar dari tanggal ini);
+     * - `pengganti` → gurunya diganti guru pengganti pada slot yang sama.
+     *
+     * Inilah yang membuat deteksi bentrok tidak lagi buta terhadap perubahan
+     * harian (mis. jadwal yang sudah dibatalkan tetap dianggap bentrok).
+     *
+     * @return list<array{schedule_id:int,class_id:?int,employee_id:?int,room_id:?int,start_time:string,end_time:string,subject_name:?string,class_name:?string}>
      */
-    protected function movedChangeClash(
-        Schedule $schedule,
-        string $date,
-        int $dayId,
-        string $start,
-        string $end,
-        ?int $roomId,
-    ): ?ScheduleChange {
-        $changes = ScheduleChange::query()
-            ->with(['schedule:id,school_class_id,employee_id,room_id,day_id,subject_id', 'schedule.schoolClass:id,name', 'schedule.subject:id,name'])
-            ->whereDate('date', $date)
-            ->where('type', 'pindah')
-            ->where('schedule_id', '!=', $schedule->id)
-            ->whereNotNull('new_start_time')
-            ->whereNotNull('new_end_time')
-            ->where('new_start_time', '<', $end)
-            ->where('new_end_time', '>', $start)
+    protected function effectiveSlots(int $semesterId, ?string $date, int $dayId, ?int $excludeScheduleId = null): array
+    {
+        $changes = $date === null
+            ? collect()
+            : ScheduleChange::query()
+                ->whereDate('date', $date)
+                ->when($excludeScheduleId, fn ($q) => $q->where('schedule_id', '!=', $excludeScheduleId))
+                ->get()
+                ->keyBy('schedule_id');
+
+        $changeIds = $changes->keys()->all();
+
+        $schedules = Schedule::query()
+            ->with(['subject:id,name', 'schoolClass:id,name'])
+            ->where('semester_id', $semesterId)
+            ->when($excludeScheduleId, fn ($q) => $q->where('id', '!=', $excludeScheduleId))
+            ->where(function ($q) use ($dayId, $changeIds): void {
+                $q->where('day_id', $dayId);
+
+                if ($changeIds !== []) {
+                    $q->orWhereIn('id', $changeIds);
+                }
+            })
             ->get();
 
-        foreach ($changes as $change) {
-            $other = $change->schedule;
+        $slots = [];
 
-            if ($other === null) {
+        foreach ($schedules as $schedule) {
+            $onDay = (int) $schedule->day_id === $dayId;
+            $change = $changes->get($schedule->id);
+
+            if ($change === null) {
+                if ($onDay) {
+                    $slots[] = $this->slotOf($schedule, $schedule->start_time, $schedule->end_time, $schedule->employee_id, $schedule->room_id);
+                }
+
                 continue;
             }
 
-            $otherDay = (int) ($change->new_day_id ?? $other->day_id);
-
-            if ($otherDay !== $dayId) {
+            if ($change->type === 'batal') {
                 continue;
             }
 
-            $otherRoom = (int) ($change->new_room_id ?? $other->room_id);
+            if ($change->type === 'pindah') {
+                $newDay = (int) ($change->new_day_id ?? $schedule->day_id);
 
-            $sameClass = (int) $other->school_class_id === (int) $schedule->school_class_id;
-            $sameTeacher = $schedule->employee_id && (int) $other->employee_id === (int) $schedule->employee_id;
-            $sameRoom = $roomId && $otherRoom === (int) $roomId;
+                if ($newDay !== $dayId) {
+                    continue;
+                }
 
-            if ($sameClass || $sameTeacher || $sameRoom) {
-                return $change;
+                $slots[] = $this->slotOf(
+                    $schedule,
+                    $change->new_start_time ?? $schedule->start_time,
+                    $change->new_end_time ?? $schedule->end_time,
+                    $schedule->employee_id,
+                    $change->new_room_id ?? $schedule->room_id,
+                );
+
+                continue;
+            }
+
+            // pengganti — slot tetap, gurunya berganti.
+            if ($onDay) {
+                $slots[] = $this->slotOf(
+                    $schedule,
+                    $schedule->start_time,
+                    $schedule->end_time,
+                    $change->substitute_employee_id ?? $schedule->employee_id,
+                    $schedule->room_id,
+                );
             }
         }
 
-        return null;
+        return $slots;
+    }
+
+    /**
+     * Bentuk satu baris slot dari jadwal pokok dengan nilai jam/guru/ruang yang
+     * sudah disesuaikan perubahan.
+     *
+     * @return array{schedule_id:int,class_id:?int,employee_id:?int,room_id:?int,start_time:string,end_time:string,subject_name:?string,class_name:?string}
+     */
+    protected function slotOf(Schedule $schedule, mixed $start, mixed $end, mixed $employeeId, mixed $roomId): array
+    {
+        return [
+            'schedule_id' => (int) $schedule->id,
+            'class_id' => $schedule->school_class_id ? (int) $schedule->school_class_id : null,
+            'employee_id' => $employeeId ? (int) $employeeId : null,
+            'room_id' => $roomId ? (int) $roomId : null,
+            'start_time' => substr((string) $start, 0, 5),
+            'end_time' => substr((string) $end, 0, 5),
+            'subject_name' => $schedule->subject?->name,
+            'class_name' => $schedule->schoolClass?->name,
+        ];
+    }
+
+    protected function slotsOverlap(string $aStart, string $aEnd, string $bStart, string $bEnd): bool
+    {
+        return $aStart < $bEnd && $aEnd > $bStart;
     }
 }

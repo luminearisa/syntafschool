@@ -48,6 +48,33 @@ class TeachingAccess
         return $teacherId === null || $this->teachesClass($teacherId, $classId);
     }
 
+    /**
+     * Daftar kelas yang boleh diakses guru, atau null bila akun tidak dibatasi.
+     *
+     * Dipakai untuk menyaring daftar (presensi/koreksi) agar guru hanya melihat
+     * kelas yang diampu/walikelasinya, sementara pengelola melihat semuanya.
+     *
+     * @return list<int>|null
+     */
+    public function accessibleClassIds(?User $user): ?array
+    {
+        $teacherId = $this->restrictedTeacherId($user);
+
+        if ($teacherId === null) {
+            return null;
+        }
+
+        return SchoolClass::query()
+            ->where('homeroom_teacher_id', $teacherId)
+            ->pluck('id')
+            ->merge(ClassSubject::query()->where('employee_id', $teacherId)->pluck('school_class_id'))
+            ->merge(Schedule::query()->where('employee_id', $teacherId)->pluck('school_class_id'))
+            ->unique()
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
     public function mayGrade(?User $user, Assessment $assessment): bool
     {
         $teacherId = $this->restrictedTeacherId($user);
