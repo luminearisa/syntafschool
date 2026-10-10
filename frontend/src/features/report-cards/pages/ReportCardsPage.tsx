@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, FileCheck2, RefreshCw, Search } from 'lucide-react';
+import { Download, FileCheck2, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { reportCardsApi } from '../api/reportCardsApi';
 import { reportStatusTone } from '../lib/labels';
+import type { ReportCardAchievement, ReportCardExtracurricular } from '../types';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -145,19 +146,43 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
   });
   const [notes, setNotes] = useState('');
   const [homeroomNote, setHomeroomNote] = useState('');
+  const [principalNote, setPrincipalNote] = useState('');
+  const [spiritualPredicate, setSpiritualPredicate] = useState('');
+  const [spiritualDescription, setSpiritualDescription] = useState('');
+  const [socialPredicate, setSocialPredicate] = useState('');
+  const [socialDescription, setSocialDescription] = useState('');
+  const [extracurriculars, setExtracurriculars] = useState<ReportCardExtracurricular[]>([]);
+  const [achievements, setAchievements] = useState<ReportCardAchievement[]>([]);
   const [busyAction, setBusyAction] = useState('');
 
   useEffect(() => {
     if (!detail.data) return;
     setNotes(detail.data.notes ?? '');
     setHomeroomNote(detail.data.homeroom_note ?? '');
+    setPrincipalNote(detail.data.principal_note ?? '');
+    setSpiritualPredicate(detail.data.attitude?.spiritual?.predicate ?? '');
+    setSpiritualDescription(detail.data.attitude?.spiritual?.description ?? '');
+    setSocialPredicate(detail.data.attitude?.social?.predicate ?? '');
+    setSocialDescription(detail.data.attitude?.social?.description ?? '');
+    setExtracurriculars(detail.data.extracurriculars ?? []);
+    setAchievements(detail.data.achievements ?? []);
   }, [detail.data]);
 
   const run = async (action: 'save' | 'ready' | 'approve' | 'publish' | 'reopen' | 'pdf') => {
     if (id === null) return;
     setBusyAction(action);
     try {
-      if (action === 'save') await reportCardsApi.update(id, { notes, homeroom_note: homeroomNote });
+      if (action === 'save') await reportCardsApi.update(id, {
+        notes,
+        homeroom_note: homeroomNote,
+        principal_note: principalNote,
+        attitude: {
+          spiritual: { predicate: spiritualPredicate, description: spiritualDescription },
+          social: { predicate: socialPredicate, description: socialDescription },
+        },
+        extracurriculars: extracurriculars.filter((row) => (row.name ?? '').trim() !== ''),
+        achievements: achievements.filter((row) => (row.name ?? '').trim() !== ''),
+      });
       if (action === 'ready') await reportCardsApi.ready(id);
       if (action === 'approve') await reportCardsApi.approve(id);
       if (action === 'publish') await reportCardsApi.publish(id);
@@ -193,6 +218,11 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
   const report = detail.data;
   const canEdit = can('report-card.update') && !!report && !['approved', 'published'].includes(report.status);
 
+  const updateExtra = (index: number, patch: Partial<ReportCardExtracurricular>) =>
+    setExtracurriculars((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const updateAchievement = (index: number, patch: Partial<ReportCardAchievement>) =>
+    setAchievements((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+
   return (
     <Modal open={open} onClose={onClose} title={report ? `Rapor · ${report.student?.full_name ?? ''}` : 'Detail Rapor'} size="xl">
       {detail.isLoading ? <div className="flex justify-center py-16"><Spinner /></div> : detail.isError ? <EmptyState title="Gagal memuat detail rapor" description={getErrorMessage(detail.error)} /> : report ? (
@@ -206,7 +236,64 @@ function ReportCardDetailModal({ id, open, onClose, onChanged }: { id: number | 
             ['Hadir', report.attendance_summary?.present ?? 0], ['Terlambat', report.attendance_summary?.late ?? 0], ['Sakit', report.attendance_summary?.sick ?? 0], ['Izin', report.attendance_summary?.permitted ?? 0], ['Alpa', report.attendance_summary?.absent ?? 0],
           ].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-200 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 font-semibold text-slate-800">{value}</p></div>)}</div>
           <div className="text-xs text-slate-500">Persentase kehadiran: {formatScore(report.attendance_summary?.percentage ?? 0)}% · Basis perhitungan: {report.attendance_summary?.basis === 'effective_days' ? 'hari efektif' : 'hari tercatat'}</div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><label className="mb-1 block text-xs font-medium text-slate-600">Catatan Sekolah</label><Textarea value={notes} disabled={!canEdit} onChange={(event) => setNotes(event.target.value)} /></div><div><label className="mb-1 block text-xs font-medium text-slate-600">Catatan Wali Kelas</label><Textarea value={homeroomNote} disabled={!canEdit} onChange={(event) => setHomeroomNote(event.target.value)} /></div></div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div><label className="mb-1 block text-xs font-medium text-slate-600">Catatan Sekolah</label><Textarea value={notes} disabled={!canEdit} onChange={(event) => setNotes(event.target.value)} /></div>
+            <div><label className="mb-1 block text-xs font-medium text-slate-600">Catatan Wali Kelas</label><Textarea value={homeroomNote} disabled={!canEdit} onChange={(event) => setHomeroomNote(event.target.value)} /></div>
+            <div><label className="mb-1 block text-xs font-medium text-slate-600">Catatan Kepala Sekolah</label><Textarea value={principalNote} disabled={!canEdit} onChange={(event) => setPrincipalNote(event.target.value)} /></div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 p-3">
+            <h3 className="mb-2 text-sm font-semibold text-slate-700">Sikap</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><span className="w-32 shrink-0 text-xs font-medium text-slate-600">Sikap Spiritual</span><Input value={spiritualPredicate} disabled={!canEdit} onChange={(event) => setSpiritualPredicate(event.target.value)} placeholder="Predikat (A/B/C/D)" /></div>
+                <Textarea value={spiritualDescription} disabled={!canEdit} onChange={(event) => setSpiritualDescription(event.target.value)} placeholder="Deskripsi sikap spiritual" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2"><span className="w-32 shrink-0 text-xs font-medium text-slate-600">Sikap Sosial</span><Input value={socialPredicate} disabled={!canEdit} onChange={(event) => setSocialPredicate(event.target.value)} placeholder="Predikat (A/B/C/D)" /></div>
+                <Textarea value={socialDescription} disabled={!canEdit} onChange={(event) => setSocialDescription(event.target.value)} placeholder="Deskripsi sikap sosial" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">Ekstrakurikuler</h3>
+              {canEdit && <Button size="sm" variant="outline" onClick={() => setExtracurriculars((rows) => [...rows, { name: '', predicate: '', description: '' }])}><Plus className="h-4 w-4" /> Tambah</Button>}
+            </div>
+            {extracurriculars.length === 0 ? <p className="text-xs text-slate-400">Belum ada data ekstrakurikuler.</p> : (
+              <div className="space-y-2">
+                {extracurriculars.map((row, index) => (
+                  <div key={index} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_90px_1fr_auto]">
+                    <Input value={row.name ?? ''} disabled={!canEdit} onChange={(event) => updateExtra(index, { name: event.target.value })} placeholder="Nama kegiatan" />
+                    <Input value={row.predicate ?? ''} disabled={!canEdit} onChange={(event) => updateExtra(index, { predicate: event.target.value })} placeholder="Predikat" />
+                    <Input value={row.description ?? ''} disabled={!canEdit} onChange={(event) => updateExtra(index, { description: event.target.value })} placeholder="Keterangan" />
+                    {canEdit && <Button size="icon" variant="ghost" title="Hapus" onClick={() => setExtracurriculars((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-slate-200 p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-700">Prestasi</h3>
+              {canEdit && <Button size="sm" variant="outline" onClick={() => setAchievements((rows) => [...rows, { name: '', level: '', year: '', description: '' }])}><Plus className="h-4 w-4" /> Tambah</Button>}
+            </div>
+            {achievements.length === 0 ? <p className="text-xs text-slate-400">Belum ada data prestasi.</p> : (
+              <div className="space-y-2">
+                {achievements.map((row, index) => (
+                  <div key={index} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_120px_80px_1fr_auto]">
+                    <Input value={row.name ?? ''} disabled={!canEdit} onChange={(event) => updateAchievement(index, { name: event.target.value })} placeholder="Nama prestasi" />
+                    <Input value={row.level ?? ''} disabled={!canEdit} onChange={(event) => updateAchievement(index, { level: event.target.value })} placeholder="Tingkat" />
+                    <Input value={row.year ?? ''} disabled={!canEdit} onChange={(event) => updateAchievement(index, { year: event.target.value })} placeholder="Tahun" />
+                    <Input value={row.description ?? ''} disabled={!canEdit} onChange={(event) => updateAchievement(index, { description: event.target.value })} placeholder="Keterangan" />
+                    {canEdit && <Button size="icon" variant="ghost" title="Hapus" onClick={() => setAchievements((rows) => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4 text-red-500" /></Button>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
             {canEdit && <Button variant="outline" onClick={() => void run('save')} loading={busyAction === 'save'}>Simpan Catatan</Button>}
             {report.status === 'draft' && <Can perm="report-card.update"><Button onClick={() => void run('ready')} loading={busyAction === 'ready'}>Ajukan Review</Button></Can>}

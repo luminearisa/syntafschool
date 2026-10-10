@@ -1,6 +1,6 @@
 import { api } from '@/lib/axios';
 import type { ApiResponse, PaginatedResponse } from '@/types';
-import type { ReportCard, ReportCardLookups } from '../types';
+import type { ReportCard, ReportCardAchievement, ReportCardAttitude, ReportCardExtracurricular, ReportCardLookups } from '../types';
 
 export interface ReportCardListParams {
   page?: number;
@@ -41,7 +41,14 @@ export const reportCardsApi = {
     return response.data.data;
   },
 
-  async update(id: number, payload: { notes: string; homeroom_note: string }) {
+  async update(id: number, payload: {
+    notes: string;
+    homeroom_note: string;
+    principal_note?: string;
+    attitude?: ReportCardAttitude;
+    extracurriculars?: ReportCardExtracurricular[];
+    achievements?: ReportCardAchievement[];
+  }) {
     const response = await api.put<ApiResponse<ReportCard>>(`/report-cards/${id}`, payload);
     return response.data.data;
   },

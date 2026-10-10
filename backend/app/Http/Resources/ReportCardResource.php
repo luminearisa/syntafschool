@@ -28,6 +28,10 @@ class ReportCardResource extends JsonResource
             'attendance_summary' => $this->attendance_summary ?? [],
             'notes' => $this->notes,
             'homeroom_note' => $this->homeroom_note,
+            'principal_note' => $this->principal_note,
+            'attitude' => $this->attitude ?? [],
+            'extracurriculars' => $this->extracurriculars ?? [],
+            'achievements' => $this->achievements ?? [],
             'published_at' => $this->published_at?->toIso8601String(),
             'published_by' => $this->published_by === null ? null : (int) $this->published_by,
             'student' => $this->whenLoaded('student', fn () => $this->student ? [

@@ -69,11 +69,57 @@
         </table>
     </div>
 
+    @php
+        $attitude = $reportCard->attitude ?? [];
+        $spiritual = $attitude['spiritual'] ?? null;
+        $social = $attitude['social'] ?? null;
+    @endphp
+    @if(($spiritual['predicate'] ?? null) || ($spiritual['description'] ?? null) || ($social['predicate'] ?? null) || ($social['description'] ?? null))
+        <div class="section">
+            <h2>Sikap</h2>
+            <table class="meta">
+                <tr><td style="width:110px"><strong>Sikap Spiritual</strong></td><td>: {{ $spiritual['predicate'] ?? '-' }} — {{ $spiritual['description'] ?? '' }}</td></tr>
+                <tr><td><strong>Sikap Sosial</strong></td><td>: {{ $social['predicate'] ?? '-' }} — {{ $social['description'] ?? '' }}</td></tr>
+            </table>
+        </div>
+    @endif
+
+    @if(!empty($reportCard->extracurriculars))
+        <div class="section">
+            <h2>Ekstrakurikuler</h2>
+            <table class="scores">
+                <thead><tr><th style="width:32px">No</th><th>Kegiatan</th><th style="width:80px">Predikat</th><th>Keterangan</th></tr></thead>
+                <tbody>
+                    @foreach($reportCard->extracurriculars as $index => $row)
+                        <tr><td>{{ $index + 1 }}</td><td>{{ $row['name'] ?? '-' }}</td><td>{{ $row['predicate'] ?? '-' }}</td><td>{{ $row['description'] ?? '' }}</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    @if(!empty($reportCard->achievements))
+        <div class="section">
+            <h2>Prestasi</h2>
+            <table class="scores">
+                <thead><tr><th style="width:32px">No</th><th>Prestasi</th><th style="width:110px">Tingkat</th><th style="width:60px">Tahun</th></tr></thead>
+                <tbody>
+                    @foreach($reportCard->achievements as $index => $row)
+                        <tr><td>{{ $index + 1 }}</td><td>{{ $row['name'] ?? '-' }}</td><td>{{ $row['level'] ?? '-' }}</td><td>{{ $row['year'] ?? '-' }}</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
     @if($reportCard->notes)
         <div class="section"><h2>Catatan Sekolah</h2><div class="note">{{ $reportCard->notes }}</div></div>
     @endif
     @if($reportCard->homeroom_note)
         <div class="section"><h2>Catatan Wali Kelas</h2><div class="note">{{ $reportCard->homeroom_note }}</div></div>
+    @endif
+    @if($reportCard->principal_note)
+        <div class="section"><h2>Catatan Kepala Sekolah</h2><div class="note">{{ $reportCard->principal_note }}</div></div>
     @endif
 
     <table class="signatures"><tr>

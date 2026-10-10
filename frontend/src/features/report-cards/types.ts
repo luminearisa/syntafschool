@@ -12,6 +12,29 @@ export interface ReportCardItem {
   position: number;
 }
 
+export interface ReportCardExtracurricular {
+  name?: string | null;
+  predicate?: string | null;
+  description?: string | null;
+}
+
+export interface ReportCardAchievement {
+  name?: string | null;
+  level?: string | null;
+  year?: string | null;
+  description?: string | null;
+}
+
+export interface ReportCardAttitudeSection {
+  predicate?: string | null;
+  description?: string | null;
+}
+
+export interface ReportCardAttitude {
+  spiritual?: ReportCardAttitudeSection | null;
+  social?: ReportCardAttitudeSection | null;
+}
+
 export interface ReportCard {
   id: number;
   student_id: number;
@@ -37,6 +60,10 @@ export interface ReportCard {
   };
   notes: string | null;
   homeroom_note: string | null;
+  principal_note: string | null;
+  attitude: ReportCardAttitude;
+  extracurriculars: ReportCardExtracurricular[];
+  achievements: ReportCardAchievement[];
   published_at: string | null;
   student?: { id: number; nis: string | null; full_name: string } | null;
   school_class?: { id: number; name: string; code: string } | null;

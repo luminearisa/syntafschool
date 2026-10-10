@@ -311,4 +311,61 @@ class ReportCardTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
     }
+
+    public function test_komponen_rapor_tersimpan_dinormalisasi_dan_terbaca(): void
+    {
+        $world = $this->world();
+        $this->finalizedAssessment($world);
+        $this->actingAsRole();
+
+        $cardId = (int) $this->postJson('/api/v1/report-cards/generate', [
+            'class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'type' => ReportCard::TYPE_SEMESTER,
+        ])->assertOk()->json('data.reports.0.id');
+
+        $this->putJson("/api/v1/report-cards/{$cardId}", [
+            'principal_note' => 'Tingkatkan prestasi.',
+            'attitude' => [
+                'spiritual' => ['predicate' => 'A', 'description' => 'Rajin beribadah'],
+                'social' => ['predicate' => 'B', 'description' => 'Baik dalam kerja sama'],
+            ],
+            'extracurriculars' => [
+                ['name' => 'Pramuka', 'predicate' => 'A', 'description' => 'Aktif'],
+                ['name' => '', 'predicate' => 'B'], // tanpa nama → dibuang
+            ],
+            'achievements' => [
+                ['name' => 'Juara OSN', 'level' => 'Kabupaten', 'year' => '2026', 'description' => 'Peringkat 1'],
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.principal_note', 'Tingkatkan prestasi.')
+            ->assertJsonPath('data.attitude.spiritual.predicate', 'A')
+            ->assertJsonPath('data.attitude.social.description', 'Baik dalam kerja sama')
+            ->assertJsonCount(1, 'data.extracurriculars')
+            ->assertJsonPath('data.extracurriculars.0.name', 'Pramuka')
+            ->assertJsonCount(1, 'data.achievements')
+            ->assertJsonPath('data.achievements.0.name', 'Juara OSN');
+    }
+
+    public function test_komponen_rapor_tidak_dapat_diubah_setelah_disetujui(): void
+    {
+        $world = $this->world();
+        $this->finalizedAssessment($world);
+        $this->actingAsRole();
+
+        $cardId = (int) $this->postJson('/api/v1/report-cards/generate', [
+            'class_id' => $world['class']->id,
+            'semester_id' => $world['semester']->id,
+            'type' => ReportCard::TYPE_SEMESTER,
+        ])->assertOk()->json('data.reports.0.id');
+
+        $this->postJson("/api/v1/report-cards/{$cardId}/ready")->assertOk();
+        $this->postJson("/api/v1/report-cards/{$cardId}/approve")->assertOk();
+
+        $this->putJson("/api/v1/report-cards/{$cardId}", [
+            'principal_note' => 'Terlambat disimpan.',
+        ])->assertUnprocessable();
+
+        $this->assertNull(ReportCard::findOrFail($cardId)->principal_note);
+    }
 }

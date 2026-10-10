@@ -97,10 +97,33 @@ class ReportCardController extends BaseApiController
         $data = $request->validate([
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'homeroom_note' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'principal_note' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'attitude' => ['sometimes', 'nullable', 'array'],
+            'attitude.spiritual' => ['sometimes', 'nullable', 'array'],
+            'attitude.spiritual.predicate' => ['sometimes', 'nullable', 'string', 'max:5'],
+            'attitude.spiritual.description' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'attitude.social' => ['sometimes', 'nullable', 'array'],
+            'attitude.social.predicate' => ['sometimes', 'nullable', 'string', 'max:5'],
+            'attitude.social.description' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'extracurriculars' => ['sometimes', 'nullable', 'array', 'max:20'],
+            'extracurriculars.*.name' => ['nullable', 'string', 'max:150'],
+            'extracurriculars.*.predicate' => ['nullable', 'string', 'max:5'],
+            'extracurriculars.*.description' => ['nullable', 'string', 'max:1000'],
+            'achievements' => ['sometimes', 'nullable', 'array', 'max:50'],
+            'achievements.*.name' => ['nullable', 'string', 'max:200'],
+            'achievements.*.level' => ['nullable', 'string', 'max:50'],
+            'achievements.*.year' => ['nullable', 'string', 'max:9'],
+            'achievements.*.description' => ['nullable', 'string', 'max:1000'],
         ], [], [
             'notes' => 'catatan rapor',
             'homeroom_note' => 'catatan wali kelas',
+            'principal_note' => 'catatan kepala sekolah',
+            'attitude' => 'sikap',
+            'extracurriculars' => 'ekstrakurikuler',
+            'achievements' => 'prestasi',
         ]);
+
+        $data = $this->normalizeComponents($data);
 
         $updated = $this->reports->updateNotes($reportCard, $data);
 
@@ -154,6 +177,45 @@ class ReportCardController extends BaseApiController
         return Pdf::loadView('pdf.academic-report-card', compact('reportCard', 'school'))
             ->setPaper('a4')
             ->download($filename);
+    }
+
+    /**
+     * Bersihkan komponen rapor: buang baris ekskul/prestasi tanpa nama dan
+     * catatan sikap yang kosong agar tidak menyimpan baris hampa.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function normalizeComponents(array $data): array
+    {
+        foreach (['extracurriculars', 'achievements'] as $key) {
+            if (! array_key_exists($key, $data) || ! is_array($data[$key])) {
+                continue;
+            }
+
+            $rows = collect($data[$key])
+                ->filter(fn ($row) => is_array($row) && trim((string) ($row['name'] ?? '')) !== '')
+                ->map(function (array $row): array {
+                    $row['name'] = trim((string) $row['name']);
+
+                    return $row;
+                })
+                ->values()
+                ->all();
+
+            $data[$key] = $rows === [] ? null : $rows;
+        }
+
+        if (array_key_exists('attitude', $data) && is_array($data['attitude'])) {
+            $attitude = array_filter($data['attitude'], fn ($section) => is_array($section) && (
+                trim((string) ($section['predicate'] ?? '')) !== ''
+                || trim((string) ($section['description'] ?? '')) !== ''
+            ));
+
+            $data['attitude'] = $attitude === [] ? null : $attitude;
+        }
+
+        return $data;
     }
 
     /**

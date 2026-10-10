@@ -40,6 +40,9 @@ class ReportCard extends BaseModel
         'average_score' => 'decimal:2',
         'rank' => 'integer',
         'attendance_summary' => 'array',
+        'attitude' => 'array',
+        'extracurriculars' => 'array',
+        'achievements' => 'array',
         'published_at' => 'datetime',
     ];
 
