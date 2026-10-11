@@ -210,6 +210,8 @@ class RolePermissionSeeder extends Seeder
             'achievement.view', 'achievement.manage',
             // Kesehatan asrama (§39).
             'health.view', 'health.manage',
+            // Titipan barang santri (gudang titipan, pinjam-kembali).
+            'deposit.view', 'deposit.manage',
             // Laporan, konfigurasi, audit.
             'report.view', 'report.export', 'settings.view', 'settings.manage', 'audit.view',
         ],
@@ -270,6 +272,7 @@ class RolePermissionSeeder extends Seeder
             'boarding:homecoming.view', 'boarding:homecoming.approve',
             'boarding:health.view', 'boarding:point.view', 'boarding:achievement.manage',
             'boarding:musyrif.view', 'boarding:group.view',
+            'boarding:deposit.view', 'boarding:deposit.manage',
         ],
         // ===== Peran khusus modul Boarding/Pesantren =====
         // Admin asrama: seluruh aksi modul (dorm, kamar, penempatan, mutasi,
@@ -290,6 +293,7 @@ class RolePermissionSeeder extends Seeder
             'boarding:violation.view', 'boarding:violation.manage', 'boarding:point.view', 'boarding:point.manage',
             'boarding:achievement.view', 'boarding:achievement.manage',
             'boarding:health.view', 'boarding:health.manage',
+            'boarding:deposit.view', 'boarding:deposit.manage',
             'boarding:report.view', 'boarding:report.export', 'boarding:settings.view',
         ],
         // Wali kamar: hanya melihat & mencatat pada santri binaannya (scope
@@ -300,6 +304,7 @@ class RolePermissionSeeder extends Seeder
             'boarding:permission.view',
             'boarding:violation.view', 'boarding:violation.manage',
             'boarding:health.view', 'boarding:point.view',
+            'boarding:deposit.view', 'boarding:deposit.manage',
         ],
         // Petugas absensi: mesin pencatat harian, tanpa hak perizinan & poin.
         'petugas-absensi' => [

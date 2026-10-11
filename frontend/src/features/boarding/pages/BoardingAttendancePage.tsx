@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ScanLine, Save, UserCheck } from 'lucide-react';
+import { Save, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +15,10 @@ import { SearchSelect } from '@/components/ui/SearchSelect';
 import { Pagination } from '@/components/common/Pagination';
 import { Can } from '@/components/common/Can';
 import { FormField, Tabs, fmtDateTime } from '../components/BoardingUi';
+import { BoardingAttendanceMonitoringTab } from '../components/BoardingAttendanceMonitoringTab';
+import { BoardingAttendanceStatisticsTab } from '../components/BoardingAttendanceStatisticsTab';
+import { BoardingAttendanceCardTab } from '../components/BoardingAttendanceCardTab';
+import { BoardingScanPanel } from '../components/BoardingScanPanel';
 import { attendancesApi } from '../api/boardingApi';
 import { useActivityOptions, useAttendanceTypeOptions, useDormitoryOptions } from '../hooks/useBoardingOptions';
 import { getErrorMessage } from '@/lib/axios';
@@ -37,7 +41,6 @@ function RosterTab() {
   const [date, setDate] = useState(today());
   const [dormitoryId, setDormitoryId] = useState<number | ''>('');
   const [choices, setChoices] = useState<Record<number, RosterChoice>>({});
-  const [scanUid, setScanUid] = useState('');
 
   const rosterQuery = useQuery({
     queryKey: ['boarding', 'roster', activityId, date, dormitoryId],
@@ -81,22 +84,6 @@ function RosterTab() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const scan = useMutation({
-    mutationFn: () =>
-      attendancesApi.scan({
-        uid: scanUid.trim(),
-        ...(activityId ? { activity_id: Number(activityId) } : {}),
-        date,
-      }),
-    onSuccess: (res) => {
-      const data = (res as { message?: string }) ?? {};
-      toast.success(data.message ?? 'Scan tercatat');
-      setScanUid('');
-      qc.invalidateQueries({ queryKey: ['boarding'] });
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
-
   const roster = rosterQuery.data;
   const students = roster?.students ?? [];
 
@@ -120,19 +107,6 @@ function RosterTab() {
           </FormField>
           <FormField label="Asrama (opsional)">
             <SearchSelect options={dormitoryOptions} value={dormitoryId} onChange={(v) => setDormitoryId(toId(v))} placeholder="-- Semua --" />
-          </FormField>
-          <FormField label="Scan kartu RFID">
-            <div className="flex gap-1">
-              <Input
-                value={scanUid}
-                placeholder="UID kartu..."
-                onChange={(e) => setScanUid(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && scanUid.trim() && scan.mutate()}
-              />
-              <Button variant="outline" size="icon" title="Scan" disabled={!scanUid.trim() || scan.isPending} onClick={() => scan.mutate()}>
-                <ScanLine className="h-4 w-4" />
-              </Button>
-            </div>
           </FormField>
         </div>
       </Card>
@@ -359,18 +333,27 @@ export function BoardingAttendancePage() {
       <div>
         <h1 className="text-lg font-semibold text-slate-900">Absensi Kegiatan</h1>
         <p className="text-sm text-slate-500">
-          Rekap kehadiran manual, "Hadir Semua", maupun scan kartu RFID (kartu Wallet yang sudah ada).
+          Roster manual, mode pindai kartu (QR kamera / RFID), pantauan pengisian, dan statistik.
         </p>
       </div>
       <Tabs
         tabs={[
           { key: 'roster', label: 'Layar Absensi' },
+          { key: 'scan', label: 'Mode Pindai' },
           { key: 'records', label: 'Catatan Absensi' },
+          { key: 'monitoring', label: 'Pantauan' },
+          { key: 'statistics', label: 'Statistik' },
+          { key: 'card', label: 'Kartu Absensi' },
         ]}
         active={tab}
         onChange={setTab}
       />
-      {tab === 'roster' ? <RosterTab /> : <RecordsTab />}
+      {tab === 'roster' && <RosterTab />}
+      {tab === 'scan' && <BoardingScanPanel />}
+      {tab === 'records' && <RecordsTab />}
+      {tab === 'monitoring' && <BoardingAttendanceMonitoringTab />}
+      {tab === 'statistics' && <BoardingAttendanceStatisticsTab />}
+      {tab === 'card' && <BoardingAttendanceCardTab />}
     </div>
   );
 }

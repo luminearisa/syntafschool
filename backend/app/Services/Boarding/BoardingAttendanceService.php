@@ -6,8 +6,10 @@ use App\Models\BoardingActivity;
 use App\Models\BoardingActivitySchedule;
 use App\Models\BoardingAttendance;
 use App\Models\BoardingAttendanceType;
+use App\Models\BoardingDormitory;
 use App\Models\BoardingGroup;
 use App\Models\BoardingGroupMember;
+use App\Models\BoardingMusyrif;
 use App\Models\BoardingPlacement;
 use App\Models\Student;
 use App\Models\User;
@@ -390,6 +392,313 @@ class BoardingAttendanceService
         ];
     }
 
+    /**
+     * Pantauan pengisian absensi per asrama (§43 varian — mengikuti pola
+     * modul referensi): untuk satu tanggal, tiap asrama dinilai per kegiatan
+     * aktif apakah absensinya sudah lengkap (tercatat ≥ sasaran), sebagian,
+     * atau belum sama sekali; plus persentase kelengkapan bulan berjalan.
+     *
+     * Semantik bilangan: `targets` = jumlah santri dengan penempatan AKTIF
+     * saat ini (snapshot), sehingga persentase bulanan adalah aproksimasi
+     * bila ada mutasi penempatan di tengah bulan — disengaja demi kueri yang
+     * tetap murah.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public function monitoring(array $params, User $actor): array
+    {
+        $date = $this->date($params, 'date') ?? Carbon::today()->toDateString();
+
+        $month = isset($params['month']) && is_string($params['month'])
+            ? Carbon::createFromFormat('Y-m', $params['month'])?->startOfMonth()
+            : null;
+        $month ??= Carbon::parse($date)->startOfMonth();
+
+        $today = Carbon::today();
+        $countedUntil = $month->copy()->endOfMonth()->gt($today)
+            ? $today->toDateString()
+            : $month->copy()->endOfMonth()->toDateString();
+        $elapsedDays = (int) $month->diffInDays(Carbon::parse($countedUntil)) + 1;
+
+        $allowed = $this->scope->studentIdsFor($actor);
+
+        $activities = BoardingActivity::query()
+            ->active()
+            ->when(isset($params['activity_id']), fn (Builder $q) => $q->where('id', (int) $params['activity_id']))
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get(['id', 'code', 'name']);
+
+        $placements = BoardingPlacement::query()
+            ->active()
+            ->when($allowed !== null, fn (Builder $q) => $q->whereIn('student_id', $allowed ?: [-1]))
+            ->when(isset($params['dormitory_id']), fn (Builder $q) => $q->where('dormitory_id', (int) $params['dormitory_id']))
+            ->get(['id', 'student_id', 'dormitory_id']);
+
+        $dormitoryIds = $placements->pluck('dormitory_id')->unique()->values()->all();
+
+        $dormitories = BoardingDormitory::query()
+            ->whereIn('id', $dormitoryIds ?: [-1])
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'status']);
+
+        $supervisors = $dormitoryIds === []
+            ? new Collection
+            : BoardingMusyrif::query()
+                ->active()
+                ->whereIn('dormitory_id', $dormitoryIds)
+                ->with('employee:id,full_name')
+                ->get(['id', 'employee_id', 'dormitory_id', 'position'])
+                ->groupBy('dormitory_id');
+
+        $studentIds = $placements->pluck('student_id')->map(fn (mixed $id): int => (int) $id)->all();
+        $dormOf = $placements->pluck('dormitory_id', 'student_id');
+
+        $records = $studentIds === []
+            ? new Collection
+            : BoardingAttendance::query()
+                ->whereIn('student_id', $studentIds)
+                ->whereDate('date', $date)
+                ->get(['student_id', 'activity_id'])
+                ->groupBy(fn (BoardingAttendance $row): int => $dormOf[(int) $row->student_id] ?? 0);
+
+        // Hitungan bulanan per asrama untuk persentase kelengkapan.
+        $monthlyCounts = $studentIds === []
+            ? new Collection
+            : BoardingAttendance::query()
+                ->whereIn('student_id', $studentIds)
+                ->whereDate('date', '>=', $month->toDateString())
+                ->whereDate('date', '<=', $countedUntil)
+                ->selectRaw('student_id, COUNT(*) as total')
+                ->groupBy('student_id')
+                ->get()
+                ->groupBy(fn (object $row): int => $dormOf[(int) $row->student_id] ?? 0)
+                ->map(fn (Collection $rows): int => (int) $rows->sum('total'));
+
+        $studentsInDorm = $placements->groupBy('dormitory_id')->map->count();
+
+        $activityCount = $activities->count();
+        $denominatorPerDay = $activityCount; // 1 baris per (santri, kegiatan, tanggal).
+
+        $rows = $dormitories->map(function (BoardingDormitory $dorm) use (
+            $activities, $records, $monthlyCounts, $studentsInDorm, $denominatorPerDay, $elapsedDays, $supervisors
+        ): array {
+            $targets = (int) ($studentsInDorm[(int) $dorm->id] ?? 0);
+            $daily = $records->get((int) $dorm->id, new Collection);
+            $perActivity = $daily->groupBy(fn (BoardingAttendance $row): int => (int) $row->activity_id)
+                ->map(fn (Collection $rows): int => $rows->unique('student_id')->count());
+
+            $filled = [];
+            $partial = [];
+            $unfilled = [];
+
+            foreach ($activities as $activity) {
+                $recorded = (int) ($perActivity[(int) $activity->id] ?? 0);
+                $entry = [
+                    'id' => (int) $activity->id,
+                    'name' => (string) $activity->name,
+                    'targets' => $targets,
+                    'recorded' => $recorded,
+                ];
+
+                if ($targets === 0 || $recorded === 0) {
+                    $unfilled[] = $entry;
+                } elseif ($recorded >= $targets) {
+                    $filled[] = $entry;
+                } else {
+                    $partial[] = $entry;
+                }
+            }
+
+            $expected = $targets * $denominatorPerDay * $elapsedDays;
+            $monthly = (int) ($monthlyCounts[(int) $dorm->id] ?? 0);
+
+            return [
+                'id' => (int) $dorm->id,
+                'code' => (string) $dorm->code,
+                'name' => (string) $dorm->name,
+                'status' => (string) $dorm->status,
+                'supervisors' => ($supervisors[(int) $dorm->id] ?? collect())
+                    ->map(fn (BoardingMusyrif $m): string => (string) ($m->employee?->full_name ?? ''))
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all(),
+                'targets' => $targets,
+                'daily_records' => (int) $perActivity->sum(),
+                'activities_total' => count($filled) + count($partial) + count($unfilled),
+                'filled_activities' => $filled,
+                'partial_activities' => $partial,
+                'unfilled_activities' => $unfilled,
+                'monthly_percentage' => $expected > 0
+                    ? round(min(100, ($monthly / $expected) * 100), 1)
+                    : null,
+            ];
+        })->values()->all();
+
+        return [
+            'date' => $date,
+            'month' => $month->format('Y-m'),
+            'activities' => $activities->map(fn (BoardingActivity $a): array => [
+                'id' => (int) $a->id,
+                'name' => (string) $a->name,
+            ])->all(),
+            'dormitories' => $rows,
+        ];
+    }
+
+    /**
+     * Statistik absensi untuk dasbor grafik (donat per tipe, tren harian,
+     * perbandingan asrama, santri paling sering tidak hadir).
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    public function statistics(array $params, User $actor): array
+    {
+        $to = $this->date($params, 'to') ?? Carbon::today()->toDateString();
+        $from = $this->date($params, 'from') ?? Carbon::parse($to)->subDays(29)->toDateString();
+
+        if ($from > $to) {
+            throw ValidationException::withMessages([
+                'from' => 'Tanggal mulai tidak boleh setelah tanggal selesai.',
+            ]);
+        }
+
+        // Batasi rentang agar kueri agregat tetap ringan di perangkat lapangan.
+        if (Carbon::parse($from)->diffInDays(Carbon::parse($to)) > 366) {
+            throw ValidationException::withMessages([
+                'from' => 'Rentang statistik maksimal 366 hari.',
+            ]);
+        }
+
+        $allowed = $this->scope->studentIdsFor($actor);
+
+        $studentIds = null;
+        if (isset($params['dormitory_id'])) {
+            $studentIds = $this->placedStudentIds(
+                fn (Builder $q) => $q->where('dormitory_id', (int) $params['dormitory_id']),
+            );
+            if ($allowed !== null) {
+                $studentIds = array_values(array_intersect($studentIds, $allowed));
+            }
+        } elseif ($allowed !== null) {
+            $studentIds = $allowed;
+        }
+
+        if ($studentIds !== null && $studentIds === []) {
+            $studentIds = [-1]; // lingkup kosong → pastikan tak ada baris
+        }
+
+        $rows = BoardingAttendance::query()
+            ->with([
+                'attendanceType:id,code,name,color,is_present',
+                'student:id,full_name,nis',
+            ])
+            ->whereDate('date', '>=', $from)
+            ->whereDate('date', '<=', $to)
+            ->when($studentIds !== null, fn (Builder $q) => $q->whereIn('student_id', $studentIds))
+            ->when(isset($params['activity_id']), fn (Builder $q) => $q->where('activity_id', (int) $params['activity_id']))
+            ->get(['id', 'student_id', 'activity_id', 'attendance_type_id', 'date', 'is_late']);
+
+        $placements = $this->placementsFor(
+            $rows->pluck('student_id')->map(fn (mixed $id): int => (int) $id)->unique()->values()->all(),
+        );
+
+        // --- Distribusi per tipe (donat) ---
+        $byType = $rows->groupBy('attendance_type_id')->map(function (Collection $group): array {
+            /** @var \App\Models\BoardingAttendanceType|null $type */
+            $type = $group->first()->attendanceType;
+
+            return [
+                'type_id' => (int) ($type->id ?? 0),
+                'code' => (string) ($type->code ?? ''),
+                'name' => (string) ($type->name ?? 'Tanpa Tipe'),
+                'color' => (string) ($type->color ?? '#94a3b8'),
+                'is_present' => (bool) ($type->is_present ?? false),
+                'count' => $group->count(),
+            ];
+        })->sortByDesc('count')->values()->all();
+
+        // --- Tren harian (area/line) ---
+        $daily = $rows->groupBy(fn (BoardingAttendance $row): string => Carbon::parse($row->date)->toDateString())
+            ->map(function (Collection $group, string $date): array {
+                $present = $group->filter(fn (BoardingAttendance $r): bool => (bool) ($r->attendanceType?->is_present) && ! $r->is_late)->count();
+                $late = $group->filter(fn (BoardingAttendance $r): bool => (bool) $r->is_late)->count();
+                $notPresent = $group->filter(fn (BoardingAttendance $r): bool => ! (bool) ($r->attendanceType?->is_present))->count();
+
+                return [
+                    'date' => $date,
+                    'total' => $group->count(),
+                    'present' => $present,
+                    'late' => $late,
+                    'not_present' => $notPresent,
+                ];
+            })->sortKeys()->values()->all();
+
+        // --- Perbandingan asrama (bar) — lewat penempatan AKTIF saat ini ---
+        $dormNames = BoardingDormitory::query()
+            ->whereIn('id', $rows->map(fn (BoardingAttendance $r): int => (int) ($placements[(int) $r->student_id]?->dormitory_id ?? 0))->filter()->unique()->values()->all() ?: [-1])
+            ->pluck('name', 'id');
+
+        $byDorm = $rows->groupBy(function (BoardingAttendance $row) use ($placements): int {
+            return (int) ($placements[(int) $row->student_id]?->dormitory_id ?? 0);
+        })->map(function (Collection $group, int|string $dormId) use ($dormNames): array {
+            $dormName = $dormId > 0
+                ? (string) ($dormNames[(int) $dormId] ?? 'Asrama #'.$dormId)
+                : 'Tanpa Penempatan';
+            $present = $group->filter(fn (BoardingAttendance $r): bool => (bool) ($r->attendanceType?->is_present))->count();
+            $late = $group->filter(fn (BoardingAttendance $r): bool => (bool) $r->is_late)->count();
+
+            return [
+                'dormitory_id' => (int) $dormId,
+                'name' => $dormName,
+                'total' => $group->count(),
+                'present' => $present,
+                'late' => $late,
+                'not_present' => $group->count() - $present,
+                'present_percent' => $group->count() > 0 ? round(($present / $group->count()) * 100, 1) : 0.0,
+            ];
+        })->sortBy('name')->values()->all();
+
+        // --- Santri dengan ketidakhadiran terbanyak ---
+        $topAbsentees = $rows->filter(fn (BoardingAttendance $r): bool => ! (bool) ($r->attendanceType?->is_present))
+            ->groupBy('student_id')
+            ->map(function (Collection $group) use ($placements): array {
+                $student = $group->first()->student;
+                $placement = $placements[(int) $group->first()->student_id] ?? null;
+
+                return [
+                    'student_id' => (int) $group->first()->student_id,
+                    'full_name' => (string) ($student?->full_name ?? '-'),
+                    'nis' => (string) ($student?->nis ?? '-'),
+                    'dormitory' => (string) ($placement?->dormitory?->name ?? '-'),
+                    'room' => (string) ($placement?->room?->name ?? '-'),
+                    'absent_count' => $group->count(),
+                ];
+            })->sortByDesc('absent_count')->values()->take(10)->all();
+
+        $total = $rows->count();
+        $presentTotal = $rows->filter(fn (BoardingAttendance $r): bool => (bool) ($r->attendanceType?->is_present))->count();
+        $lateTotal = $rows->filter(fn (BoardingAttendance $r): bool => (bool) $r->is_late)->count();
+
+        return [
+            'period' => ['from' => $from, 'to' => $to],
+            'summary' => [
+                'records' => $total,
+                'present' => $presentTotal,
+                'late' => $lateTotal,
+                'not_present' => $total - $presentTotal,
+                'present_percent' => $total > 0 ? round(($presentTotal / $total) * 100, 1) : 0.0,
+            ],
+            'status_distribution' => $byType,
+            'daily' => $daily,
+            'by_dormitory' => $byDorm,
+            'top_absentees' => $topAbsentees,
+        ];
+    }
+
     // =====================================================================
     // TULIS — SATU BARIS
     // =====================================================================
@@ -599,13 +908,13 @@ class BoardingAttendanceService
      */
     public function scan(string $uid, array $data, User $actor): array
     {
-        $normalized = WalletRfidService::normalizeUid($uid);
-
         if (! (bool) $this->settings->get('rfid_attendance_enabled', true)) {
             throw ValidationException::withMessages([
                 'uid' => 'Absensi lewat kartu RFID sedang dinonaktifkan pada pengaturan modul asrama.',
             ]);
         }
+
+        $normalized = WalletRfidService::normalizeUid($uid);
 
         $card = WalletRfidCard::query()->where('uid', $normalized)->with('wallet.student')->first();
 
@@ -617,6 +926,19 @@ class BoardingAttendanceService
 
         $this->assertCardUsable($card);
 
+        $student = $this->studentOfCard($card, $normalized);
+
+        return $this->performScan($student, $actor, $data, BoardingAttendance::SOURCE_RFID, [
+            'uid' => $card->uid,
+            'card_id' => (int) $card->id,
+            'status' => $card->status,
+            'device' => $this->nullableText($data['device'] ?? null, 50),
+        ]);
+    }
+
+    /** Santri pemilik kartu RFID — memastikan kartu memang kartu santri ber-data utuh. */
+    private function studentOfCard(WalletRfidCard $card, string $normalized): Student
+    {
         $wallet = $card->wallet;
 
         if ($wallet === null || $wallet->ownerType() !== Wallet::TYPE_STUDENT) {
@@ -633,6 +955,59 @@ class BoardingAttendanceService
             ]);
         }
 
+        return $student;
+    }
+
+    /**
+     * Scan kode QR kamera (§23 varian). Isi kode adalah NIS santri — identitas
+     * yang sama dengan yang dicetak pada kartu QR.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function scanQr(string $code, array $data, User $actor): array
+    {
+        $nis = Str::upper(trim($code));
+
+        if ($nis === '') {
+            throw ValidationException::withMessages([
+                'code' => 'Kode QR kosong. Coba pindai ulang atau gunakan ketik manual.',
+            ]);
+        }
+
+        $student = Student::query()->where('nis', $nis)->first();
+
+        if ($student === null) {
+            throw ValidationException::withMessages([
+                'code' => 'Kode '.$nis.' bukan NIS santri yang dikenal sistem.',
+            ]);
+        }
+
+        return $this->performScan($student, $actor, $data, BoardingAttendance::SOURCE_QR, [
+            'code' => $nis,
+            'device' => $this->nullableText($data['device'] ?? null, 50),
+        ]);
+    }
+
+    /**
+     * Inti bersama jalur scan (RFID maupun QR): validasi kartu/santri sudah
+     * selesai di pemanggil; di sini yang ditegakkan adalah ruang lingkup,
+     * penempatan aktif (§9), kegiatan pada jendela jadwal (§25), dedupelikasi
+     * per (santri, kegiatan, tanggal, sesi), pencatatan, audit, notifikasi.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>|null  $card
+     * @return array<string, mixed>
+     */
+    private function performScan(
+        Student $student,
+        User $actor,
+        array $data,
+        string $source,
+        ?array $card,
+    ): array {
+        $codeLabel = $card['uid'] ?? $card['code'] ?? (string) $student->nis;
+
         $this->scope->assertCanAccessStudent($actor, (int) $student->id);
 
         $placement = $this->activePlacement((int) $student->id);
@@ -642,7 +1017,7 @@ class BoardingAttendanceService
         // yang menentukan, bukan "pernah pernah ditempatkan".
         if ($placement === null) {
             throw ValidationException::withMessages([
-                'uid' => 'Kartu '.$normalized.' atas nama '.(string) $student->full_name
+                'uid' => 'Kartu '.$codeLabel.' atas nama '.(string) $student->full_name
                     .' tidak memiliki penempatan aktif di asrama, sehingga tidak dapat diabsen.',
             ]);
         }
@@ -669,12 +1044,12 @@ class BoardingAttendanceService
                 'message' => 'Absensi sudah tercatat',
                 'activity' => $this->activitySummary($activity),
                 'student' => $this->studentSummary($student),
-                'card' => ['uid' => $card->uid, 'status' => $card->status, 'device' => $this->nullableText($data['device'] ?? null, 50)],
+                'card' => $card,
                 'duplicate' => true,
             ];
         }
 
-        $attendance = DB::transaction(function () use ($data, $actor, $activity, $student, $date, $session, $placement, $card): BoardingAttendance {
+        $attendance = DB::transaction(function () use ($data, $actor, $activity, $student, $date, $session, $placement, $card, $source, $codeLabel): BoardingAttendance {
             $recorded = $this->record([
                 'student_id' => $student->id,
                 'activity_id' => $activity->id,
@@ -682,15 +1057,16 @@ class BoardingAttendanceService
                 'session' => $session,
                 'attendance_type_id' => $data['attendance_type_id'] ?? null,
                 'device' => $data['device'] ?? null,
-            ], $actor, BoardingAttendance::SOURCE_RFID, $placement);
+            ], $actor, $source, $placement);
 
             activity('boarding')
-                ->event('BOARDING_ATTENDANCE_RFID')
+                ->event('BOARDING_ATTENDANCE_'.strtoupper($source))
                 ->performedOn($recorded)
                 ->causedBy($actor)
                 ->withProperties([
-                    'uid' => $card->uid,
-                    'card_id' => (int) $card->id,
+                    'uid' => $card['uid'] ?? null,
+                    'code' => $card['code'] ?? null,
+                    'card_id' => $card['card_id'] ?? null,
                     'device' => $recorded->device,
                     'student_id' => (int) $student->id,
                     'activity_id' => (int) $activity->id,
@@ -700,8 +1076,9 @@ class BoardingAttendanceService
                     'late_minutes' => $recorded->late_minutes,
                 ])
                 ->log(sprintf(
-                    'Scan RFID %s: %s tercatat absen %s oleh %s.',
-                    $card->uid,
+                    'Scan %s %s: %s tercatat absen %s oleh %s.',
+                    $source === BoardingAttendance::SOURCE_QR ? 'QR' : 'RFID',
+                    $codeLabel,
                     (string) $student->full_name,
                     (string) $activity->name,
                     (string) $actor->name,
@@ -720,7 +1097,7 @@ class BoardingAttendanceService
             'message' => 'Absensi berhasil dicatat',
             'activity' => $this->activitySummary($activity),
             'student' => $this->studentSummary($student),
-            'card' => ['uid' => $card->uid, 'status' => $card->status, 'device' => $fresh->device],
+            'card' => $card,
             'duplicate' => false,
         ];
     }

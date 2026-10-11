@@ -337,6 +337,71 @@ export interface BoardingAttendanceRecap {
   }>;
 }
 
+/* Pantauan kelengkapan pengisian absensi per asrama (satu tanggal). */
+export interface BoardingAttendanceMonitoring {
+  date: string;
+  month: string;
+  activities: Array<{ id: number; name: string }>;
+  dormitories: Array<{
+    id: number;
+    code: string;
+    name: string;
+    status: string;
+    supervisors: string[];
+    targets: number;
+    daily_records: number;
+    activities_total: number;
+    filled_activities: Array<{ id: number; name: string; targets: number; recorded: number }>;
+    partial_activities: Array<{ id: number; name: string; targets: number; recorded: number }>;
+    unfilled_activities: Array<{ id: number; name: string; targets: number; recorded: number }>;
+    monthly_percentage: number | null;
+  }>;
+}
+
+/* Agregat absensi untuk grafik dasbor. */
+export interface BoardingAttendanceStatistics {
+  period: { from: string; to: string };
+  summary: {
+    records: number;
+    present: number;
+    late: number;
+    not_present: number;
+    present_percent: number;
+  };
+  status_distribution: Array<{
+    type_id: number;
+    code: string;
+    name: string;
+    color: string;
+    is_present: boolean;
+    count: number;
+  }>;
+  daily: Array<{
+    date: string;
+    total: number;
+    present: number;
+    late: number;
+    not_present: number;
+  }>;
+  by_dormitory: Array<{
+    dormitory_id: number;
+    name: string;
+    total: number;
+    present: number;
+    late: number;
+    not_present: number;
+    present_percent: number;
+  }>;
+  top_absentees: Array<{
+    student_id: number;
+    full_name: string;
+    nis: string;
+    dormitory: string;
+    room: string;
+    absent_count: number;
+  }>;
+}
+
 /* ============ izin keluar ============ */
 
 export interface BoardingPermissionApproval {
@@ -957,4 +1022,52 @@ export interface BoardingIsolatePayload {
   reason: string;
   health_record_id?: BoardingId;
   notes?: string;
+}
+
+/* ============ titipan barang ============ */
+
+export interface BoardingItemLoan {
+  id: number;
+  borrowed_at: string | null;
+  returned_at: string | null;
+  notes: string | null;
+  processed_by?: string | null;
+}
+
+export interface BoardingItemDepositItem {
+  id: number;
+  deposit_id: number;
+  item_type: string;
+  item_type_label: string;
+  item_name: string;
+  status: 'in_storage' | 'borrowed' | 'returned_permanently' | string;
+  status_label: string;
+  notes: string | null;
+  current_loan?: { id: number; borrowed_at: string | null; notes: string | null } | null;
+  loans?: BoardingItemLoan[] | null;
+  created_at?: string | null;
+}
+
+export interface BoardingItemDeposit {
+  id: number;
+  student_id: number;
+  student?: BoardingStudentRef | null;
+  received_by?: { id: number; name: string } | null;
+  closed_by?: { id: number; name: string } | null;
+  deposited_at: string | null;
+  returned_at: string | null;
+  status: 'active' | 'returned' | string;
+  status_label: string;
+  notes: string | null;
+  items_count: number;
+  borrowed_count: number;
+  items: BoardingItemDepositItem[];
+  created_at?: string | null;
+}
+
+export interface BoardingItemDepositPayload {
+  student_id: BoardingId;
+  deposited_at?: string;
+  notes?: string;
+  items: Array<{ item_type: string; item_name: string; notes?: string }>;
 }

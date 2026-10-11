@@ -10,7 +10,9 @@ import type {
   BoardingActivitySchedule,
   BoardingAttendance,
   BoardingAttendancePayload,
+  BoardingAttendanceMonitoring,
   BoardingAttendanceRecap,
+  BoardingAttendanceStatistics,
   BoardingAttendanceRoster,
   BoardingAttendanceType,
   BoardingAttendanceTypePayload,
@@ -27,6 +29,9 @@ import type {
   BoardingFloor,
   BoardingFloorPayload,
   BoardingGroup,
+  BoardingItemDeposit,
+  BoardingItemDepositItem,
+  BoardingItemDepositPayload,
   BoardingGroupMember,
   BoardingGroupPayload,
   BoardingHealthPayload,
@@ -227,8 +232,12 @@ export const attendancesApi = {
       records: BoardingAttendance[];
     }>('/boarding/attendances/bulk', payload);
   },
-  scan: (payload: { uid: string; activity_id?: number; date?: string; session?: string }) =>
+  scan: (payload: { uid?: string; code?: string; activity_id?: number; date?: string; session?: string; attendance_type_id?: number; device?: string }) =>
     api.post('/boarding/attendances/scan', stripEmpty(payload)).then((res) => res.data.data),
+  monitoring: (params: Record<string, unknown> = {}) =>
+    get<BoardingAttendanceMonitoring>('/boarding/attendances/monitoring', params),
+  statistics: (params: Record<string, unknown> = {}) =>
+    get<BoardingAttendanceStatistics>('/boarding/attendances/statistics', params),
   revise: (id: number, payload: { attendance_type_id: number; note?: string }) =>
     api.put<ApiResponse<BoardingAttendance>>(`/boarding/attendances/${id}/revise`, payload).then(
       (res) => res.data.data,
@@ -441,6 +450,24 @@ export const portalApi = {
     );
     return { rows: res.data.data ?? [], meta: res.data.meta };
   },
+};
+
+/* ============================ TITIPAN BARANG ============================ */
+
+export const itemDepositsApi = {
+  ...crud<BoardingItemDeposit, BoardingItemDepositPayload>('/boarding/item-deposits'),
+  finish: (id: number) => post<BoardingItemDeposit>(`/boarding/item-deposits/${id}/finish`),
+  addItem: (id: number, payload: { item_type?: string; item_name: string; notes?: string }) =>
+    post<BoardingItemDepositItem>(`/boarding/item-deposits/${id}/items`, payload),
+  updateItem: (id: number, itemId: number, payload: { item_type?: string; item_name?: string; notes?: string }) =>
+    api.put<ApiResponse<BoardingItemDepositItem>>(`/boarding/item-deposits/${id}/items/${itemId}`, stripEmpty(payload)).then((res) => res.data.data),
+  removeItem: async (id: number, itemId: number) => {
+    await api.delete(`/boarding/item-deposits/${id}/items/${itemId}`);
+  },
+  borrowItem: (id: number, itemId: number, notes?: string) =>
+    post<BoardingItemDepositItem>(`/boarding/item-deposits/${id}/items/${itemId}/borrow`, notes ? { notes } : undefined),
+  returnItem: (id: number, itemId: number, notes?: string) =>
+    post<BoardingItemDepositItem>(`/boarding/item-deposits/${id}/items/${itemId}/return`, notes ? { notes } : undefined),
 };
 
 export { buildParams as buildBoardingParams, stripEmpty as stripBoardingEmpty };

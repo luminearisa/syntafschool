@@ -436,6 +436,141 @@ class BoardingAttendanceTest extends TestCase
     }
 
     // =================================================================
+    // Scan QR (NIS pada kartu absensi santri)
+    // =================================================================
+
+    public function test_scan_qr_nis_mencatat_absensi_dan_scan_ulang_tanpa_duplikat(): void
+    {
+        $this->actingAsRole('petugas-absensi');
+
+        $student = $this->placedStudent('3060');
+        $activityId = $this->activity('SUBUH')->id;
+
+        $first = $this->postJson('/api/v1/boarding/attendances/scan', [
+            'code' => '3060',
+            'activity_id' => $activityId,
+            'device' => 'CAM-01',
+        ])->assertCreated()->json('data');
+
+        $this->assertSame('qr', $first['attendance']['source']);
+        $this->assertFalse($first['already_recorded']);
+        $this->assertSame('3060', $first['student']['nis'] ?? $first['attendance']['student']['nis']);
+
+        // Scan ulang: tidak membuat baris baru.
+        $second = $this->postJson('/api/v1/boarding/attendances/scan', [
+            'code' => '3060',
+            'activity_id' => $activityId,
+        ])->assertOk()->json('data');
+
+        $this->assertTrue($second['already_recorded']);
+        $this->assertSame(1, BoardingAttendance::query()->where('student_id', $student->id)->count());
+    }
+
+    public function test_scan_qr_kode_tidak_dikenal_dan_tanpa_penempatan_ditolak(): void
+    {
+        $this->actingAsRole('petugas-absensi');
+        $activityId = $this->activity('SUBUH')->id;
+
+        $this->postJson('/api/v1/boarding/attendances/scan', [
+            'code' => 'NIS-TIDAK-ADA',
+            'activity_id' => $activityId,
+        ])->assertStatus(422)->assertJsonValidationErrors('code');
+
+        // Santri dikenal tetapi bukan penghuni asrama → tidak boleh diabsen.
+        $this->student('3061'); // tanpa penempatan
+
+        $this->postJson('/api/v1/boarding/attendances/scan', [
+            'code' => '3061',
+            'activity_id' => $activityId,
+        ])->assertStatus(422);
+
+        // Salah satu dari uid / code wajib ada.
+        $this->postJson('/api/v1/boarding/attendances/scan', [
+            'activity_id' => $activityId,
+        ])->assertStatus(422);
+    }
+
+    // =================================================================
+    // Pantauan & statistik absensi
+    // =================================================================
+
+    public function test_monitoring_per_asrama_menghitung_kelengkapan(): void
+    {
+        $this->actingAsRole('petugas-absensi');
+
+        $first = $this->placedStudent('3070');
+        $this->placedStudent('3071');
+        $activityId = $this->activity('SUBUH')->id;
+
+        // Satu dari dua santri tercatat → kegiatan masuk keranjang "sebagian".
+        $this->postJson('/api/v1/boarding/attendances', [
+            'student_id' => $first->id,
+            'activity_id' => $activityId,
+            'date' => now()->toDateString(),
+            'attendance_type_id' => $this->type('HADIR')->id,
+        ])->assertCreated();
+
+        $data = $this->getJson('/api/v1/boarding/attendances/monitoring?date='.now()->toDateString())
+            ->assertOk()->json('data');
+
+        $this->assertSame(now()->toDateString(), $data['date']);
+        $this->assertNotEmpty($data['dormitories']);
+
+        $dorm = collect($data['dormitories'])->firstWhere('targets', 2);
+        $this->assertNotNull($dorm);
+
+        $partial = collect($dorm['partial_activities'])->firstWhere('id', $activityId);
+        $this->assertNotNull($partial);
+        $this->assertSame(2, $partial['targets']);
+        $this->assertSame(1, $partial['recorded']);
+        $this->assertNotNull($dorm['monthly_percentage']);
+    }
+
+    public function test_statistics_mengagregasi_distribusi_tren_dan_asrama(): void
+    {
+        $this->actingAsRole('petugas-absensi');
+
+        $hadir = $this->placedStudent('3080');
+        $alpa = $this->placedStudent('3081');
+        $activityId = $this->activity('SUBUH')->id;
+        $today = now()->toDateString();
+
+        $this->postJson('/api/v1/boarding/attendances', [
+            'student_id' => $hadir->id,
+            'activity_id' => $activityId,
+            'date' => $today,
+            'attendance_type_id' => $this->type('HADIR')->id,
+        ])->assertCreated();
+
+        $this->postJson('/api/v1/boarding/attendances', [
+            'student_id' => $alpa->id,
+            'activity_id' => $activityId,
+            'date' => $today,
+            'attendance_type_id' => $this->type('ALPHA')->id,
+        ])->assertCreated();
+
+        $data = $this->getJson('/api/v1/boarding/attendances/statistics')
+            ->assertOk()->json('data');
+
+        $this->assertSame(2, $data['summary']['records']);
+        $this->assertSame(1, $data['summary']['present']);
+        $this->assertSame(1, $data['summary']['not_present']);
+        $this->assertSame(50.0, (float) $data['summary']['present_percent']);
+
+        $codes = collect($data['status_distribution'])->pluck('code');
+        $this->assertContains('HADIR', $codes);
+        $this->assertContains('ALPHA', $codes);
+
+        $todayRow = collect($data['daily'])->firstWhere('date', $today);
+        $this->assertNotNull($todayRow);
+        $this->assertSame(2, $todayRow['total']);
+
+        $this->assertNotEmpty($data['by_dormitory']);
+        $this->assertNotEmpty($data['top_absentees']);
+        $this->assertSame('3081', $data['top_absentees'][0]['nis']);
+    }
+
+    // =================================================================
     // Terlambat otomatis (§25) — level service karena perlu recorded_at
     // =================================================================
 

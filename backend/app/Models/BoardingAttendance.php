@@ -28,11 +28,14 @@ class BoardingAttendance extends BaseModel
 
     public const SOURCE_RFID = 'rfid';
 
-    public const SOURCES = [self::SOURCE_MANUAL, self::SOURCE_BULK, self::SOURCE_RFID];
+    public const SOURCE_QR = 'qr';
+
+    public const SOURCES = [self::SOURCE_MANUAL, self::SOURCE_BULK, self::SOURCE_QR, self::SOURCE_RFID];
 
     public const SOURCE_LABELS = [
         self::SOURCE_MANUAL => 'Manual',
         self::SOURCE_BULK => 'Massal',
+        self::SOURCE_QR => 'Scan QR',
         self::SOURCE_RFID => 'Scan RFID',
     ];
 

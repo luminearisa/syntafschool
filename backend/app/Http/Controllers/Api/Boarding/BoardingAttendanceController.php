@@ -80,6 +80,38 @@ class BoardingAttendanceController extends BaseApiController
         );
     }
 
+    /** Pantauan kelengkapan pengisian absensi per asrama untuk satu tanggal. */
+    public function monitoring(Request $request): JsonResponse
+    {
+        $params = $request->validate([
+            'date' => ['nullable', 'date'],
+            'month' => ['nullable', 'string', 'regex:/^\\d{4}-\\d{2}$/'],
+            'activity_id' => ['nullable', 'integer', 'exists:boarding_activities,id'],
+            'dormitory_id' => ['nullable', 'integer', 'exists:boarding_dormitories,id'],
+        ]);
+
+        return $this->successResponse(
+            $this->attendance->monitoring($params, $request->user()),
+            'Pantauan absensi berhasil diambil',
+        );
+    }
+
+    /** Agregat absensi untuk grafik dasbor (donat, tren harian, per asrama). */
+    public function statistics(Request $request): JsonResponse
+    {
+        $params = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'activity_id' => ['nullable', 'integer', 'exists:boarding_activities,id'],
+            'dormitory_id' => ['nullable', 'integer', 'exists:boarding_dormitories,id'],
+        ]);
+
+        return $this->successResponse(
+            $this->attendance->statistics($params, $request->user()),
+            'Statistik absensi berhasil diambil',
+        );
+    }
+
     public function show(BoardingAttendance $attendance): JsonResponse
     {
         $attendance->load($this->attendance->eagerLoads());
@@ -125,14 +157,12 @@ class BoardingAttendanceController extends BaseApiController
         return $this->successResponse(new BoardingAttendanceResource($record), 'Absensi berhasil dikoreksi');
     }
 
-    /** Scan kartu RFID Wallet (§23, §25) — satu endpoint untuk perangkat pemindai. */
+    /** Scan kartu santri (§23, §25) — satu endpoint untuk reader RFID maupun kamera QR. */
     public function scan(BoardingAttendanceScanRequest $request): JsonResponse
     {
-        $result = $this->attendance->scan(
-            (string) $request->input('uid'),
-            $request->validated(),
-            $request->user(),
-        );
+        $result = strval($request->input('code') ?? '') !== ''
+            ? $this->attendance->scanQr(strval($request->input('code')), $request->validated(), $request->user())
+            : $this->attendance->scan(strval($request->input('uid')), $request->validated(), $request->user());
 
         $status = ($result['duplicate'] ?? false) ? 200 : 201;
 

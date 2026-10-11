@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\Boarding\BoardingFloorController;
 use App\Http\Controllers\Api\Boarding\BoardingGroupController;
 use App\Http\Controllers\Api\Boarding\BoardingHealthController;
 use App\Http\Controllers\Api\Boarding\BoardingHomecomingController;
+use App\Http\Controllers\Api\Boarding\BoardingItemDepositController;
 use App\Http\Controllers\Api\Boarding\BoardingMonitoringController;
 use App\Http\Controllers\Api\Boarding\BoardingMusyrifController;
 use App\Http\Controllers\Api\Boarding\BoardingPermissionController;
@@ -194,6 +195,10 @@ Route::prefix('boarding')->name('boarding.')->group(function (): void {
         ->middleware('permission:boarding.attendance.view')->name('attendances.roster');
     Route::get('attendances/recap', [BoardingAttendanceController::class, 'recap'])
         ->middleware('permission:boarding.attendance.view')->name('attendances.recap');
+    Route::get('attendances/monitoring', [BoardingAttendanceController::class, 'monitoring'])
+        ->middleware('permission:boarding.attendance.view')->name('attendances.monitoring');
+    Route::get('attendances/statistics', [BoardingAttendanceController::class, 'statistics'])
+        ->middleware('permission:boarding.attendance.view')->name('attendances.statistics');
     Route::get('attendances', [BoardingAttendanceController::class, 'index'])
         ->middleware('permission:boarding.attendance.view')->name('attendances.index');
     Route::get('attendances/{attendance}', [BoardingAttendanceController::class, 'show'])
@@ -208,6 +213,32 @@ Route::prefix('boarding')->name('boarding.')->group(function (): void {
         ->middleware('permission:boarding.attendance.manage')->name('attendances.revise');
     Route::get('students/{student}/attendances', [BoardingAttendanceController::class, 'history'])
         ->middleware('permission:boarding.attendance.view')->name('attendances.history');
+
+    // ---------------- Titipan barang santri ---------------------------------
+    // Barang bersarang di bawah titipan; transisi pinjam/kembali dicatat
+    // sebagai riwayat pinjaman per barang.
+    Route::get('item-deposits', [BoardingItemDepositController::class, 'index'])
+        ->middleware('permission:boarding.deposit.view')->name('item-deposits.index');
+    Route::post('item-deposits', [BoardingItemDepositController::class, 'store'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.store');
+    Route::get('item-deposits/{deposit}', [BoardingItemDepositController::class, 'show'])
+        ->middleware('permission:boarding.deposit.view')->name('item-deposits.show');
+    Route::put('item-deposits/{deposit}', [BoardingItemDepositController::class, 'update'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.update');
+    Route::delete('item-deposits/{deposit}', [BoardingItemDepositController::class, 'destroy'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.destroy');
+    Route::post('item-deposits/{deposit}/finish', [BoardingItemDepositController::class, 'finish'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.finish');
+    Route::post('item-deposits/{deposit}/items', [BoardingItemDepositController::class, 'storeItem'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.items.store');
+    Route::put('item-deposits/{deposit}/items/{item}', [BoardingItemDepositController::class, 'updateItem'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.items.update');
+    Route::delete('item-deposits/{deposit}/items/{item}', [BoardingItemDepositController::class, 'destroyItem'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.items.destroy');
+    Route::post('item-deposits/{deposit}/items/{item}/borrow', [BoardingItemDepositController::class, 'borrow'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.items.borrow');
+    Route::post('item-deposits/{deposit}/items/{item}/return', [BoardingItemDepositController::class, 'returnItem'])
+        ->middleware('permission:boarding.deposit.manage')->name('item-deposits.items.return');
 
     // ---------------- Izin keluar (§27–§29) --------------------------------
     Route::get('permissions', [BoardingPermissionController::class, 'index'])

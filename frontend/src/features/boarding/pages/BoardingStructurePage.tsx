@@ -24,6 +24,7 @@ import {
   floorsApi,
   roomsApi,
 } from '../api/boardingApi';
+import { BoardingOccupancyTab } from '../components/BoardingOccupancyTab';
 import {
   useBuildingOptions,
   useDormitoryOptions,
@@ -456,11 +457,12 @@ function StructureTabs({ tab, onTab }: { tab: string; onTab: (t: string) => void
           { key: 'floors', label: 'Lantai' },
           { key: 'rooms', label: 'Kamar' },
           { key: 'beds', label: 'Tempat Tidur' },
+          { key: 'occupancy', label: 'Papan Okupansi' },
         ]}
         active={tab}
         onChange={onTab}
       />
-      {def && <MasterTab key={def.key} def={def} />}
+      {tab === 'occupancy' ? <BoardingOccupancyTab /> : def && <MasterTab key={def.key} def={def} />}
     </>
   );
 }

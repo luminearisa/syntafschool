@@ -4,6 +4,7 @@ import { PermissionGuard } from '@/routes/PermissionGuard';
 import { BoardingDashboardPage } from '@/features/boarding/pages/BoardingDashboardPage';
 import { BoardingStructurePage } from '@/features/boarding/pages/BoardingStructurePage';
 import { BoardingPlacementsPage } from '@/features/boarding/pages/BoardingPlacementsPage';
+import { BoardingItemDepositsPage } from '@/features/boarding/pages/BoardingItemDepositsPage';
 import { BoardingCaregiversPage } from '@/features/boarding/pages/BoardingCaregiversPage';
 import { BoardingActivitiesPage } from '@/features/boarding/pages/BoardingActivitiesPage';
 import { BoardingAttendancePage } from '@/features/boarding/pages/BoardingAttendancePage';
@@ -141,6 +142,14 @@ export const domainRoutes: RouteObject[] = [
     ),
   },
   {
+    path: 'boarding/item-deposits',
+    element: (
+      <PermissionGuard permission="boarding.deposit.view">
+        <BoardingItemDepositsPage />
+      </PermissionGuard>
+    ),
+  },
+  {
     path: 'boarding/monitoring',
     element: (
       <PermissionGuard permission="boarding.dashboard.view">
@@ -185,6 +194,7 @@ export const boardingMenu: MenuChild[] = [
   { label: 'Kedisiplinan', to: '/boarding/violations', permission: 'boarding.violation.view' },
   { label: 'Prestasi', to: '/boarding/achievements', permission: 'boarding.achievement.view' },
   { label: 'Kesehatan & Isolasi', to: '/boarding/health', permission: 'boarding.health.view' },
+  { label: 'Titipan Barang', to: '/boarding/item-deposits', permission: 'boarding.deposit.view' },
   { label: 'Laporan & Audit', to: '/boarding/reports', permission: 'boarding.report.view' },
   { label: 'Pengaturan Boarding', to: '/boarding/settings', permission: 'boarding.settings.view' },
   // Tanpa `permission`: grup menu boarding tetap muncul untuk orang tua yang
