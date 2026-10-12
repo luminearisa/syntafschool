@@ -208,6 +208,54 @@ class BoardingPlacementService
         return $this->withDetails($placement);
     }
 
+    /**
+     * Tempatkan BANYAK santri sekaligus ke satu kamar (§9, §10).
+     *
+     * Seluruh penempatan dijalankan dalam SATU transaksi bersarang: bila salah
+     * satu santri ditolak (mis. masih punya placement aktif, gender tidak
+     * cocok, atau kapasitas kamar habis di tengah proses), seluruh batch
+     * dibatalkan — tidak ada penempatan "setengah jadi". Setiap santri tetap
+     * melewati penjagaan penuh di `assign()` sehingga aturan tidak dilonggarkan
+     * demi kemudahan massal.
+     *
+     * Memilih satu `bed_id` spesifik hanya sah untuk satu santri; untuk batch
+     * santri akan disebar tanpa bed tertentu (kapasitas kamar tetap dijaga).
+     *
+     * @param  array<int, mixed>  $studentIds
+     * @param  array<string, mixed>  $data  room_id, bed_id?, floor_id?, building_id?,
+     *                                      dormitory_id?, start_date?, notes?
+     * @return list<BoardingPlacement>
+     */
+    public function assignMany(array $studentIds, array $data, User $actor): array
+    {
+        $ids = array_values(array_unique(array_map(static fn (mixed $id): int => (int) $id, $studentIds)));
+
+        if ($ids === []) {
+            throw ValidationException::withMessages([
+                'student_ids' => 'Pilih minimal satu santri untuk ditempatkan.',
+            ]);
+        }
+
+        if (count($ids) > 1 && filled($data['bed_id'] ?? null)) {
+            throw ValidationException::withMessages([
+                'bed_id' => 'Tempat tidur tertentu hanya dapat dipilih bila menempatkan satu santri.',
+            ]);
+        }
+
+        /** @var list<BoardingPlacement> $placements */
+        $placements = DB::transaction(function () use ($ids, $data, $actor): array {
+            $created = [];
+
+            foreach ($ids as $id) {
+                $created[] = $this->assign(['student_id' => $id] + $data, $actor);
+            }
+
+            return $created;
+        });
+
+        return array_map(fn (BoardingPlacement $p): BoardingPlacement => $this->withDetails($p), $placements);
+    }
+
     // =====================================================================
     // Tulis — mutasi (§11)
     // =====================================================================

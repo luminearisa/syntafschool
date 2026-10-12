@@ -114,6 +114,8 @@ Route::prefix('boarding')->name('boarding.')->group(function (): void {
         ->middleware('permission:boarding.placement.view')->name('placements.show');
     Route::post('placements', [BoardingPlacementController::class, 'store'])
         ->middleware('permission:boarding.placement.manage')->name('placements.store');
+    Route::post('placements/batch', [BoardingPlacementController::class, 'storeBatch'])
+        ->middleware('permission:boarding.placement.manage')->name('placements.batch');
     Route::post('placements/{placement}/transfer', [BoardingPlacementController::class, 'transfer'])
         ->middleware('permission:boarding.mutation.manage')->name('placements.transfer');
     Route::post('placements/{placement}/end', [BoardingPlacementController::class, 'end'])

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Boarding;
 
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Requests\Boarding\BoardingPlacementAssignBatchRequest;
 use App\Http\Requests\Boarding\BoardingPlacementAssignRequest;
 use App\Http\Requests\Boarding\BoardingPlacementEndRequest;
 use App\Http\Requests\Boarding\BoardingPlacementTransferRequest;
@@ -61,6 +62,25 @@ class BoardingPlacementController extends BaseApiController
         return $this->createdResponse(
             new BoardingPlacementResource($this->placements->withDetails($placement)),
             'Penempatan santri berhasil dibuat',
+        );
+    }
+
+    /**
+     * Penempatan massal: banyak santri ke satu kamar sekaligus. Semua
+     * penempatan bersifat all-or-nothing (satu transaksi) — lihat
+     * `BoardingPlacementService::assignMany()`.
+     */
+    public function storeBatch(BoardingPlacementAssignBatchRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $studentIds = $data['student_ids'];
+        unset($data['student_ids']);
+
+        $placements = $this->placements->assignMany($studentIds, $data, $request->user());
+
+        return $this->createdResponse(
+            BoardingPlacementResource::collection($placements),
+            count($placements).' penempatan santri berhasil dibuat',
         );
     }
 

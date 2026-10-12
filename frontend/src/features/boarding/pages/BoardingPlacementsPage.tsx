@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Textarea } from '@/components/ui/Textarea';
 import { Modal } from '@/components/ui/Modal';
 import { SearchSelect } from '@/components/ui/SearchSelect';
+import { MultiSearchSelect } from '@/components/ui/MultiSearchSelect';
 import { Pagination } from '@/components/common/Pagination';
 import { Can } from '@/components/common/Can';
 import { useStudentOptions } from '@/hooks/useLookupOptions';
@@ -46,7 +47,7 @@ function AssignModal({
 }) {
   const qc = useQueryClient();
   const { options: studentOptions } = useStudentOptions();
-  const [studentId, setStudentId] = useState<number | ''>('');
+  const [studentIds, setStudentIds] = useState<number[]>([]);
   const [roomId, setRoomId] = useState<number | ''>('');
   const [bedId, setBedId] = useState<number | ''>('');
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
@@ -54,18 +55,23 @@ function AssignModal({
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
   const bedQuery = useBedOptions(roomId);
+  const multiple = studentIds.length > 1;
 
   const save = useMutation({
     mutationFn: () =>
-      placementsApi.create({
-        student_id: studentId,
+      placementsApi.createMany({
+        student_ids: studentIds,
         room_id: roomId,
-        bed_id: bedId === '' ? undefined : bedId,
+        bed_id: !multiple && bedId !== '' ? bedId : undefined,
         start_date: startDate,
         notes,
       }),
-    onSuccess: () => {
-      toast.success('Penempatan santri disimpan');
+    onSuccess: (created) => {
+      toast.success(
+        created.length > 1
+          ? `${created.length} santri berhasil ditempatkan`
+          : 'Penempatan santri disimpan',
+      );
       qc.invalidateQueries({ queryKey: ['boarding'] });
       onClose();
     },
@@ -76,7 +82,7 @@ function AssignModal({
   });
 
   const reset = () => {
-    setStudentId('');
+    setStudentIds([]);
     setRoomId('');
     setBedId('');
     setNotes('');
@@ -93,17 +99,31 @@ function AssignModal({
       title="Tempatkan Santri di Asrama"
       size="lg"
       footer={
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => { reset(); onClose(); }}>Batal</Button>
-          <Button onClick={() => save.mutate()} disabled={save.isPending || !studentId || !roomId}>
-            {save.isPending ? 'Menyimpan...' : 'Tempatkan'}
-          </Button>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-slate-500">
+            {studentIds.length > 0 ? `${studentIds.length} santri dipilih` : 'Belum ada santri dipilih'}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { reset(); onClose(); }}>Batal</Button>
+            <Button onClick={() => save.mutate()} disabled={save.isPending || studentIds.length === 0 || !roomId}>
+              {save.isPending ? 'Menyimpan...' : multiple ? `Tempatkan ${studentIds.length} Santri` : 'Tempatkan'}
+            </Button>
+          </div>
         </div>
       }
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <FormField label="Santri" error={errors.student_id}>
-          <SearchSelect options={studentOptions} value={studentId} onChange={(v) => setStudentId(toId(String(v)))} placeholder="Cari santri..." />
+        <FormField
+          label="Santri (bisa pilih lebih dari satu)"
+          error={errors.student_ids ?? errors.student_id}
+          className="sm:col-span-2"
+        >
+          <MultiSearchSelect
+            options={studentOptions}
+            value={studentIds}
+            onChange={(vals) => setStudentIds(vals.map((v) => Number(v)))}
+            placeholder="Cari & pilih satu atau beberapa santri..."
+          />
         </FormField>
         <FormField label="Mulai Tanggal" error={errors.start_date}>
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -111,17 +131,28 @@ function AssignModal({
         <FormField label="Kamar" error={errors.room_id}>
           <RoomSelect value={roomId} onChange={(v) => { setRoomId(v); setBedId(''); }} />
         </FormField>
-        <FormField label="Tempat Tidur (opsional)" error={errors.bed_id}>
+        <FormField
+          label="Tempat Tidur (opsional)"
+          error={errors.bed_id}
+          className="sm:col-span-2"
+        >
           <Select
             value={String(bedId ?? '')}
             onChange={(e) => setBedId(toId(e.target.value))}
-            disabled={!roomId || bedQuery.isLoading}
+            disabled={!roomId || multiple || bedQuery.isLoading}
           >
-            <option value="">-- Tanpa bed tertentu --</option>
-            {(bedQuery.data ?? []).map((o) => (
+            <option value="">
+              {multiple ? '-- Tidak berlaku untuk penempatan massal --' : '-- Tanpa bed tertentu --'}
+            </option>
+            {!multiple && (bedQuery.data ?? []).map((o) => (
               <option key={String(o.value)} value={String(o.value)}>{o.label}</option>
             ))}
           </Select>
+          {multiple && (
+            <p className="mt-1 text-xs text-slate-400">
+              Menempatkan banyak santri sekaligus selalu tanpa bed tertentu (santri disebar pada kapasitas kamar).
+            </p>
+          )}
         </FormField>
         <FormField label="Catatan" error={errors.notes} className="sm:col-span-2">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />

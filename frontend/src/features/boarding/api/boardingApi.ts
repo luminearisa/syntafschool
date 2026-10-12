@@ -45,6 +45,7 @@ import type {
   BoardingPermission,
   BoardingPermissionPayload,
   BoardingPlacement,
+  BoardingPlacementBatchPayload,
   BoardingPlacementPayload,
   BoardingPointsSummary,
   BoardingPortalChild,
@@ -154,6 +155,8 @@ export const bedsApi = {
 
 export const placementsApi = {
   ...crud<BoardingPlacement, BoardingPlacementPayload>('/boarding/placements'),
+  createMany: (payload: BoardingPlacementBatchPayload) =>
+    post<BoardingPlacement[]>('/boarding/placements/batch', payload),
   occupancy: (roomId: number) =>
     get<BoardingRoomOccupancy>('/boarding/placements/occupancy', { room_id: roomId }),
   transfer: (id: number, payload: BoardingTransferPayload) =>

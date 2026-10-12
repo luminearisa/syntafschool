@@ -861,6 +861,14 @@ export interface BoardingPlacementPayload {
   notes?: string;
 }
 
+export interface BoardingPlacementBatchPayload {
+  student_ids: BoardingId[];
+  room_id: BoardingId;
+  bed_id?: BoardingId;
+  start_date?: string;
+  notes?: string;
+}
+
 export interface BoardingTransferPayload {
   room_id: BoardingId;
   bed_id?: BoardingId;

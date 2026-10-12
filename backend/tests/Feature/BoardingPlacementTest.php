@@ -200,9 +200,116 @@ class BoardingPlacementTest extends TestCase
     }
 
     // =================================================================
-    // Mutasi / transfer
+    // Penempatan massal (batch)
     // =================================================================
 
+    public function test_batch_menempatkan_beberapa_santri_sekaligus(): void
+    {
+        $this->actingAsRole('admin-boarding');
+
+        $room = $this->room('A101');
+        $ids = [
+            $this->student('2201')->id,
+            $this->student('2202')->id,
+            $this->student('2203')->id,
+        ];
+
+        $data = $this->postJson('/api/v1/boarding/placements/batch', [
+            'student_ids' => $ids,
+            'room_id' => $room->id,
+        ])->assertCreated()->json('data');
+
+        $this->assertCount(3, $data);
+        $this->assertSame(3, BoardingPlacement::query()
+            ->where('room_id', $room->id)
+            ->where('status', BoardingPlacement::STATUS_ACTIVE)
+            ->count());
+
+        foreach ($ids as $id) {
+            $this->getJson('/api/v1/boarding/students/'.$id.'/placement')
+                ->assertOk()
+                ->assertJsonPath('data.status', 'active');
+        }
+    }
+
+    public function test_batch_bersifat_all_or_nothing_saat_satu_santri_gagal(): void
+    {
+        $this->actingAsRole('admin-boarding');
+
+        $room = $this->room('A101');
+
+        // Santri ini sudah punya penempatan aktif → penempatan keduanya ditolak.
+        $sudahDitempatkan = $this->student('2301');
+        $this->assign($sudahDitempatkan, $this->room('A102'));
+
+        $masihBebas = $this->student('2302');
+
+        $this->postJson('/api/v1/boarding/placements/batch', [
+            'student_ids' => [$masihBebas->id, $sudahDitempatkan->id],
+            'room_id' => $room->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('student_id');
+
+        // Tidak ada penempatan "setengah jadi": santri bebas pun batal ditempatkan.
+        $this->assertSame(0, BoardingPlacement::query()->where('student_id', $masihBebas->id)->count());
+    }
+
+    public function test_batch_menolak_bed_bila_lebih_dari_satu_santri(): void
+    {
+        $this->actingAsRole('admin-boarding');
+
+        $room = $this->room('A101');
+        $bed = $this->bed($room, '01');
+
+        $this->postJson('/api/v1/boarding/placements/batch', [
+            'student_ids' => [$this->student('2401')->id, $this->student('2402')->id],
+            'room_id' => $room->id,
+            'bed_id' => $bed->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('bed_id');
+
+        $this->assertSame(BoardingBed::STATUS_AVAILABLE, $bed->fresh()->status);
+    }
+
+    public function test_batch_satu_santri_boleh_memakai_bed(): void
+    {
+        $this->actingAsRole('admin-boarding');
+
+        $room = $this->room('A101');
+        $bed = $this->bed($room, '02');
+        $student = $this->student('2501');
+
+        $data = $this->postJson('/api/v1/boarding/placements/batch', [
+            'student_ids' => [$student->id],
+            'room_id' => $room->id,
+            'bed_id' => $bed->id,
+        ])->assertCreated()->json('data');
+
+        $this->assertSame($bed->id, $data[0]['bed']['id']);
+        $this->assertSame(BoardingBed::STATUS_OCCUPIED, $bed->fresh()->status);
+    }
+
+    public function test_batch_kapasitas_kamar_tetap_dijaga(): void
+    {
+        $this->actingAsRole('admin-boarding');
+
+        $room = $this->room('A201'); // kapasitas 8
+
+        $ids = [];
+        for ($i = 1; $i <= 9; $i++) {
+            $ids[] = $this->student('260'.$i)->id;
+        }
+
+        $this->postJson('/api/v1/boarding/placements/batch', [
+            'student_ids' => $ids,
+            'room_id' => $room->id,
+        ])->assertStatus(422)->assertJsonValidationErrors('room_id');
+
+        // Seluruh batch digulung: kamar tetap kosong.
+        $this->assertSame(0, BoardingPlacement::query()->where('room_id', $room->id)->count());
+    }
+
+    // =================================================================
+    // Mutasi / transfer
+    // =================================================================
     public function test_transfer_menutup_penempatan_lama_dan_menggeser_bed(): void
     {
         $this->actingAsRole('admin-boarding');
