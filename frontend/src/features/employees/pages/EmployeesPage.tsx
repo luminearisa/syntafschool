@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Power, GraduationCap } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Search, Power, GraduationCap, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { employeesApi } from '@/features/employees/api/employeesApi';
 import { EmployeeFormModal } from '@/features/employees/components/EmployeeFormModal';
@@ -26,6 +27,7 @@ const EMPLOYMENT_STATUS_TONES: Record<string, 'blue' | 'green' | 'amber' | 'gray
 
 export function EmployeesPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -206,7 +208,9 @@ export function EmployeesPage() {
                   {employees.map((emp) => (
                     <tr key={emp.id} className="hover:bg-slate-50/60">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-slate-800">{emp.full_name}</p>
+                        <Link to={`/employees/${emp.id}`} className="font-medium text-slate-800 hover:text-brand-700 hover:underline">
+                          {emp.full_name}
+                        </Link>
                         <p className="text-xs text-slate-500">
                           {emp.nip ?? 'Tanpa NIP'}
                           {emp.email ? ` · ${emp.email}` : ''}
@@ -242,6 +246,14 @@ export function EmployeesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Buka profil lengkap"
+                            onClick={() => navigate(`/employees/${emp.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Can perm="employee.update">
                             <Button
                               variant="ghost"

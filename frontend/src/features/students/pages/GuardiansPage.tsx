@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Link2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Search, Link2, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { guardiansApi } from '@/features/students/api/guardiansApi';
 import { GuardianFormModal } from '@/features/students/components/GuardianFormModal';
@@ -20,6 +21,7 @@ import type { Guardian, GuardianPayload } from '@/types';
 
 export function GuardiansPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -175,7 +177,9 @@ export function GuardiansPage() {
                   {guardians.map((g) => (
                     <tr key={g.id} className="hover:bg-slate-50/60">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-slate-800">{g.full_name}</p>
+                        <Link to={`/students/guardians/${g.id}`} className="font-medium text-slate-800 hover:text-brand-700 hover:underline">
+                          {g.full_name}
+                        </Link>
                         <p className="text-xs text-slate-500">{g.gender?.name ?? '-'}</p>
                       </td>
                       <td className="px-4 py-3 text-slate-600">
@@ -192,15 +196,23 @@ export function GuardiansPage() {
                           <div className="flex flex-wrap items-center gap-1">
                             <Link2 className="h-3.5 w-3.5 text-slate-400" />
                             {(g.students ?? []).map((s) => (
-                              <Badge key={s.id} tone={s.is_primary ? 'amber' : 'gray'}>
-                                {s.full_name}
-                              </Badge>
+                              <Link key={s.id} to={`/students/${s.id}`} title="Buka profil siswa">
+                                <Badge tone={s.is_primary ? 'amber' : 'gray'}>{s.full_name}</Badge>
+                              </Link>
                             ))}
                           </div>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Buka profil lengkap"
+                            onClick={() => navigate(`/students/guardians/${g.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Can perm="student.update">
                             <Button
                               variant="ghost"

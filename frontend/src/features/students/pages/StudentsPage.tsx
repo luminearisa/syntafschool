@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Search, Power, Eye, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { studentsApi } from '@/features/students/api/studentsApi';
 import { StudentFormModal } from '@/features/students/components/StudentFormModal';
-import { StudentDetailModal } from '@/features/students/components/StudentDetailModal';
 import { academicsApi, classesApi } from '@/features/academics/api/academicsApi';
 import { Can } from '@/components/common/Can';
 import { PermissionGuard } from '@/routes/PermissionGuard';
@@ -22,6 +22,7 @@ import type { Student, StudentPayload } from '@/types';
 
 export function StudentsPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -33,7 +34,6 @@ export function StudentsPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
-  const [detailId, setDetailId] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
 
@@ -266,7 +266,9 @@ export function StudentsPage() {
                   {students.map((s) => (
                     <tr key={s.id} className="hover:bg-slate-50/60">
                       <td className="px-4 py-3">
-                        <p className="font-medium text-slate-800">{s.full_name}</p>
+                        <Link to={`/students/${s.id}`} className="font-medium text-slate-800 hover:text-brand-700 hover:underline">
+                          {s.full_name}
+                        </Link>
                         <p className="text-xs text-slate-500">
                           NIS {s.nis}
                           {s.nisn ? ` · NISN ${s.nisn}` : ''}
@@ -299,8 +301,8 @@ export function StudentsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Detail"
-                            onClick={() => setDetailId(s.id)}
+                            title="Buka profil lengkap"
+                            onClick={() => navigate(`/students/${s.id}`)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -354,12 +356,6 @@ export function StudentsPage() {
         serverErrors={errors}
         onClose={closeModal}
         onSubmit={(payload) => saveMutation.mutate(payload)}
-      />
-
-      <StudentDetailModal
-        open={detailId !== null}
-        studentId={detailId}
-        onClose={() => setDetailId(null)}
       />
 
       <ConfirmDialog

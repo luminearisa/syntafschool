@@ -1827,3 +1827,7 @@ sinkron. Rincian pada `docs/22-MODUL-ASSET-SARPRAS.md`.
 - [ ] Portal vendor, unggah/impor-ekspor berkas, PDF dokumen pengadaan
 - [ ] Suite PHPUnit otomatis (uji dilakukan lewat skrip smoke)
 - Detail: [docs/35](./35-MODUL-PROCUREMENT-VENDOR.md)
+
+### Profil 360° (web)
+- [x] Halaman profil lengkap siswa / wali murid / pegawai (tab per modul, izin per tab, pagar keluarga, audit akses data sensitif) — [docs/30](./30-PROFIL-360.md); `ProfileTest` belum dijalankan (PHP 8.3)
+- [x] Pencarian menu di sidebar; menu UKS jadi grup sendiri
