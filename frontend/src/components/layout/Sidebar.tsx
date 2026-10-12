@@ -1,6 +1,6 @@
-import { useEffect, useId, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import { ChevronDown, GraduationCap, Sparkles, X } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, GraduationCap, Search, Sparkles, X } from 'lucide-react';
 import { MENU_ITEMS, type MenuItem } from '@/constants/menu';
 import { usePermission } from '@/hooks/usePermission';
 import { cn } from '@/lib/utils';
@@ -38,9 +38,11 @@ function NavChild({
 function NavGroup({
   item,
   onNavigate,
+  forceOpen = false,
 }: {
   item: MenuItem;
   onNavigate?: () => void;
+  forceOpen?: boolean;
 }) {
   const location = useLocation();
   const children = item.children ?? [];
@@ -49,6 +51,7 @@ function NavGroup({
     (child) => location.pathname === child.to || location.pathname.startsWith(`${child.to}/`),
   );
   const [open, setOpen] = useState(hasActiveChild);
+  const expanded = open || forceOpen;
   const Icon = item.icon;
 
   useEffect(() => {
@@ -60,7 +63,7 @@ function NavGroup({
     <div className="sidebar-nav-group">
       <button
         type="button"
-        aria-expanded={open}
+        aria-expanded={expanded}
         aria-controls={groupId}
         onClick={() => setOpen((value) => !value)}
         className={cn(
@@ -72,7 +75,7 @@ function NavGroup({
         <span>{item.label}</span>
         <ChevronDown className="sidebar-chevron" aria-hidden="true" />
       </button>
-      {open && children.length > 0 && (
+      {expanded && children.length > 0 && (
         <div id={groupId} className="sidebar-children">
           {children.map((child) => (
             <NavChild
@@ -102,6 +105,30 @@ function useFilteredMenu(): MenuItem[] {
   }).filter((item): item is MenuItem => item !== null);
 }
 
+const normalize = (value: string) =>
+  value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+/**
+ * Cari menu berdasarkan label grup atau label submenu. Bila label grup cocok,
+ * seluruh submenu grup itu tampil; bila hanya submenu yang cocok, hanya yang cocok.
+ * Setiap kata pada kueri harus ada (urutan bebas).
+ */
+function searchMenu(menu: MenuItem[], query: string): MenuItem[] {
+  const terms = normalize(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return menu;
+  const matches = (text: string) => {
+    const haystack = normalize(text);
+    return terms.every((term) => haystack.includes(term));
+  };
+
+  return menu.flatMap((item) => {
+    if (!item.children) return matches(item.label) ? [item] : [];
+    if (matches(item.label)) return [item];
+    const children = item.children.filter((child) => matches(`${item.label} ${child.label}`));
+    return children.length > 0 ? [{ ...item, children }] : [];
+  });
+}
+
 export function Sidebar({
   onNavigate,
   onClose,
@@ -109,7 +136,40 @@ export function Sidebar({
   onNavigate?: () => void;
   onClose?: () => void;
 } = {}) {
-  const menu = useFilteredMenu();
+  const allowed = useFilteredMenu();
+  const navigate = useNavigate();
+  const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const searching = query.trim().length > 0;
+  const menu = useMemo(() => searchMenu(allowed, query), [allowed, query]);
+
+  // Pintasan "/" memfokuskan pencarian (kecuali saat mengetik di kolom lain).
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      event.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const firstTarget = (): string | null => {
+    const first = menu[0];
+    if (!first) return null;
+    return first.children?.[0]?.to ?? first.to ?? null;
+  };
+
+  const openFirst = () => {
+    const to = firstTarget();
+    if (!to) return;
+    navigate(to);
+    setQuery('');
+    inputRef.current?.blur();
+    onNavigate?.();
+  };
 
   return (
     <aside className="app-sidebar" aria-label="Navigasi utama">
@@ -128,12 +188,46 @@ export function Sidebar({
         )}
       </div>
 
+      <div className="sidebar-search">
+        <Search className="sidebar-search-icon" aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              openFirst();
+            } else if (event.key === 'Escape') {
+              setQuery('');
+              event.currentTarget.blur();
+            }
+          }}
+          placeholder="Cari menu…"
+          aria-label="Cari menu"
+          autoComplete="off"
+          spellCheck={false}
+          className="sidebar-search-input"
+        />
+        {searching ? (
+          <button type="button" className="sidebar-search-clear" aria-label="Hapus pencarian" onClick={() => { setQuery(''); inputRef.current?.focus(); }}>
+            <X aria-hidden="true" />
+          </button>
+        ) : (
+          <kbd className="sidebar-search-hint" aria-hidden="true">/</kbd>
+        )}
+      </div>
+
       <nav className="sidebar-nav" aria-label="Menu aplikasi">
-        <p className="sidebar-section-label">Navigasi utama</p>
+        <p className="sidebar-section-label">{searching ? `Hasil pencarian (${menu.length})` : 'Navigasi utama'}</p>
+        {searching && menu.length === 0 && (
+          <p className="sidebar-search-empty" role="status">Menu “{query.trim()}” tidak ditemukan.</p>
+        )}
         <div className="sidebar-menu-list">
           {menu.map((item) =>
             item.children ? (
-              <NavGroup key={item.label} item={item} onNavigate={onNavigate} />
+              <NavGroup key={item.label} item={item} onNavigate={onNavigate} forceOpen={searching} />
             ) : (
               <NavLink
                 key={item.to}

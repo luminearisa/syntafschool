@@ -14,6 +14,7 @@ import {
   Home,
   Settings,
   Stethoscope,
+  HeartPulse,
   GitPullRequestArrow,
   Trophy,
   HeartHandshake,
@@ -33,6 +34,7 @@ import { assessmentsMenu } from '@/routes/domains/assessments';
 import { lmsMenu } from '@/routes/domains/lms';
 import { cbtMenu } from '@/routes/domains/cbt';
 import { clinicMenu } from '@/routes/domains/clinic';
+import { uksMenu } from '@/routes/domains/uks';
 import { activityMenu } from '@/routes/domains/activity';
 import { bkMenu } from '@/routes/domains/bk';
 import { workflowMenu } from '@/routes/domains/workflow';
@@ -178,6 +180,14 @@ export const MENU_ITEMS: MenuItem[] = [
     icon: MonitorCheck,
     permission: 'cbt.view',
     children: cbtMenu,
+  },
+  {
+    // Modul UKS (kunjungan, rekam kesehatan, insiden, surat, obat): menu sendiri,
+    // terpisah dari Akademik. Baris yang terlihat dibatasi di server per peran.
+    label: 'UKS',
+    icon: HeartPulse,
+    permission: 'uks.view',
+    children: uksMenu,
   },
   {
     // Modul Clinic / UKS: ruang kerja klinis (antrean, triase, resep, pemulangan)

@@ -33,12 +33,13 @@ export const domainRoutes: RouteObject[] = [
   { path: 'uks/officers', element: guard('uks.officer.manage', <UksOfficersPage />) },
 ];
 
-export const domainMenu: MenuChild[] = [
-  { label: 'UKS — Beranda', to: '/uks', permission: 'uks.view' },
-  { label: 'UKS — Kunjungan', to: '/uks/visits', permission: 'uks.visit.view' },
-  { label: 'UKS — Rekam Kesehatan', to: '/uks/records', permission: 'uks.record.view' },
-  { label: 'UKS — Insiden', to: '/uks/incidents', permission: 'uks.incident.view' },
-  { label: 'UKS — Surat Keterangan', to: '/uks/letters', permission: 'uks.letter.view' },
-  { label: 'UKS — Obat & Stok', to: '/uks/medicines', permission: 'uks.medicine.view' },
-  { label: 'UKS — Petugas', to: '/uks/officers', permission: 'uks.officer.manage' },
+/** Menu sendiri (grup "UKS" di sidebar), tidak ditempel ke "Akademik". */
+export const uksMenu: MenuChild[] = [
+  { label: 'Beranda', to: '/uks', permission: 'uks.view' },
+  { label: 'Kunjungan', to: '/uks/visits', permission: 'uks.visit.view' },
+  { label: 'Rekam Kesehatan', to: '/uks/records', permission: 'uks.record.view' },
+  { label: 'Insiden', to: '/uks/incidents', permission: 'uks.incident.view' },
+  { label: 'Surat Keterangan', to: '/uks/letters', permission: 'uks.letter.view' },
+  { label: 'Obat & Stok', to: '/uks/medicines', permission: 'uks.medicine.view' },
+  { label: 'Petugas', to: '/uks/officers', permission: 'uks.officer.manage' },
 ];
